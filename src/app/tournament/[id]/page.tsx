@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { BracketView } from "@/components/bracket-view";
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
   weekly: { label: "Weekly Play", color: "text-muted" },
@@ -240,6 +241,8 @@ export default function TournamentPage() {
                 )}
               </div>
             )}
+
+            <BracketView rounds={data.rounds} />
 
             <div className="mt-8">
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-3">
