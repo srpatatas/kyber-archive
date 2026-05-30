@@ -17,9 +17,9 @@ export default function Home() {
     (sum, p) => sum + p.wins + p.losses + p.draws,
     0
   );
-  const longestStreak = players.reduce(
-    (max, p) => (p.streak > max ? p.streak : max),
-    0
+  const streakPlayer = players.reduce(
+    (best, p) => (p.streak > (best?.streak ?? 0) ? p : best),
+    null as (typeof players)[number] | null
   );
 
   return (
@@ -61,8 +61,8 @@ export default function Home() {
               />
               <StatCard
                 label="Best Streak"
-                value={longestStreak > 0 ? `W${longestStreak}` : "-"}
-                subtext="Current hot streak"
+                value={streakPlayer && streakPlayer.streak >= 2 ? `${streakPlayer.streak} wins in a row` : "No active streaks"}
+                subtext={streakPlayer && streakPlayer.streak >= 2 ? streakPlayer.username : undefined}
               />
             </div>
           )}
