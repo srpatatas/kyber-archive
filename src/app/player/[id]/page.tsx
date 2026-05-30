@@ -89,12 +89,8 @@ export default async function PlayerPage({
             </div>
 
             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard label="Win Rate" value={`${winRate}%`} subtext={`${player.wins}W-${player.losses}L-${player.draws}D`} />
               <StatCard label="Total Games" value={totalGames} />
-              <StatCard label="Win Rate" value={`${winRate}%`} />
-              <StatCard
-                label="Record"
-                value={`${player.wins}-${player.losses}-${player.draws}`}
-              />
               <StatCard label="Events Played" value={player.tournamentCount} />
             </div>
 

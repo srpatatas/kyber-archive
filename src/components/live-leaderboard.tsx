@@ -117,9 +117,6 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
               <th className="px-4 py-3 text-right">
                 <SortHeader label="MI Rating" sortKeyName="rating" />
               </th>
-              <th className="px-4 py-3 text-center">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted">Record</span>
-              </th>
               <th className="px-4 py-3 text-right">
                 <SortHeader label="Win %" sortKeyName="winRate" />
               </th>
@@ -177,15 +174,6 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="text-sm tabular-nums">
-                      <span className="text-emerald-400">{player.wins}</span>
-                      <span className="text-muted">-</span>
-                      <span className="text-crimson-light">{player.losses}</span>
-                      <span className="text-muted">-</span>
-                      <span className="text-muted">{player.draws}</span>
-                    </span>
-                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-surface-lighter sm:block">
@@ -194,8 +182,11 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                           style={{ width: `${winRate}%` }}
                         />
                       </div>
-                      <span className="text-sm font-medium tabular-nums">{winRate}%</span>
+                      <span className="text-sm font-bold tabular-nums">{winRate}%</span>
                     </div>
+                    <p className="text-[10px] tabular-nums text-muted mt-0.5 text-right">
+                      {player.wins}-{player.losses}-{player.draws}
+                    </p>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <StreakIndicator streak={player.streak} compact />
