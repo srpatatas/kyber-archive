@@ -139,41 +139,105 @@ export default function TournamentPage() {
 
             {top8.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-3">Top 8</h2>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {top8.map((s) => (
-                    <Link
-                      key={s.playerId}
-                      href={`/player/${s.playerId}`}
-                      className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 hover:border-gold/30 transition-colors group"
-                    >
-                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        s.rank === 1 ? "bg-gold/20 text-gold ring-2 ring-gold/40" :
-                        s.rank === 2 ? "bg-sand/15 text-sand-light ring-2 ring-sand/30" :
-                        s.rank <= 4 ? "bg-amber-800/20 text-amber-600 ring-2 ring-amber-700/30" :
-                        "text-muted"
-                      }`}>
-                        {s.rank}
-                      </span>
+                <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-4">Top 8</h2>
+
+                {/* Champion */}
+                {top8[0] && (
+                  <Link
+                    href={`/player/${top8[0].playerId}`}
+                    className="group relative block rounded-xl border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-5 hover:border-gold/50 transition-colors overflow-hidden mb-3"
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold via-gold-light to-gold" />
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gold/20 ring-2 ring-gold/40">
+                        <svg viewBox="0 0 16 16" className="h-6 w-6 text-gold" fill="currentColor">
+                          <path d="M8 1L10 5.5L15 5.5L11 8.5L12.5 13L8 10.5L3.5 13L5 8.5L1 5.5L6 5.5Z" />
+                        </svg>
+                      </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-foreground group-hover:text-gold transition-colors">
-                          {s.username}
+                        <p className="text-xs font-bold uppercase tracking-wider text-gold">Champion</p>
+                        <p className="text-xl font-bold text-foreground group-hover:text-gold transition-colors truncate">
+                          {top8[0].username}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs tabular-nums text-muted">
-                            {s.matchWins}-{s.matchLosses}-{s.matchDraws}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-sm tabular-nums text-muted">
+                            {top8[0].matchWins}-{top8[0].matchLosses}-{top8[0].matchDraws}
                           </span>
-                          {s.leader && (
+                          {top8[0].leader && (
                             <>
                               <span className="text-muted">·</span>
-                              <span className="truncate text-xs text-sand">{s.leader}</span>
+                              <span className="text-sm text-sand">{top8[0].leader}</span>
                             </>
                           )}
                         </div>
                       </div>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Finalist & Semifinalists */}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 mb-3">
+                  {top8.slice(1, 4).map((s) => (
+                    <Link
+                      key={s.playerId}
+                      href={`/player/${s.playerId}`}
+                      className={`group relative rounded-lg border p-4 hover:border-gold/30 transition-colors overflow-hidden ${
+                        s.rank === 2
+                          ? "border-sand/20 bg-gradient-to-b from-sand/5 to-transparent"
+                          : "border-border bg-background"
+                      }`}
+                    >
+                      <div className={`absolute top-0 left-0 right-0 h-0.5 ${
+                        s.rank === 2 ? "bg-sand" : "bg-amber-700/50"
+                      }`} />
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${
+                        s.rank === 2 ? "text-sand-light" : "text-amber-600"
+                      }`}>
+                        {s.rank === 2 ? "Finalist" : `Top ${s.rank}`}
+                      </p>
+                      <p className="mt-1 font-bold text-foreground group-hover:text-gold transition-colors truncate">
+                        {s.username}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs tabular-nums text-muted">
+                          {s.matchWins}-{s.matchLosses}-{s.matchDraws}
+                        </span>
+                        {s.leader && (
+                          <>
+                            <span className="text-muted">·</span>
+                            <span className="truncate text-xs text-sand">{s.leader}</span>
+                          </>
+                        )}
+                      </div>
                     </Link>
                   ))}
                 </div>
+
+                {/* Quarterfinals (5th-8th) */}
+                {top8.length > 4 && (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {top8.slice(4).map((s) => (
+                      <Link
+                        key={s.playerId}
+                        href={`/player/${s.playerId}`}
+                        className="group rounded-lg border border-border bg-background p-3 hover:border-gold/30 transition-colors"
+                      >
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted">
+                          Top 8
+                        </p>
+                        <p className="mt-0.5 text-sm font-medium text-foreground group-hover:text-gold transition-colors truncate">
+                          {s.username}
+                        </p>
+                        <span className="text-xs tabular-nums text-muted">
+                          {s.matchWins}-{s.matchLosses}-{s.matchDraws}
+                        </span>
+                        {s.leader && (
+                          <p className="truncate text-[10px] text-sand mt-0.5">{s.leader}</p>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
