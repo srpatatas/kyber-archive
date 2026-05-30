@@ -103,7 +103,22 @@ export async function POST(request: NextRequest) {
     const allRoundNames = allRounds.map((r) => r.Name.toLowerCase());
     const hasQuarters = allRoundNames.some((n) => n.includes("quarter"));
     const hasSemis = allRoundNames.some((n) => n.includes("semi"));
-    const topCutSize = hasQuarters ? 8 : hasSemis ? 4 : 0;
+    let topCutSize = hasQuarters ? 8 : hasSemis ? 4 : 0;
+
+    if (topCutSize === 0) {
+      const matchesPerRound = allRounds.map((r) =>
+        allMatches.filter((m) => m.roundName === r.Name).length
+      ).filter((c) => c > 0);
+      const last3 = matchesPerRound.slice(-3);
+      if (last3.length === 3 && last3[0] === 4 && last3[1] === 2 && last3[2] === 1) {
+        topCutSize = 8;
+      } else {
+        const last2 = matchesPerRound.slice(-2);
+        if (last2.length === 2 && last2[0] === 2 && last2[1] === 1) {
+          topCutSize = 4;
+        }
+      }
+    }
 
     const standings = await getTournamentStandings(tournamentId);
     const placements: PlacementResult[] = [];
