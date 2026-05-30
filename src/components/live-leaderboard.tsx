@@ -138,32 +138,34 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
               return (
                 <tr
                   key={player.id}
-                  className="group border-b border-border/50 transition-colors hover:bg-surface-light/50 animate-slide-up"
+                  className="group border-b border-border/50 transition-colors hover:bg-surface-light/50 animate-slide-up relative"
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
-                  <td className="px-4 py-3">
-                    <RankBadge rank={player.rank} />
+                  <td className="py-3 pl-0 pr-2">
+                    <div className="flex items-center gap-3">
+                      {player.aspects && player.aspects.length > 0 ? (
+                        <div
+                          className="w-1 self-stretch rounded-full shrink-0"
+                          style={{
+                            background: player.aspects.length === 1
+                              ? ASPECT_COLORS[player.aspects[0]] ?? "#666"
+                              : `linear-gradient(to bottom, ${player.aspects.map((a: string) => ASPECT_COLORS[a] ?? "#666").join(", ")})`,
+                          }}
+                          title={player.aspects.map((a: string) => ASPECT_NAMES[a] || a).join(" / ")}
+                        />
+                      ) : (
+                        <div className="w-1 shrink-0" />
+                      )}
+                      <RankBadge rank={player.rank} />
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/player/${player.id}`} className="group/link block">
-                      <div className="flex items-center gap-2">
-                        {player.aspects && player.aspects.length > 0 && (
-                          <div className="flex gap-0.5 shrink-0" title={player.aspects.map((a: string) => ASPECT_NAMES[a] || a).join(" / ")}>
-                            {player.aspects.map((aspect: string) => (
-                              <span
-                                key={aspect}
-                                className="h-2.5 w-2.5 rounded-full ring-1 ring-white/10"
-                                style={{ backgroundColor: ASPECT_COLORS[aspect] ?? "#666" }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
-                            {player.username}
-                          </p>
-                          <p className="text-xs text-muted">{player.name}</p>
-                        </div>
+                      <div>
+                        <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
+                          {player.username}
+                        </p>
+                        <p className="text-xs text-muted">{player.name}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-xs text-muted">{totalGames} games</p>
