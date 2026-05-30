@@ -51,6 +51,15 @@ body {
   animation: glow-pulse 3s ease-in-out infinite;
 }
 
+@keyframes crystal-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px var(--crystal-color)); }
+  50% { filter: drop-shadow(0 0 8px var(--crystal-color)); }
+}
+
+.crystal-glow {
+  animation: crystal-glow 3s ease-in-out infinite;
+}
+
 @keyframes slide-up {
   from {
     opacity: 0;

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, getPlayerBestFinish, getPlayerRatingChange, HeadToHead } from "@/lib/store";
+import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, getPlayerBestFinish, getPlayerTitleTiers, HeadToHead } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
 import { LeadersSection } from "@/components/leaders-section";
 import { PlayerEvents } from "@/components/player-events";
@@ -36,7 +36,7 @@ export default async function PlayerPage({
   const leaders = getPlayerLeaders(id);
   const tournaments = getPlayerTournaments(id);
   const bestFinish = getPlayerBestFinish(id);
-  const ratingChange = getPlayerRatingChange(id);
+  const titleTiers = getPlayerTitleTiers(id);
   const topCutRate = player.tournamentCount > 0
     ? Math.round((player.top8s / player.tournamentCount) * 100)
     : 0;
@@ -100,7 +100,7 @@ export default async function PlayerPage({
               <StatCard label="Events Played" value={player.tournamentCount} />
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <StatCard
                 label="Top Cut Rate"
                 value={player.top8s > 0 ? `${topCutRate}%` : "-"}
@@ -109,17 +109,52 @@ export default async function PlayerPage({
               <StatCard
                 label="Best Finish"
                 value={bestFinish === 1 ? "Champion" : bestFinish ? `Top ${bestFinish}` : "-"}
-                subtext={player.tournamentWins > 0 ? `${player.tournamentWins} title${player.tournamentWins === 1 ? "" : "s"}` : undefined}
               />
-              <StatCard
-                label="Rating Change"
-                value={`${ratingChange >= 0 ? "+" : ""}${ratingChange}`}
-                subtext="From starting 1,500"
-              />
-              <StatCard
-                label="Win/Loss"
-                value={`${player.wins}-${player.losses}-${player.draws}`}
-              />
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted">
+                  Titles
+                </p>
+                {titleTiers.length > 0 ? (
+                  <div className="mt-2 flex items-center justify-center gap-1.5">
+                    {titleTiers.map((tier, i) => {
+                      const color = tier === "galactic" ? "#ef4444"
+                        : tier === "sector" ? "#f97316"
+                        : tier === "planetary" ? "#d4a017"
+                        : tier === "showdown" ? "#38bdf8"
+                        : "#78716c";
+                      return (
+                        <svg
+                          key={i}
+                          viewBox="0 0 20 32"
+                          className="h-8 w-5 crystal-glow"
+                          title={tier}
+                          style={{ "--crystal-color": color } as React.CSSProperties}
+                        >
+                          <path
+                            d="M10 0L17 8V20L10 32L3 20V8L10 0Z"
+                            fill={color}
+                            opacity="0.9"
+                          />
+                          <path
+                            d="M10 0L17 8V20L10 32V16L14 10V9L10 3V0Z"
+                            fill="white"
+                            opacity="0.15"
+                          />
+                          <path
+                            d="M10 0L17 8V20L10 32L3 20V8L10 0Z"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="0.5"
+                            opacity="0.3"
+                          />
+                        </svg>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-2xl font-bold text-gold">-</p>
+                )}
+              </div>
             </div>
 
             <PlayerEvents tournaments={tournaments} />

@@ -340,6 +340,18 @@ export function getPlayerTournaments(playerId: string): PlayerTournament[] {
   }));
 }
 
+export function getPlayerTitleTiers(playerId: string): EventTier[] {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT t.event_tier
+    FROM placements p
+    JOIN tournaments t ON t.id = p.tournament_id
+    WHERE p.player_id = ? AND p.placement = 1
+    ORDER BY t.date
+  `).all(playerId) as Array<{ event_tier: EventTier }>;
+  return rows.map((r) => r.event_tier);
+}
+
 export function getPlayerBestFinish(playerId: string): number | null {
   const db = getDb();
   const row = db.prepare(`
