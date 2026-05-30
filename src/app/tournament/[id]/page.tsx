@@ -82,8 +82,9 @@ export default function TournamentPage() {
 
   const tier = getTierConfig(data.eventTier);
   const tierColor = tier.crystalColor;
-  const top8 = data.standings.filter((s) => s.rank <= 8);
-  const rest = data.standings.filter((s) => s.rank > 8);
+  const topCutSize = data.topCutSize ?? 8;
+  const topCut = data.standings.filter((s) => s.rank <= topCutSize);
+  const rest = data.standings.filter((s) => s.rank > topCutSize);
 
   return (
     <main className="flex-1">
@@ -133,14 +134,14 @@ export default function TournamentPage() {
               </div>
             </div>
 
-            {top8.length > 0 && (
+            {topCut.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-4">Top 8</h2>
+                <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-4">Top {topCutSize}</h2>
 
                 {/* Champion */}
-                {top8[0] && (
+                {topCut[0] && (
                   <Link
-                    href={`/player/${top8[0].playerId}`}
+                    href={`/player/${topCut[0].playerId}`}
                     className="group relative block rounded-xl border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-5 hover:border-gold/50 transition-colors overflow-hidden mb-3"
                   >
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold via-gold-light to-gold" />
@@ -151,16 +152,16 @@ export default function TournamentPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold uppercase tracking-wider text-gold">Champion</p>
                         <p className="text-xl font-bold text-foreground group-hover:text-gold transition-colors truncate">
-                          {top8[0].username}
+                          {topCut[0].username}
                         </p>
                         <p className="text-sm tabular-nums text-muted mt-0.5">
-                          {top8[0].matchWins}-{top8[0].matchLosses}-{top8[0].matchDraws}
+                          {topCut[0].matchWins}-{topCut[0].matchLosses}-{topCut[0].matchDraws}
                         </p>
-                        {top8[0].leader && (
-                          <p className="text-sm text-sand mt-1">{top8[0].leader}</p>
+                        {topCut[0].leader && (
+                          <p className="text-sm text-sand mt-1">{topCut[0].leader}</p>
                         )}
-                        {top8[0].base && (
-                          <p className="text-xs text-muted">{top8[0].base}</p>
+                        {topCut[0].base && (
+                          <p className="text-xs text-muted">{topCut[0].base}</p>
                         )}
                       </div>
                     </div>
@@ -169,7 +170,7 @@ export default function TournamentPage() {
 
                 {/* Finalist & Semifinalists */}
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 mb-3">
-                  {top8.slice(1, 4).map((s) => (
+                  {topCut.slice(1, 4).map((s) => (
                     <Link
                       key={s.playerId}
                       href={`/player/${s.playerId}`}
@@ -204,9 +205,9 @@ export default function TournamentPage() {
                 </div>
 
                 {/* Quarterfinals (5th-8th) */}
-                {top8.length > 4 && (
+                {topCut.length > 4 && (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {top8.slice(4).map((s) => (
+                    {topCut.slice(4).map((s) => (
                       <Link
                         key={s.playerId}
                         href={`/player/${s.playerId}`}

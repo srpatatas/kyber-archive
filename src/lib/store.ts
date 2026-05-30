@@ -512,6 +512,7 @@ export interface TournamentDetail {
   eventTier: EventTier;
   playerCount: number;
   matchCount: number;
+  topCutSize: number;
   standings: {
     rank: number;
     playerId: string;
@@ -544,6 +545,11 @@ export function getTournamentDetail(id: number): TournamentDetail | null {
     event_tier: EventTier; player_count: number; match_count: number;
   } | undefined;
   if (!tournament) return null;
+
+  const topCutRow = db.prepare(
+    "SELECT MAX(placement) as top_cut FROM placements WHERE tournament_id = ?"
+  ).get(id) as { top_cut: number | null } | undefined;
+  const topCutSize = topCutRow?.top_cut ?? 0;
 
   const standingRows = db.prepare(`
     SELECT
@@ -668,6 +674,7 @@ export function getTournamentDetail(id: number): TournamentDetail | null {
     eventTier: tournament.event_tier,
     playerCount: tournament.player_count,
     matchCount: tournament.match_count,
+    topCutSize,
     standings,
     rounds: Array.from(roundsMap.values()),
   };
