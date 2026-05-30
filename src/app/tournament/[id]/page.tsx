@@ -220,7 +220,7 @@ export default function TournamentPage() {
                         className="group rounded-lg border border-border bg-background p-3 hover:border-gold/30 transition-colors"
                       >
                         <p className="text-[10px] font-medium uppercase tracking-wider text-muted">
-                          Top 8
+                          Top {s.rank}
                         </p>
                         <p className="mt-0.5 text-sm font-medium text-foreground group-hover:text-gold transition-colors truncate">
                           {s.username}
