@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { BracketView } from "@/components/bracket-view";
+import { KyberCrystal } from "@/components/kyber-crystal";
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
   weekly: { label: "Weekly Play", color: "text-muted" },
@@ -87,6 +88,11 @@ export default function TournamentPage() {
   }
 
   const tier = TIER_LABELS[data.eventTier] ?? TIER_LABELS.weekly;
+  const tierColor = data.eventTier === "galactic" ? "#ef4444"
+    : data.eventTier === "sector" ? "#f97316"
+    : data.eventTier === "planetary" ? "#d4a017"
+    : data.eventTier === "showdown" ? "#60cdff"
+    : "#a0a0a0";
   const top8 = data.standings.filter((s) => s.rank <= 8);
   const rest = data.standings.filter((s) => s.rank > 8);
 
@@ -150,10 +156,8 @@ export default function TournamentPage() {
                   >
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold via-gold-light to-gold" />
                     <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gold/20 ring-2 ring-gold/40">
-                        <svg viewBox="0 0 16 16" className="h-6 w-6 text-gold" fill="currentColor">
-                          <path d="M8 1L10 5.5L15 5.5L11 8.5L12.5 13L8 10.5L3.5 13L5 8.5L1 5.5L6 5.5Z" />
-                        </svg>
+                      <div className="flex shrink-0 items-center justify-center">
+                        <KyberCrystal color={tierColor} tier={data.eventTier} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold uppercase tracking-wider text-gold">Champion</p>
@@ -241,7 +245,7 @@ export default function TournamentPage() {
               </div>
             )}
 
-            <BracketView rounds={data.rounds} />
+            <BracketView rounds={data.rounds} tierColor={tierColor} />
 
             <div className="mt-8">
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-3">

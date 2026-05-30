@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { KyberCrystal } from "./kyber-crystal";
 
 interface BracketMatch {
   player1Id: string;
@@ -16,7 +17,7 @@ interface BracketRound {
   matches: BracketMatch[];
 }
 
-export function BracketView({ rounds }: { rounds: BracketRound[] }) {
+export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: BracketRound[]; tierColor?: string }) {
   const bracketRounds = rounds.filter((r) => {
     const name = r.name.toLowerCase();
     return name.includes("quarter") || name.includes("semi") || name.includes("final");
@@ -87,9 +88,9 @@ export function BracketView({ rounds }: { rounds: BracketRound[] }) {
                   href={`/player/${champion.id}`}
                   className="group rounded-lg border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-3 text-center hover:border-gold/50 transition-colors"
                 >
-                  <svg viewBox="0 0 16 16" className="h-5 w-5 text-gold mx-auto mb-1" fill="currentColor">
-                    <path d="M8 1L10 5.5L15 5.5L11 8.5L12.5 13L8 10.5L3.5 13L5 8.5L1 5.5L6 5.5Z" />
-                  </svg>
+                  <div className="flex justify-center mb-1">
+                    <KyberCrystal color={tierColor} tier="champion" size="sm" />
+                  </div>
                   <p className="text-sm font-bold text-foreground group-hover:text-gold transition-colors">
                     {champion.username}
                   </p>
