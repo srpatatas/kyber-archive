@@ -17,11 +17,37 @@ interface BracketRound {
   matches: BracketMatch[];
 }
 
-export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: BracketRound[]; tierColor?: string }) {
-  const bracketRounds = rounds.filter((r) => {
+function detectBracketRounds(rounds: BracketRound[]): BracketRound[] {
+  const named = rounds.filter((r) => {
     const name = r.name.toLowerCase();
     return name.includes("quarter") || name.includes("semi") || name.includes("final");
   });
+  if (named.length > 0) return named;
+
+  const counts = rounds.map((r) => r.matches.length);
+  const last3 = counts.slice(-3);
+  if (last3.length === 3 && last3[0] === 4 && last3[1] === 2 && last3[2] === 1) {
+    const detected = rounds.slice(-3);
+    return [
+      { ...detected[0], name: "Quarterfinals" },
+      { ...detected[1], name: "Semifinals" },
+      { ...detected[2], name: "Finals" },
+    ];
+  }
+  const last2 = counts.slice(-2);
+  if (last2.length === 2 && last2[0] === 2 && last2[1] === 1) {
+    const detected = rounds.slice(-2);
+    return [
+      { ...detected[0], name: "Semifinals" },
+      { ...detected[1], name: "Finals" },
+    ];
+  }
+
+  return [];
+}
+
+export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: BracketRound[]; tierColor?: string }) {
+  const bracketRounds = detectBracketRounds(rounds);
 
   if (bracketRounds.length === 0) return null;
 
