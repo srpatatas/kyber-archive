@@ -15,3 +15,12 @@ export const ASPECT_NAMES: Record<string, string> = {
   villainy: "Villainy",
   heroism: "Heroism",
 };
+
+export const ASPECT_ABBREV: Record<string, string> = {
+  vigilance: "VIG",
+  command: "CMD",
+  aggression: "AGG",
+  cunning: "CUN",
+  villainy: "VIL",
+  heroism: "HER",
+};
