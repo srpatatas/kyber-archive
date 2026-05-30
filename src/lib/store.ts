@@ -291,6 +291,55 @@ export function getIngestedTournaments(): StoredTournament[] {
   }));
 }
 
+export interface PlayerTournament {
+  id: number;
+  name: string;
+  date: string;
+  eventTier: EventTier;
+  wins: number;
+  losses: number;
+  draws: number;
+  placement: number | null;
+}
+
+export function getPlayerTournaments(playerId: string): PlayerTournament[] {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT
+      t.id, t.name, t.date, t.event_tier,
+      SUM(CASE WHEN
+        (m.player1_id = ? AND m.player1_wins > m.player2_wins) OR
+        (m.player2_id = ? AND m.player2_wins > m.player1_wins)
+        THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN
+        (m.player1_id = ? AND m.player2_wins > m.player1_wins) OR
+        (m.player2_id = ? AND m.player1_wins > m.player2_wins)
+        THEN 1 ELSE 0 END) as losses,
+      SUM(CASE WHEN m.player1_wins = m.player2_wins THEN 1 ELSE 0 END) as draws,
+      p.placement
+    FROM matches m
+    JOIN tournaments t ON t.id = m.tournament_id
+    LEFT JOIN placements p ON p.tournament_id = t.id AND p.player_id = ?
+    WHERE m.player1_id = ? OR m.player2_id = ?
+    GROUP BY t.id
+    ORDER BY t.date DESC
+  `).all(playerId, playerId, playerId, playerId, playerId, playerId, playerId) as Array<{
+    id: number; name: string; date: string; event_tier: EventTier;
+    wins: number; losses: number; draws: number; placement: number | null;
+  }>;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    date: r.date,
+    eventTier: r.event_tier,
+    wins: r.wins,
+    losses: r.losses,
+    draws: r.draws,
+    placement: r.placement,
+  }));
+}
+
 export interface HeadToHead {
   opponentId: string;
   opponentName: string;

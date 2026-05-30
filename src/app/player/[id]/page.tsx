@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, HeadToHead } from "@/lib/store";
+import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, HeadToHead } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
 import { StreakIndicator } from "@/components/streak-indicator";
 import { LeadersSection } from "@/components/leaders-section";
+import { PlayerEvents } from "@/components/player-events";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function PlayerPage({
   const tier = getTierLabel(player.rating, player.rank);
   const rivalries = getPlayerRivalries(id);
   const leaders = getPlayerLeaders(id);
+  const tournaments = getPlayerTournaments(id);
 
   return (
     <main className="flex-1">
@@ -88,7 +90,7 @@ export default async function PlayerPage({
               </div>
             </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <StatCard label="Win Rate" value={`${winRate}%`} subtext={`${player.wins}W-${player.losses}L-${player.draws}D`} />
               <StatCard label="Total Games" value={totalGames} />
               <StatCard label="Events Played" value={player.tournamentCount} />
@@ -147,6 +149,8 @@ export default async function PlayerPage({
                 )}
               </div>
             </div>
+
+            <PlayerEvents tournaments={tournaments} />
 
             <LeadersSection leaders={leaders} />
 
