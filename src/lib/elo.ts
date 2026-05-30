@@ -71,11 +71,49 @@ export function classifyEvent(tags: string[], name: string, playerCount?: number
   return "weekly";
 }
 
+function computeQualityMultipliers(matches: MatchResult[]): Map<string, Map<number, number>> {
+  const stats = new Map<string, Map<number, { wins: number; total: number }>>();
+
+  for (const match of matches) {
+    for (const playerId of [match.player1Id, match.player2Id]) {
+      if (!stats.has(playerId)) stats.set(playerId, new Map());
+      const playerTournaments = stats.get(playerId)!;
+      if (!playerTournaments.has(match.tournamentId)) {
+        playerTournaments.set(match.tournamentId, { wins: 0, total: 0 });
+      }
+    }
+
+    const s1 = stats.get(match.player1Id)!.get(match.tournamentId)!;
+    const s2 = stats.get(match.player2Id)!.get(match.tournamentId)!;
+    s1.total++;
+    s2.total++;
+
+    if (match.player1Wins > match.player2Wins) s1.wins++;
+    else if (match.player2Wins > match.player1Wins) s2.wins++;
+    else { s1.wins += 0.5; s2.wins += 0.5; }
+  }
+
+  // Convert win rates to multipliers: 50% WR = 1.0x, 80% = 1.3x, 30% = 0.7x
+  const multipliers = new Map<string, Map<number, number>>();
+  for (const [playerId, tournaments] of stats) {
+    const playerMults = new Map<number, number>();
+    for (const [tournamentId, record] of tournaments) {
+      const winRate = record.total > 0 ? record.wins / record.total : 0.5;
+      const multiplier = 0.4 + winRate * 1.2;
+      playerMults.set(tournamentId, multiplier);
+    }
+    multipliers.set(playerId, playerMults);
+  }
+
+  return multipliers;
+}
+
 export function computeRatings(
   matches: MatchResult[],
   placements: PlacementResult[]
 ): Map<string, PlayerRating> {
   const ratings = new Map<string, PlayerRating>();
+  const qualityMultipliers = computeQualityMultipliers(matches);
 
   function getOrCreate(id: string): PlayerRating {
     if (!ratings.has(id)) {
@@ -103,7 +141,10 @@ export function computeRatings(
     const p1 = getOrCreate(match.player1Id);
     const p2 = getOrCreate(match.player2Id);
 
-    const k = K_FACTORS[match.eventTier];
+    const baseK = K_FACTORS[match.eventTier];
+    const q1 = qualityMultipliers.get(match.player1Id)?.get(match.tournamentId) ?? 1;
+    const q2 = qualityMultipliers.get(match.player2Id)?.get(match.tournamentId) ?? 1;
+
     const e1 = expectedScore(p1.rating, p2.rating);
     const e2 = expectedScore(p2.rating, p1.rating);
 
@@ -133,8 +174,8 @@ export function computeRatings(
       p2.streak = 0;
     }
 
-    p1.rating = Math.round(p1.rating + k * (s1 - e1));
-    p2.rating = Math.round(p2.rating + k * (s2 - e2));
+    p1.rating = Math.round(p1.rating + baseK * q1 * (s1 - e1));
+    p2.rating = Math.round(p2.rating + baseK * q2 * (s2 - e2));
 
     p1.peakRating = Math.max(p1.peakRating, p1.rating);
     p2.peakRating = Math.max(p2.peakRating, p2.rating);
