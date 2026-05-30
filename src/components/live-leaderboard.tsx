@@ -152,7 +152,7 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                             {player.aspects.map((aspect: string) => (
                               <span
                                 key={aspect}
-                                className="h-2.5 w-2.5 rounded-full"
+                                className="h-2.5 w-2.5 rounded-full ring-1 ring-white/10"
                                 style={{ backgroundColor: ASPECT_COLORS[aspect] ?? "#666" }}
                               />
                             ))}

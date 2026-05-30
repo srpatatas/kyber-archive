@@ -1,10 +1,10 @@
 export const ASPECT_COLORS: Record<string, string> = {
-  vigilance: "#3b82f6",
-  command: "#22c55e",
-  aggression: "#ef4444",
-  cunning: "#eab308",
-  villainy: "#a855f7",
-  heroism: "#06b6d4",
+  vigilance: "#6694ce",
+  command: "#41ad49",
+  aggression: "#d2232a",
+  cunning: "#fdb933",
+  heroism: "#c6c1a0",
+  villainy: "#040004",
 };
 
 export const ASPECT_NAMES: Record<string, string> = {
