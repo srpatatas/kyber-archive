@@ -54,7 +54,9 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
           cmp = b.wins - a.wins;
           break;
         case "top8s":
-          cmp = b.top8s - a.top8s;
+          const aRate = a.tournamentCount > 0 ? a.top8s / a.tournamentCount : 0;
+          const bRate = b.tournamentCount > 0 ? b.top8s / b.tournamentCount : 0;
+          cmp = bRate - aRate;
           break;
         case "tournamentCount":
           cmp = b.tournamentCount - a.tournamentCount;
@@ -120,7 +122,7 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                 <SortHeader label="Win %" sortKeyName="winRate" />
               </th>
               <th className="px-4 py-3 text-center">
-                <SortHeader label="Top 8s" sortKeyName="top8s" />
+                <SortHeader label="Top Cut %" sortKeyName="top8s" />
               </th>
               <th className="px-4 py-3 text-center">
                 <SortHeader label="Events" sortKeyName="tournamentCount" />
@@ -189,7 +191,14 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                   </td>
                   <td className="px-4 py-3 text-center">
                     {player.top8s > 0 ? (
-                      <span className="text-sm font-medium tabular-nums text-gold">{player.top8s}</span>
+                      <div>
+                        <span className="text-sm font-bold tabular-nums text-gold">
+                          {Math.round((player.top8s / player.tournamentCount) * 100)}%
+                        </span>
+                        <p className="text-[10px] tabular-nums text-muted">
+                          {player.top8s}/{player.tournamentCount}
+                        </p>
+                      </div>
                     ) : (
                       <span className="text-sm text-muted">-</span>
                     )}
