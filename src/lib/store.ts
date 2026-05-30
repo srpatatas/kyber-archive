@@ -340,6 +340,20 @@ export function getPlayerTournaments(playerId: string): PlayerTournament[] {
   }));
 }
 
+export function getPlayerBestFinish(playerId: string): number | null {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT MIN(placement) as best FROM placements WHERE player_id = ?
+  `).get(playerId) as { best: number | null } | undefined;
+  return row?.best ?? null;
+}
+
+export function getPlayerRatingChange(playerId: string): number {
+  const db = getDb();
+  const row = db.prepare("SELECT rating FROM ratings WHERE player_id = ?").get(playerId) as { rating: number } | undefined;
+  return (row?.rating ?? 1500) - 1500;
+}
+
 export interface HeadToHead {
   opponentId: string;
   opponentName: string;

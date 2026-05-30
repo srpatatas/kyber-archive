@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, HeadToHead } from "@/lib/store";
+import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, getPlayerBestFinish, getPlayerRatingChange, HeadToHead } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
-import { StreakIndicator } from "@/components/streak-indicator";
 import { LeadersSection } from "@/components/leaders-section";
 import { PlayerEvents } from "@/components/player-events";
 
@@ -36,6 +35,11 @@ export default async function PlayerPage({
   const rivalries = getPlayerRivalries(id);
   const leaders = getPlayerLeaders(id);
   const tournaments = getPlayerTournaments(id);
+  const bestFinish = getPlayerBestFinish(id);
+  const ratingChange = getPlayerRatingChange(id);
+  const topCutRate = player.tournamentCount > 0
+    ? Math.round((player.top8s / player.tournamentCount) * 100)
+    : 0;
 
   return (
     <main className="flex-1">
@@ -96,58 +100,26 @@ export default async function PlayerPage({
               <StatCard label="Events Played" value={player.tournamentCount} />
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div className="rounded-lg border border-border bg-background p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                  Current Streak
-                </p>
-                <div className="mt-2">
-                  <StreakIndicator streak={player.streak} />
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border bg-background p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                  Win/Loss Breakdown
-                </p>
-                {totalGames > 0 ? (
-                  <>
-                    <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface-lighter">
-                      <div
-                        className="bg-emerald-500 transition-all"
-                        style={{ width: `${(player.wins / totalGames) * 100}%` }}
-                        title={`${player.wins} wins`}
-                      />
-                      <div
-                        className="bg-red-500 transition-all"
-                        style={{ width: `${(player.losses / totalGames) * 100}%` }}
-                        title={`${player.losses} losses`}
-                      />
-                      <div
-                        className="bg-muted transition-all"
-                        style={{ width: `${(player.draws / totalGames) * 100}%` }}
-                        title={`${player.draws} draws`}
-                      />
-                    </div>
-                    <div className="mt-2 flex gap-4 text-xs">
-                      <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span className="text-muted">Wins {player.wins}</span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                        <span className="text-muted">Losses {player.losses}</span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full bg-muted" />
-                        <span className="text-muted">Draws {player.draws}</span>
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <p className="mt-3 text-sm text-muted">No games played</p>
-                )}
-              </div>
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard
+                label="Top Cut Rate"
+                value={player.top8s > 0 ? `${topCutRate}%` : "-"}
+                subtext={player.top8s > 0 ? `${player.top8s}/${player.tournamentCount} events` : "No top cuts yet"}
+              />
+              <StatCard
+                label="Best Finish"
+                value={bestFinish === 1 ? "Champion" : bestFinish ? `Top ${bestFinish}` : "-"}
+                subtext={player.tournamentWins > 0 ? `${player.tournamentWins} title${player.tournamentWins === 1 ? "" : "s"}` : undefined}
+              />
+              <StatCard
+                label="Rating Change"
+                value={`${ratingChange >= 0 ? "+" : ""}${ratingChange}`}
+                subtext="From starting 1,500"
+              />
+              <StatCard
+                label="Win/Loss"
+                value={`${player.wins}-${player.losses}-${player.draws}`}
+              />
             </div>
 
             <PlayerEvents tournaments={tournaments} />
