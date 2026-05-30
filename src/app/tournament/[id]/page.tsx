@@ -160,17 +160,15 @@ export default function TournamentPage() {
                         <p className="text-xl font-bold text-foreground group-hover:text-gold transition-colors truncate">
                           {top8[0].username}
                         </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-sm tabular-nums text-muted">
-                            {top8[0].matchWins}-{top8[0].matchLosses}-{top8[0].matchDraws}
-                          </span>
-                          {top8[0].leader && (
-                            <>
-                              <span className="text-muted">·</span>
-                              <span className="text-sm text-sand">{top8[0].leader}</span>
-                            </>
-                          )}
-                        </div>
+                        <p className="text-sm tabular-nums text-muted mt-0.5">
+                          {top8[0].matchWins}-{top8[0].matchLosses}-{top8[0].matchDraws}
+                        </p>
+                        {top8[0].leader && (
+                          <p className="text-sm text-sand mt-1">{top8[0].leader}</p>
+                        )}
+                        {top8[0].base && (
+                          <p className="text-xs text-muted">{top8[0].base}</p>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -199,17 +197,15 @@ export default function TournamentPage() {
                       <p className="mt-1 font-bold text-foreground group-hover:text-gold transition-colors truncate">
                         {s.username}
                       </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs tabular-nums text-muted">
-                          {s.matchWins}-{s.matchLosses}-{s.matchDraws}
-                        </span>
-                        {s.leader && (
-                          <>
-                            <span className="text-muted">·</span>
-                            <span className="truncate text-xs text-sand">{s.leader}</span>
-                          </>
-                        )}
-                      </div>
+                      <p className="text-xs tabular-nums text-muted mt-0.5">
+                        {s.matchWins}-{s.matchLosses}-{s.matchDraws}
+                      </p>
+                      {s.leader && (
+                        <p className="truncate text-xs text-sand mt-1">{s.leader}</p>
+                      )}
+                      {s.base && (
+                        <p className="truncate text-[10px] text-muted">{s.base}</p>
+                      )}
                     </Link>
                   ))}
                 </div>
@@ -234,6 +230,9 @@ export default function TournamentPage() {
                         </span>
                         {s.leader && (
                           <p className="truncate text-[10px] text-sand mt-0.5">{s.leader}</p>
+                        )}
+                        {s.base && (
+                          <p className="truncate text-[10px] text-muted">{s.base}</p>
                         )}
                       </Link>
                     ))}
