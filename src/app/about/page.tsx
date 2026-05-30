@@ -162,8 +162,8 @@ export default function AboutPage() {
             <p className="mt-3 text-xs text-muted">
               The K-factor determines how much each match swings your rating.
               Higher-tier events move ratings more aggressively and award bigger
-              placement bonuses. Store Showdowns with fewer than 12 players are
-              treated as Padawan tier.
+              placement bonuses. Sanctioned Store Showdowns always count as
+              Showdown tier regardless of player count.
             </p>
           </div>
 
