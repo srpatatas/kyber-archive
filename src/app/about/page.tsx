@@ -79,8 +79,8 @@ export default function AboutPage() {
                 </span>
                 <span>
                   Players start with a base rating of{" "}
-                  <span className="font-medium text-gold">1500</span> and gain or
-                  lose points based on match outcomes.
+                  <span className="font-medium text-gold">1,500</span> and gain or
+                  lose points based on match outcomes using an Elo-based system.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -89,7 +89,8 @@ export default function AboutPage() {
                 </span>
                 <span>
                   Points gained depend on opponent strength &mdash; defeating a
-                  higher-rated player yields more points.
+                  higher-rated player yields more points than beating a lower-rated
+                  one.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -97,8 +98,12 @@ export default function AboutPage() {
                   3
                 </span>
                 <span>
-                  Tournament matches are weighted higher than casual ranked play,
-                  with Premier events carrying the most weight.
+                  A <span className="font-medium text-foreground">quality multiplier</span>{" "}
+                  rewards consistency: your rating gains and losses at each event are
+                  scaled by how well you performed there. Going 5-1 amplifies your
+                  gains, while going 2-5 dampens them. This means a player who shows
+                  up less but plays well will climb faster than a grinder with a
+                  mediocre record.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -106,11 +111,98 @@ export default function AboutPage() {
                   4
                 </span>
                 <span>
-                  Ratings are recalculated after every sanctioned event. Inactive
-                  players experience gradual rating decay.
+                  Ratings are recalculated after every sanctioned event is ingested.
+                  All matches are replayed chronologically to ensure accuracy.
                 </span>
               </li>
             </ul>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-6">
+            <h2 className="text-lg font-bold text-foreground">Event Tiers</h2>
+            <p className="mt-2">
+              Not all tournaments are created equal. Each event is classified into
+              a tier that determines its K-factor (how much each match moves your
+              rating) and placement bonuses:
+            </p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="pb-2 pr-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Tier</th>
+                    <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">K-Factor</th>
+                    <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">1st</th>
+                    <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">2nd</th>
+                    <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">3rd-4th</th>
+                    <th className="pb-2 pl-3 text-center text-xs font-medium uppercase tracking-wider text-muted">5th-8th</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {[
+                    { tier: "Weekly Play", color: "text-muted", k: 24, p1: 10, p2: 5, p34: 3, p58: "-" },
+                    { tier: "Store Showdown", color: "text-sky-400", k: 32, p1: 25, p2: 15, p34: 10, p58: "5" },
+                    { tier: "Planetary Qualifier", color: "text-gold", k: 40, p1: 60, p2: 45, p34: 30, p58: "15" },
+                    { tier: "Sector Championship", color: "text-orange-400", k: 48, p1: 80, p2: 60, p34: 40, p58: "20" },
+                    { tier: "Galactic Championship", color: "text-red-400", k: 56, p1: 100, p2: 75, p34: 50, p58: "25" },
+                  ].map((row) => (
+                    <tr key={row.tier}>
+                      <td className={`py-2 pr-3 font-medium ${row.color}`}>{row.tier}</td>
+                      <td className="py-2 px-3 text-center tabular-nums text-foreground">{row.k}</td>
+                      <td className="py-2 px-3 text-center tabular-nums text-gold">+{row.p1}</td>
+                      <td className="py-2 px-3 text-center tabular-nums text-sand-light">+{row.p2}</td>
+                      <td className="py-2 px-3 text-center tabular-nums text-muted">+{row.p34}</td>
+                      <td className="py-2 pl-3 text-center tabular-nums text-muted">{row.p58 === "-" ? "-" : `+${row.p58}`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-muted">
+              The K-factor determines how much each match swings your rating.
+              Higher-tier events move ratings more aggressively and award bigger
+              placement bonuses. Store Showdowns with fewer than 12 players are
+              treated as Weekly Play.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-6">
+            <h2 className="text-lg font-bold text-foreground">Quality Multiplier</h2>
+            <p className="mt-2">
+              The Midichlorian Index values quality over quantity. Your K-factor
+              at each tournament is scaled by your win rate at that event:
+            </p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="pb-2 pr-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Win Rate</th>
+                    <th className="pb-2 px-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Example</th>
+                    <th className="pb-2 pl-3 text-center text-xs font-medium uppercase tracking-wider text-muted">Multiplier</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {[
+                    { wr: "83%", ex: "5-1 record", mult: "1.4x", color: "text-emerald-400" },
+                    { wr: "67%", ex: "4-2 record", mult: "1.2x", color: "text-emerald-400" },
+                    { wr: "50%", ex: "3-3 record", mult: "1.0x", color: "text-foreground" },
+                    { wr: "33%", ex: "2-4 record", mult: "0.8x", color: "text-red-400" },
+                    { wr: "17%", ex: "1-5 record", mult: "0.6x", color: "text-red-400" },
+                  ].map((row) => (
+                    <tr key={row.wr}>
+                      <td className="py-2 pr-3 font-medium text-foreground">{row.wr}</td>
+                      <td className="py-2 px-3 text-muted">{row.ex}</td>
+                      <td className={`py-2 pl-3 text-center font-bold tabular-nums ${row.color}`}>{row.mult}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-muted">
+              This means a player who attends fewer events but consistently
+              performs well will climb faster than someone who grinds many events
+              with poor results. Showing up matters, but showing up and winning
+              matters more.
+            </p>
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-6">
