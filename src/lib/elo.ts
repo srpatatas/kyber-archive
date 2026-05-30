@@ -68,7 +68,7 @@ export function classifyEvent(tags: string[], name: string, playerCount?: number
   if (allText.some((t) => t.includes("galactic championship"))) return "galactic";
   if (allText.some((t) => t.includes("sector championship"))) return "sector";
   if (allText.some((t) => t.includes("planetary qualifier"))) return "planetary";
-  if (allText.some((t) => t.includes("nacional"))) return "planetary";
+  if (allText.some((t) => t.includes("nacional"))) return "major";
   if (allText.some((t) => t.includes("store showdown"))) return "showdown";
   if (allText.some((t) => t.includes("invitacional"))) return "minor";
   if (playerCount != null && playerCount >= 32) return "major";
