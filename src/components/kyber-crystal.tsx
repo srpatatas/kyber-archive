@@ -2,20 +2,22 @@
 
 import { useId } from "react";
 
-export function KyberCrystal({ color, tier }: { color: string; tier: string }) {
+export function KyberCrystal({ color, tier, size = "md" }: { color: string; tier: string; size?: "sm" | "md" }) {
   const id = useId().replace(/:/g, "");
+  const sizeClass = size === "sm" ? "h-4 w-2.5" : "h-8 w-5";
+  const glowSize = size === "sm" ? { min: 1, max: 4 } : { min: 2, max: 8 };
 
   return (
     <>
       <style>{`
         @keyframes kyber-${id} {
-          0%, 100% { filter: drop-shadow(0 0 2px ${color}); }
-          50% { filter: drop-shadow(0 0 8px ${color}); }
+          0%, 100% { filter: drop-shadow(0 0 ${glowSize.min}px ${color}); }
+          50% { filter: drop-shadow(0 0 ${glowSize.max}px ${color}); }
         }
       `}</style>
       <svg
         viewBox="0 0 20 32"
-        className="h-8 w-5"
+        className={sizeClass}
         title={tier}
         style={{ animation: `kyber-${id} 3s ease-in-out infinite` }}
       >

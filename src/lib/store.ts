@@ -272,11 +272,21 @@ export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: st
   }));
 }
 
-export function getIngestedTournaments(): StoredTournament[] {
+export interface TournamentSummary extends StoredTournament {
+  winnerUsername: string | null;
+}
+
+export function getIngestedTournaments(): TournamentSummary[] {
   const db = getDb();
-  const rows = db.prepare("SELECT * FROM tournaments ORDER BY date").all() as Array<{
+  const rows = db.prepare(`
+    SELECT t.*,
+      (SELECT p.username FROM placements pl JOIN players p ON p.id = pl.player_id
+       WHERE pl.tournament_id = t.id AND pl.placement = 1 LIMIT 1) as winner_username
+    FROM tournaments t ORDER BY t.date
+  `).all() as Array<{
     id: number; name: string; organization_name: string; date: string; tags: string;
     player_count: number; match_count: number; event_tier: EventTier; ingested_at: string;
+    winner_username: string | null;
   }>;
   return rows.map((r) => ({
     id: r.id,
@@ -288,6 +298,7 @@ export function getIngestedTournaments(): StoredTournament[] {
     matchCount: r.match_count,
     eventTier: r.event_tier,
     ingestedAt: r.ingested_at,
+    winnerUsername: r.winner_username,
   }));
 }
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getIngestedTournaments } from "@/lib/store";
+import { KyberCrystal } from "@/components/kyber-crystal";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -8,16 +9,26 @@ export const metadata: Metadata = {
   title: "Tournaments | The Midichlorian Index",
 };
 
-const TIER_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  weekly: { label: "Weekly", color: "text-muted", bg: "bg-muted/10 border-muted/20" },
-  showdown: { label: "Showdown", color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20" },
-  planetary: { label: "Planetary", color: "text-gold", bg: "bg-gold/10 border-gold/20" },
-  sector: { label: "Sector", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
-  galactic: { label: "Galactic", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
+const TIER_LABELS: Record<string, { label: string; color: string; dot: string }> = {
+  weekly: { label: "Weekly", color: "text-muted", dot: "bg-muted" },
+  showdown: { label: "Showdown", color: "text-sky-400", dot: "bg-sky-400" },
+  planetary: { label: "Planetary", color: "text-gold", dot: "bg-gold" },
+  sector: { label: "Sector", color: "text-orange-400", dot: "bg-orange-400" },
+  galactic: { label: "Galactic", color: "text-red-400", dot: "bg-red-400" },
 };
 
 export default function TournamentsPage() {
   const tournaments = getIngestedTournaments().slice().reverse();
+
+  const grouped = new Map<string, typeof tournaments>();
+  for (const t of tournaments) {
+    const month = new Date(t.date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+    });
+    if (!grouped.has(month)) grouped.set(month, []);
+    grouped.get(month)!.push(t);
+  }
 
   return (
     <main className="flex-1">
@@ -28,13 +39,13 @@ export default function TournamentsPage() {
             Tournaments
           </h2>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            All sanctioned Star Wars: Unlimited events tracked by The
-            Midichlorian Index.
+            {tournaments.length} sanctioned Star Wars: Unlimited events tracked
+            by The Midichlorian Index.
           </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         {tournaments.length === 0 ? (
           <div className="rounded-xl border border-border bg-surface p-12 text-center">
             <p className="text-lg font-medium text-foreground">No tournaments yet</p>
@@ -45,51 +56,67 @@ export default function TournamentsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tournaments.map((t) => {
-              const tier = TIER_LABELS[t.eventTier] ?? TIER_LABELS.weekly;
-              return (
-                <Link
-                  key={t.id}
-                  href={`/tournament/${t.id}`}
-                  className="group rounded-xl border border-border bg-surface overflow-hidden hover:border-gold/30 transition-colors"
-                >
-                  <div className={`h-1 ${
-                    t.eventTier === "planetary" || t.eventTier === "galactic"
-                      ? "bg-gold"
-                      : t.eventTier === "sector"
-                        ? "bg-orange-500"
-                        : t.eventTier === "showdown"
-                          ? "bg-sky-500"
-                          : "bg-muted/30"
-                  }`} />
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-medium text-foreground group-hover:text-gold transition-colors line-clamp-2 text-sm">
-                        {t.name}
-                      </h3>
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${tier.color} ${tier.bg}`}>
-                        {tier.label}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted">{t.organizationName}</p>
-                    <div className="mt-3 flex items-center gap-3 text-xs text-muted">
-                      <span>
-                        {new Date(t.date).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                      <span>·</span>
-                      <span>{t.playerCount} players</span>
-                      <span>·</span>
-                      <span>{t.matchCount} matches</span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="space-y-8">
+            {Array.from(grouped.entries()).map(([month, events]) => (
+              <div key={month}>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">
+                  {month}
+                </h3>
+                <div className="relative border-l-2 border-border pl-6 space-y-4">
+                  {events.map((t) => {
+                    const tier = TIER_LABELS[t.eventTier] ?? TIER_LABELS.weekly;
+                    return (
+                      <Link
+                        key={t.id}
+                        href={`/tournament/${t.id}`}
+                        className="group block relative"
+                      >
+                        <div className={`absolute -left-[31px] top-2 h-3 w-3 rounded-full ${tier.dot} ring-4 ring-background`} />
+                        <div className="rounded-lg border border-border bg-surface p-4 hover:border-gold/30 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-foreground group-hover:text-gold transition-colors">
+                                {t.name}
+                              </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
+                                <span>
+                                  {new Date(t.date).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                                <span>{t.organizationName}</span>
+                                <span className={`font-medium ${tier.color}`}>{tier.label}</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-4 text-right shrink-0">
+                              <div>
+                                <p className="text-sm font-bold text-foreground">{t.playerCount}</p>
+                                <p className="text-[10px] text-muted">players</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-foreground">{t.matchCount}</p>
+                                <p className="text-[10px] text-muted">matches</p>
+                              </div>
+                            </div>
+                          </div>
+                          {t.winnerUsername && (
+                            <div className="mt-2 flex items-center gap-1.5 text-xs">
+                              <KyberCrystal
+                                color={t.eventTier === "galactic" ? "#ef4444" : t.eventTier === "sector" ? "#f97316" : t.eventTier === "planetary" ? "#d4a017" : t.eventTier === "showdown" ? "#60cdff" : "#a0a0a0"}
+                                tier={t.eventTier}
+                                size="sm"
+                              />
+                              <span className="text-gold font-medium">{t.winnerUsername}</span>
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>
