@@ -167,19 +167,22 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                         )}
                         {player.aspects && player.aspects.length > 0 && (
                           <span className="inline-flex gap-0.5">
-                            {player.aspects.map((a: string) => (
-                              <span
-                                key={a}
-                                className="rounded px-1 py-px text-[8px] font-bold leading-tight"
-                                style={{
-                                  backgroundColor: `${ASPECT_COLORS[a]}25`,
-                                  color: ASPECT_COLORS[a],
-                                  border: `1px solid ${ASPECT_COLORS[a]}40`,
-                                }}
-                              >
-                                {ASPECT_ABBREV[a] ?? a}
-                              </span>
-                            ))}
+                            {player.aspects.map((a: string) => {
+                              const isVillainy = a === "villainy";
+                              return (
+                                <span
+                                  key={a}
+                                  className="rounded px-1 py-px text-[8px] font-bold leading-tight"
+                                  style={{
+                                    backgroundColor: isVillainy ? ASPECT_COLORS[a] : `${ASPECT_COLORS[a]}25`,
+                                    color: isVillainy ? "#ffffff" : ASPECT_COLORS[a],
+                                    border: `1px solid ${isVillainy ? "#ffffff40" : `${ASPECT_COLORS[a]}40`}`,
+                                  }}
+                                >
+                                  {ASPECT_ABBREV[a] ?? a}
+                                </span>
+                              );
+                            })}
                           </span>
                         )}
                       </div>
