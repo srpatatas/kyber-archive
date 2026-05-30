@@ -77,7 +77,8 @@ function migrate(db: Database.Database): void {
       player_id TEXT NOT NULL,
       leader TEXT NOT NULL,
       base TEXT NOT NULL,
-      full_name TEXT NOT NULL
+      full_name TEXT NOT NULL,
+      decklist_guid TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_decklists_tournament ON decklists(tournament_id);
