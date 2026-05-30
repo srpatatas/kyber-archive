@@ -120,8 +120,8 @@ export default async function PlayerPage({
                       const color = tier === "galactic" ? "#ef4444"
                         : tier === "sector" ? "#f97316"
                         : tier === "planetary" ? "#d4a017"
-                        : tier === "showdown" ? "#38bdf8"
-                        : "#78716c";
+                        : tier === "showdown" ? "#60cdff"
+                        : "#a0a0a0";
                       return (
                         <svg
                           key={i}
