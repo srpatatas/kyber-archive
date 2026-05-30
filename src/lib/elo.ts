@@ -1,9 +1,10 @@
 const DEFAULT_RATING = 1500;
 
-export type EventTier = "weekly" | "showdown" | "planetary" | "sector" | "galactic";
+export type EventTier = "padawan" | "minor" | "showdown" | "planetary" | "sector" | "galactic";
 
 const K_FACTORS: Record<EventTier, number> = {
-  weekly: 24,
+  padawan: 24,
+  minor: 32,
   showdown: 32,
   planetary: 40,
   sector: 48,
@@ -11,7 +12,8 @@ const K_FACTORS: Record<EventTier, number> = {
 };
 
 const PLACEMENT_BONUSES: Record<EventTier, Record<number, number>> = {
-  weekly:    { 1: 10, 2: 5,  3: 3,  4: 3  },
+  padawan:   { 1: 10, 2: 5,  3: 3,  4: 3  },
+  minor:     { 1: 25, 2: 15, 3: 10, 4: 10, 5: 5,  6: 5,  7: 5,  8: 5  },
   showdown:  { 1: 25, 2: 15, 3: 10, 4: 10, 5: 5,  6: 5,  7: 5,  8: 5  },
   planetary: { 1: 60, 2: 45, 3: 30, 4: 30, 5: 15, 6: 15, 7: 15, 8: 15 },
   sector:    { 1: 80, 2: 60, 3: 40, 4: 40, 5: 20, 6: 20, 7: 20, 8: 20 },
@@ -65,10 +67,12 @@ export function classifyEvent(tags: string[], name: string, playerCount?: number
   if (allText.some((t) => t.includes("sector championship"))) return "sector";
   if (allText.some((t) => t.includes("planetary qualifier"))) return "planetary";
   if (allText.some((t) => t.includes("nacional"))) return "planetary";
-  if (allText.some((t) => t.includes("store showdown") || t.includes("invitacional"))) {
-    return playerCount != null && playerCount < 12 ? "weekly" : "showdown";
+  if (allText.some((t) => t.includes("store showdown"))) {
+    return playerCount != null && playerCount < 12 ? "padawan" : "showdown";
   }
-  return "weekly";
+  if (allText.some((t) => t.includes("invitacional"))) return "minor";
+  if (playerCount != null && playerCount <= 24) return "minor";
+  return "padawan";
 }
 
 function computeQualityMultipliers(matches: MatchResult[]): Map<string, Map<number, number>> {
