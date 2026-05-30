@@ -13,7 +13,7 @@ export function LeadersSection({ leaders }: { leaders: PlayerLeaderEntry[] }) {
       <p className="text-xs font-medium uppercase tracking-wider text-muted mb-3">
         Leaders Played
       </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-start">
         {leaders.map((l) => {
           const key = `${l.leader}||${l.base}`;
           const isOpen = expanded === key;
