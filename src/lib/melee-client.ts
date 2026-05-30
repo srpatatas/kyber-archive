@@ -133,7 +133,7 @@ export interface MeleeStanding {
   RoundNumber: number;
   PhaseName: string | null;
   Round: string;
-  Decklists: { DecklistName: string }[];
+  Decklists: { DecklistId: string; DecklistName: string }[];
 }
 
 export async function getTournament(id: number): Promise<MeleeTournament> {
@@ -146,6 +146,19 @@ export async function getRoundMatches(roundId: number): Promise<MeleeMatch[]> {
 
 export async function getTournamentStandings(tournamentId: number): Promise<MeleeStanding[]> {
   return fetchAllPages<MeleeStanding>(`/standing/list/current/${tournamentId}`);
+}
+
+export async function getDecklistAspects(decklistGuid: string): Promise<string[]> {
+  try {
+    const data = await fetchApi<{
+      Attributes: { k: string; v: string }[];
+    }>(`/decklist/${decklistGuid}`);
+    return (data.Attributes ?? [])
+      .filter((a) => a.k.startsWith("ASPECT_"))
+      .map((a) => a.k.replace("ASPECT_", "").toLowerCase());
+  } catch {
+    return [];
+  }
 }
 
 export function parseTournamentUrl(url: string): number | null {

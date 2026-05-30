@@ -4,8 +4,9 @@ import {
   getTournament,
   getRoundMatches,
   getTournamentStandings,
+  getDecklistAspects,
 } from "@/lib/melee-client";
-import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier } from "@/lib/store";
+import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects } from "@/lib/store";
 import { MatchResult, PlacementResult, EventTier, classifyEvent } from "@/lib/elo";
 
 export async function POST(request: NextRequest) {
@@ -132,6 +133,21 @@ export async function POST(request: NextRequest) {
             fullName: deckName,
             decklistGuid: deck.DecklistId || null,
           });
+        }
+      }
+    }
+
+    // Fetch aspects for new leader+base combos
+    const seenDeckKeys = new Set<string>();
+    for (const d of decklistEntries) {
+      const deckKey = `${d.leader}||${d.base}`;
+      if (seenDeckKeys.has(deckKey)) continue;
+      seenDeckKeys.add(deckKey);
+      const cached = getCachedAspects(deckKey);
+      if (cached === null && d.decklistGuid) {
+        const aspects = await getDecklistAspects(d.decklistGuid);
+        if (aspects.length > 0) {
+          setCachedAspects(deckKey, aspects);
         }
       }
     }

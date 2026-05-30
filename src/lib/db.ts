@@ -81,6 +81,11 @@ function migrate(db: Database.Database): void {
       decklist_guid TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS aspect_cache (
+      deck_key TEXT PRIMARY KEY,
+      aspects TEXT NOT NULL DEFAULT '[]'
+    );
+
     CREATE INDEX IF NOT EXISTS idx_decklists_tournament ON decklists(tournament_id);
     CREATE INDEX IF NOT EXISTS idx_decklists_player ON decklists(player_id);
     CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches(tournament_id);

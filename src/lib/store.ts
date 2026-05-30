@@ -189,16 +189,45 @@ function recomputeRatings(): void {
   }
 }
 
+export function getCachedAspects(deckKey: string): string[] | null {
+  const db = getDb();
+  const row = db.prepare("SELECT aspects FROM aspect_cache WHERE deck_key = ?").get(deckKey) as { aspects: string } | undefined;
+  return row ? JSON.parse(row.aspects) : null;
+}
+
+export function setCachedAspects(deckKey: string, aspects: string[]): void {
+  const db = getDb();
+  db.prepare("INSERT OR REPLACE INTO aspect_cache (deck_key, aspects) VALUES (?, ?)").run(deckKey, JSON.stringify(aspects));
+}
+
+export function getPlayerAspects(playerId: string): string[] {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT ac.aspects, COUNT(*) as cnt
+    FROM decklists d
+    JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
+    WHERE d.player_id = ?
+    GROUP BY ac.aspects
+    ORDER BY cnt DESC
+    LIMIT 1
+  `).get(playerId) as { aspects: string; cnt: number } | undefined;
+  return rows ? JSON.parse(rows.aspects) : [];
+}
+
 export function forceRecalculate(): void {
   const db = getDb();
   recomputeRatings();
 }
 
-export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: string | null })[] {
+export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] })[] {
   const db = getDb();
   const rows = db.prepare(`
     SELECT r.*, p.melee_id, p.name, p.username,
-      (SELECT leader || ' - ' || base FROM decklists WHERE player_id = r.player_id GROUP BY leader, base ORDER BY COUNT(*) DESC LIMIT 1) as main_leader
+      (SELECT leader || ' - ' || base FROM decklists WHERE player_id = r.player_id GROUP BY leader, base ORDER BY COUNT(*) DESC LIMIT 1) as main_leader,
+      (SELECT ac.aspects FROM decklists d2
+        JOIN aspect_cache ac ON ac.deck_key = d2.leader || '||' || d2.base
+        WHERE d2.player_id = r.player_id
+        GROUP BY d2.leader, d2.base ORDER BY COUNT(*) DESC LIMIT 1) as main_aspects
     FROM ratings r
     JOIN players p ON p.id = r.player_id
     WHERE r.wins + r.losses + r.draws >= 3
@@ -207,7 +236,7 @@ export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: st
     player_id: string; rating: number; peak_rating: number; wins: number; losses: number;
     draws: number; streak: number; tournament_count: number; tournament_wins: number;
     top8s: number; last_active: string; melee_id: number; name: string; username: string;
-    main_leader: string | null;
+    main_leader: string | null; main_aspects: string | null;
   }>;
 
   return rows.map((r, i) => ({
@@ -226,6 +255,7 @@ export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: st
     top8s: r.top8s,
     lastActive: r.last_active,
     mainLeader: r.main_leader,
+    aspects: r.main_aspects ? JSON.parse(r.main_aspects) : [],
     rank: i + 1,
   }));
 }

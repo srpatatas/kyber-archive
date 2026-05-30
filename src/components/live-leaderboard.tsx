@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PlayerRating } from "@/lib/elo";
+import { ASPECT_COLORS, ASPECT_NAMES } from "@/lib/aspects";
 import { RankBadge } from "./rank-badge";
 
 type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentCount";
 
-type RankedPlayer = PlayerRating & { rank: number };
+type RankedPlayer = PlayerRating & { rank: number; aspects?: string[] };
 
 function getWinRate(p: RankedPlayer): number {
   const total = p.wins + p.losses + p.draws;
@@ -145,11 +146,26 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/player/${player.id}`} className="group/link block">
-                      <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
-                        {player.username}
-                      </p>
-                      <p className="text-xs text-muted">{player.name}</p>
                       <div className="flex items-center gap-2">
+                        {player.aspects && player.aspects.length > 0 && (
+                          <div className="flex gap-0.5 shrink-0" title={player.aspects.map((a: string) => ASPECT_NAMES[a] || a).join(" / ")}>
+                            {player.aspects.map((aspect: string) => (
+                              <span
+                                key={aspect}
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: ASPECT_COLORS[aspect] ?? "#666" }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
+                            {player.username}
+                          </p>
+                          <p className="text-xs text-muted">{player.name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-xs text-muted">{totalGames} games</p>
                         <span className={`text-[10px] font-medium ${tier.color}`}>
                           {tier.name}
