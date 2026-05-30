@@ -4,9 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { PlayerRating } from "@/lib/elo";
 import { RankBadge } from "./rank-badge";
-import { StreakIndicator } from "./streak-indicator";
 
-type SortKey = "rank" | "rating" | "winRate" | "wins" | "streak" | "tournamentCount";
+type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentCount";
 
 type RankedPlayer = PlayerRating & { rank: number };
 
@@ -54,8 +53,8 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
         case "wins":
           cmp = b.wins - a.wins;
           break;
-        case "streak":
-          cmp = b.streak - a.streak;
+        case "top8s":
+          cmp = b.top8s - a.top8s;
           break;
         case "tournamentCount":
           cmp = b.tournamentCount - a.tournamentCount;
@@ -121,7 +120,7 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                 <SortHeader label="Win %" sortKeyName="winRate" />
               </th>
               <th className="px-4 py-3 text-center">
-                <SortHeader label="Streak" sortKeyName="streak" />
+                <SortHeader label="Top 8s" sortKeyName="top8s" />
               </th>
               <th className="px-4 py-3 text-center">
                 <SortHeader label="Events" sortKeyName="tournamentCount" />
@@ -189,7 +188,11 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                     </p>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <StreakIndicator streak={player.streak} compact />
+                    {player.top8s > 0 ? (
+                      <span className="text-sm font-medium tabular-nums text-gold">{player.top8s}</span>
+                    ) : (
+                      <span className="text-sm text-muted">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="text-sm tabular-nums text-muted">
