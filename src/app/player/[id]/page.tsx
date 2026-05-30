@@ -126,8 +126,9 @@ export default async function PlayerPage({
                         <svg
                           key={i}
                           viewBox="0 0 20 32"
-                          className={`h-8 w-5 crystal-glow-${tier}`}
+                          className="h-8 w-5 crystal-glow"
                           title={tier}
+                          style={{ "--crystal-color": color } as React.CSSProperties}
                         >
                           <path
                             d="M10 0L17 8V20L10 32L3 20V8L10 0Z"
