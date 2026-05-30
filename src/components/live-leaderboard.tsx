@@ -141,23 +141,21 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                   className="group border-b border-border/50 transition-colors hover:bg-surface-light/50 animate-slide-up relative"
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
-                  <td className="py-3 pl-0 pr-2">
-                    <div className="flex items-center gap-3">
-                      {player.aspects && player.aspects.length > 0 ? (
-                        <div
-                          className="w-1 self-stretch rounded-full shrink-0"
-                          style={{
-                            background: player.aspects.length === 1
-                              ? ASPECT_COLORS[player.aspects[0]] ?? "#666"
-                              : `linear-gradient(to bottom, ${player.aspects.map((a: string) => ASPECT_COLORS[a] ?? "#666").join(", ")})`,
-                          }}
-                          title={player.aspects.map((a: string) => ASPECT_NAMES[a] || a).join(" / ")}
-                        />
-                      ) : (
-                        <div className="w-1 shrink-0" />
-                      )}
+                  <td className="py-0 pl-0 pr-2 relative">
+                    <div className="flex items-center gap-3 py-3">
                       <RankBadge rank={player.rank} />
                     </div>
+                    {player.aspects && player.aspects.length > 0 && (
+                      <div
+                        className="absolute left-0 top-0 bottom-0 w-1 rounded-full"
+                        style={{
+                          background: player.aspects.length === 1
+                            ? ASPECT_COLORS[player.aspects[0]] ?? "#666"
+                            : `linear-gradient(to bottom, ${player.aspects.map((a: string) => ASPECT_COLORS[a] ?? "#666").join(", ")})`,
+                        }}
+                        title={player.aspects.map((a: string) => ASPECT_NAMES[a] || a).join(" / ")}
+                      />
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/player/${player.id}`} className="group/link block">
