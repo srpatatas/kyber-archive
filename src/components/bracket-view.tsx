@@ -40,32 +40,24 @@ export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: Bracket
         Top Cut Bracket
       </h2>
       <div className="overflow-x-auto">
-        <div className="flex min-w-[650px]">
+        <div className="flex min-w-[700px]">
           {bracketRounds.map((round, ri) => {
             const isFinals = round.name.toLowerCase() === "finals";
-            const matchCount = round.matches.length;
+            const isLast = ri === bracketRounds.length - 1;
             return (
-              <div key={round.name} className="flex-1 flex flex-col">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center mb-2">
-                  {round.name}
-                </p>
-                <div className="flex-1 flex flex-col justify-around gap-1">
-                  {round.matches.map((m, mi) => {
-                    const p1Won = m.player1Wins > m.player2Wins;
-                    const p2Won = m.player2Wins > m.player1Wins;
-                    return (
-                      <div
-                        key={mi}
-                        className="flex items-center"
-                      >
-                        {ri > 0 && (
-                          <div className="w-4 shrink-0 flex flex-col items-stretch">
-                            <div className="flex-1 border-t border-r border-border rounded-tr" />
-                            <div className="flex-1 border-b border-r border-border rounded-br" />
-                          </div>
-                        )}
+              <div key={round.name} className="contents">
+                <div className="flex-1 flex flex-col">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center mb-2">
+                    {round.name}
+                  </p>
+                  <div className="flex-1 flex flex-col justify-around">
+                    {round.matches.map((m, mi) => {
+                      const p1Won = m.player1Wins > m.player2Wins;
+                      const p2Won = m.player2Wins > m.player1Wins;
+                      return (
                         <div
-                          className={`flex-1 rounded-lg border overflow-hidden ${
+                          key={mi}
+                          className={`rounded-lg border overflow-hidden ${
                             isFinals ? "border-gold/30" : "border-border"
                           }`}
                         >
@@ -85,43 +77,72 @@ export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: Bracket
                             isFinals={isFinals}
                           />
                         </div>
-                        {ri < bracketRounds.length - 1 && (
-                          <div className="w-4 shrink-0 border-t border-border" />
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {!isLast && (
+                  <Connectors matchCount={round.matches.length} />
+                )}
               </div>
             );
           })}
 
           {champion && (
-            <div className="flex-1 flex flex-col">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gold text-center mb-2">
-                Champion
-              </p>
-              <div className="flex-1 flex items-center">
-                <div className="w-4 shrink-0 flex flex-col items-stretch">
-                  <div className="flex-1 border-t border-r border-border rounded-tr" />
-                  <div className="flex-1 border-b border-r border-border rounded-br" />
+            <>
+              <Connectors matchCount={1} />
+              <div className="flex-1 flex flex-col">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gold text-center mb-2">
+                  Champion
+                </p>
+                <div className="flex-1 flex items-center">
+                  <Link
+                    href={`/player/${champion.id}`}
+                    className="group w-full rounded-lg border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-3 text-center hover:border-gold/50 transition-colors"
+                  >
+                    <div className="flex justify-center mb-1">
+                      <KyberCrystal color={tierColor} tier="champion" size="sm" />
+                    </div>
+                    <p className="text-sm font-bold text-foreground group-hover:text-gold transition-colors">
+                      {champion.username}
+                    </p>
+                  </Link>
                 </div>
-                <Link
-                  href={`/player/${champion.id}`}
-                  className="group flex-1 rounded-lg border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-3 text-center hover:border-gold/50 transition-colors"
-                >
-                  <div className="flex justify-center mb-1">
-                    <KyberCrystal color={tierColor} tier="champion" size="sm" />
-                  </div>
-                  <p className="text-sm font-bold text-foreground group-hover:text-gold transition-colors">
-                    {champion.username}
-                  </p>
-                </Link>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Connectors({ matchCount }: { matchCount: number }) {
+  return (
+    <div className="w-8 shrink-0 flex flex-col justify-around">
+      {Array.from({ length: Math.ceil(matchCount / 2) }).map((_, i) => (
+        <div key={i} className="flex flex-col flex-1 justify-center">
+          {matchCount > 1 ? (
+            <>
+              <div className="flex-1 flex items-end">
+                <div className="w-1/2 border-t border-border" />
+                <div className="w-1/2 border-t border-l border-border h-full" />
+              </div>
+              <div className="w-full flex">
+                <div className="w-1/2" />
+                <div className="w-1/2 border-t border-border" />
+              </div>
+              <div className="flex-1 flex items-start">
+                <div className="w-1/2 border-t border-border" />
+                <div className="w-1/2 border-t border-l border-border h-full" />
+              </div>
+            </>
+          ) : (
+            <div className="border-t border-border" />
+          )}
+        </div>
+      ))}
     </div>
   );
 }
