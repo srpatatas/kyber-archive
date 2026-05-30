@@ -120,6 +120,21 @@ export default function AdminPage() {
     }
   }
 
+  async function handleRecalculate() {
+    try {
+      const res = await fetch("/api/admin/recalculate", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setLastRecalc(new Date().toISOString());
+        showToast("All ratings recalculated");
+      } else {
+        showToast(data.error ?? "Recalculation failed", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  }
+
   async function handleDelete(id: number) {
     if (!confirm("Remove this tournament and recalculate ratings?")) return;
 
@@ -209,18 +224,26 @@ export default function AdminPage() {
             <h2 className="text-sm font-medium text-foreground">
               Ingested Tournaments ({tournaments.length})
             </h2>
-            {lastRecalc && (
-              <p className="text-[10px] text-muted">
-                Last recalculated:{" "}
-                {new Date(lastRecalc).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </p>
-            )}
+            <div className="flex items-center gap-3">
+              {lastRecalc && (
+                <p className="text-[10px] text-muted">
+                  Last recalculated:{" "}
+                  {new Date(lastRecalc).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })}
+                </p>
+              )}
+              <button
+                onClick={handleRecalculate}
+                className="rounded-lg border border-border bg-surface px-3 py-1 text-xs font-medium text-muted hover:text-gold hover:border-gold/30 transition-colors"
+              >
+                Recalculate
+              </button>
+            </div>
           </div>
           {loadingTournaments ? (
             <div className="px-4 py-8 text-center text-sm text-muted">

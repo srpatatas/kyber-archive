@@ -189,6 +189,11 @@ function recomputeRatings(): void {
   }
 }
 
+export function forceRecalculate(): void {
+  const db = getDb();
+  recomputeRatings();
+}
+
 export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: string | null })[] {
   const db = getDb();
   const rows = db.prepare(`
