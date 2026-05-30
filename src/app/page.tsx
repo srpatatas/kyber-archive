@@ -17,8 +17,8 @@ export default function Home() {
     (sum, p) => sum + p.wins + p.losses + p.draws,
     0
   );
-  const streakPlayer = players.reduce(
-    (best, p) => (p.streak > (best?.streak ?? 0) ? p : best),
+  const mostTop8s = players.reduce(
+    (best, p) => (p.top8s > (best?.top8s ?? 0) ? p : best),
     null as (typeof players)[number] | null
   );
 
@@ -60,9 +60,9 @@ export default function Home() {
                 subtext={`From ${tournaments.length} tournament${tournaments.length === 1 ? "" : "s"}`}
               />
               <StatCard
-                label="Best Streak"
-                value={streakPlayer && streakPlayer.streak >= 2 ? `${streakPlayer.streak} wins in a row` : "No active streaks"}
-                subtext={streakPlayer && streakPlayer.streak >= 2 ? streakPlayer.username : undefined}
+                label="Most Top 8s"
+                value={mostTop8s && mostTop8s.top8s > 0 ? mostTop8s.top8s : "-"}
+                subtext={mostTop8s && mostTop8s.top8s > 0 ? mostTop8s.username : undefined}
               />
             </div>
           )}
