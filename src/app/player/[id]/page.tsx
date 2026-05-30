@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, getPlayerBestFinish, getPlayerTitleTiers, HeadToHead } from "@/lib/store";
+import { getTierConfig } from "@/lib/tiers";
 import { StatCard } from "@/components/stat-card";
 import { LeadersSection } from "@/components/leaders-section";
 import { PlayerEvents } from "@/components/player-events";
@@ -118,12 +119,7 @@ export default async function PlayerPage({
                 {titleTiers.length > 0 ? (
                   <div className="mt-2 flex items-center justify-center gap-1.5">
                     {titleTiers.map((tier, i) => {
-                      const color = tier === "galactic" ? "#ef4444"
-                        : tier === "sector" ? "#f97316"
-                        : tier === "planetary" ? "#d4a017"
-                        : tier === "showdown" ? "#60cdff"
-                        : "#a0a0a0";
-                      return <KyberCrystal key={i} color={color} tier={tier} />;
+                      return <KyberCrystal key={i} color={getTierConfig(tier).crystalColor} tier={tier} />;
                     })}
                   </div>
                 ) : (

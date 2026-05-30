@@ -2,22 +2,7 @@
 
 import Link from "next/link";
 import { PlayerTournament } from "@/lib/store";
-
-const TIER_COLORS: Record<string, string> = {
-  weekly: "text-muted",
-  showdown: "text-sky-400",
-  planetary: "text-gold",
-  sector: "text-orange-400",
-  galactic: "text-red-400",
-};
-
-const TIER_LABELS: Record<string, string> = {
-  weekly: "Weekly",
-  showdown: "Showdown",
-  planetary: "Planetary",
-  sector: "Sector",
-  galactic: "Galactic",
-};
+import { getTierConfig } from "@/lib/tiers";
 
 export function PlayerEvents({ tournaments }: { tournaments: PlayerTournament[] }) {
   if (tournaments.length === 0) return null;
@@ -40,7 +25,7 @@ export function PlayerEvents({ tournaments }: { tournaments: PlayerTournament[] 
           </thead>
           <tbody className="divide-y divide-border/50">
             {tournaments.map((t) => {
-              const tierColor = TIER_COLORS[t.eventTier] ?? "text-muted";
+              const tierCfg = getTierConfig(t.eventTier);
               const total = t.wins + t.losses + t.draws;
               const wr = total > 0 ? Math.round((t.wins / total) * 100) : 0;
               return (
@@ -61,8 +46,8 @@ export function PlayerEvents({ tournaments }: { tournaments: PlayerTournament[] 
                     })}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <span className={`text-xs font-medium ${tierColor}`}>
-                      {TIER_LABELS[t.eventTier] ?? t.eventTier}
+                    <span className={`text-xs font-medium ${tierCfg.color}`}>
+                      {tierCfg.label}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-center">

@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
-type EventTier = "weekly" | "showdown" | "planetary" | "sector" | "galactic";
+type EventTier = "padawan" | "minor" | "showdown" | "planetary" | "sector" | "galactic";
 
 const TIER_LABELS: Record<EventTier, { label: string; color: string }> = {
-  weekly: { label: "Weekly", color: "text-muted" },
+  padawan: { label: "Padawan", color: "text-muted" },
+  minor: { label: "Minor", color: "text-emerald-400" },
   showdown: { label: "Showdown", color: "text-sky-400" },
   planetary: { label: "Planetary", color: "text-gold" },
   sector: { label: "Sector", color: "text-orange-400" },
@@ -256,7 +257,7 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-border/50">
               {tournaments.map((t) => {
-                const tierInfo = TIER_LABELS[t.eventTier] ?? TIER_LABELS.weekly;
+                const tierInfo = TIER_LABELS[t.eventTier] ?? TIER_LABELS.padawan;
                 return (
                   <div
                     key={t.id}
@@ -284,7 +285,8 @@ export default function AdminPage() {
                       onChange={(e) => handleTierChange(t.id, t.name, e.target.value as EventTier)}
                       className={`rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium ${tierInfo.color} cursor-pointer focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30`}
                     >
-                      <option value="weekly">Weekly</option>
+                      <option value="padawan">Padawan</option>
+                      <option value="minor">Minor</option>
                       <option value="showdown">Showdown</option>
                       <option value="planetary">Planetary</option>
                       <option value="sector">Sector</option>

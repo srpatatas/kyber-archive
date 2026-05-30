@@ -139,7 +139,8 @@ export default function AboutPage() {
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {[
-                    { tier: "Weekly Play", color: "text-muted", k: 24, p1: 10, p2: 5, p34: 3, p58: "-" },
+                    { tier: "Padawan", color: "text-muted", k: 24, p1: 10, p2: 5, p34: 3, p58: "-" },
+                    { tier: "Minor Tournament", color: "text-emerald-400", k: 32, p1: 25, p2: 15, p34: 10, p58: "5" },
                     { tier: "Store Showdown", color: "text-sky-400", k: 32, p1: 25, p2: 15, p34: 10, p58: "5" },
                     { tier: "Planetary Qualifier", color: "text-gold", k: 40, p1: 60, p2: 45, p34: 30, p58: "15" },
                     { tier: "Sector Championship", color: "text-orange-400", k: 48, p1: 80, p2: 60, p34: 40, p58: "20" },
@@ -161,7 +162,7 @@ export default function AboutPage() {
               The K-factor determines how much each match swings your rating.
               Higher-tier events move ratings more aggressively and award bigger
               placement bonuses. Store Showdowns with fewer than 12 players are
-              treated as Weekly Play.
+              treated as Padawan tier.
             </p>
           </div>
 

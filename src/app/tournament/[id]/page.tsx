@@ -5,14 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { BracketView } from "@/components/bracket-view";
 import { KyberCrystal } from "@/components/kyber-crystal";
-
-const TIER_LABELS: Record<string, { label: string; color: string }> = {
-  weekly: { label: "Weekly Play", color: "text-muted" },
-  showdown: { label: "Store Showdown", color: "text-sky-400" },
-  planetary: { label: "Planetary Qualifier", color: "text-gold" },
-  sector: { label: "Sector Championship", color: "text-orange-400" },
-  galactic: { label: "Galactic Championship", color: "text-red-400" },
-};
+import { getTierConfig } from "@/lib/tiers";
 
 interface Standing {
   rank: number;
@@ -87,12 +80,8 @@ export default function TournamentPage() {
     );
   }
 
-  const tier = TIER_LABELS[data.eventTier] ?? TIER_LABELS.weekly;
-  const tierColor = data.eventTier === "galactic" ? "#ef4444"
-    : data.eventTier === "sector" ? "#f97316"
-    : data.eventTier === "planetary" ? "#d4a017"
-    : data.eventTier === "showdown" ? "#60cdff"
-    : "#a0a0a0";
+  const tier = getTierConfig(data.eventTier);
+  const tierColor = tier.crystalColor;
   const top8 = data.standings.filter((s) => s.rank <= 8);
   const rest = data.standings.filter((s) => s.rank > 8);
 

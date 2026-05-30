@@ -1,20 +1,13 @@
 import Link from "next/link";
 import { getIngestedTournaments } from "@/lib/store";
 import { KyberCrystal } from "@/components/kyber-crystal";
+import { getTierConfig } from "@/lib/tiers";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Tournaments | The Midichlorian Index",
-};
-
-const TIER_LABELS: Record<string, { label: string; color: string; dot: string }> = {
-  weekly: { label: "Weekly", color: "text-muted", dot: "bg-muted" },
-  showdown: { label: "Showdown", color: "text-sky-400", dot: "bg-sky-400" },
-  planetary: { label: "Planetary", color: "text-gold", dot: "bg-gold" },
-  sector: { label: "Sector", color: "text-orange-400", dot: "bg-orange-400" },
-  galactic: { label: "Galactic", color: "text-red-400", dot: "bg-red-400" },
 };
 
 export default function TournamentsPage() {
@@ -64,7 +57,7 @@ export default function TournamentsPage() {
                 </h3>
                 <div className="relative border-l-2 border-border pl-6 space-y-4">
                   {events.map((t) => {
-                    const tier = TIER_LABELS[t.eventTier] ?? TIER_LABELS.weekly;
+                    const tier = getTierConfig(t.eventTier);
                     return (
                       <Link
                         key={t.id}
@@ -103,7 +96,7 @@ export default function TournamentsPage() {
                           {t.winnerUsername && (
                             <div className="mt-2 flex items-center gap-1.5 text-xs">
                               <KyberCrystal
-                                color={t.eventTier === "galactic" ? "#ef4444" : t.eventTier === "sector" ? "#f97316" : t.eventTier === "planetary" ? "#d4a017" : t.eventTier === "showdown" ? "#60cdff" : "#a0a0a0"}
+                                color={tier.crystalColor}
                                 tier={t.eventTier}
                                 size="sm"
                               />
