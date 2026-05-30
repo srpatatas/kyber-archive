@@ -202,16 +202,18 @@ export function setCachedAspects(deckKey: string, aspects: string[]): void {
 
 export function getPlayerAspects(playerId: string): string[] {
   const db = getDb();
-  const rows = db.prepare(`
-    SELECT ac.aspects, COUNT(*) as cnt
+  const row = db.prepare(`
+    SELECT ac.aspects
     FROM decklists d
     JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
+    JOIN tournaments t ON t.id = d.tournament_id
     WHERE d.player_id = ?
-    GROUP BY ac.aspects
-    ORDER BY cnt DESC
+    GROUP BY d.leader, d.base
+    HAVING COUNT(*) >= 2
+    ORDER BY COUNT(*) DESC, MAX(t.date) DESC
     LIMIT 1
-  `).get(playerId) as { aspects: string; cnt: number } | undefined;
-  return rows ? JSON.parse(rows.aspects) : [];
+  `).get(playerId) as { aspects: string } | undefined;
+  return row ? JSON.parse(row.aspects) : [];
 }
 
 export function forceRecalculate(): void {
@@ -223,11 +225,21 @@ export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: st
   const db = getDb();
   const rows = db.prepare(`
     SELECT r.*, p.melee_id, p.name, p.username,
-      (SELECT leader || ' - ' || base FROM decklists WHERE player_id = r.player_id GROUP BY leader, base ORDER BY COUNT(*) DESC LIMIT 1) as main_leader,
+      (SELECT d1.leader || ' - ' || d1.base FROM decklists d1
+        JOIN tournaments t1 ON t1.id = d1.tournament_id
+        WHERE d1.player_id = r.player_id
+        GROUP BY d1.leader, d1.base
+        HAVING COUNT(*) >= 2
+        ORDER BY COUNT(*) DESC, MAX(t1.date) DESC
+        LIMIT 1) as main_leader,
       (SELECT ac.aspects FROM decklists d2
         JOIN aspect_cache ac ON ac.deck_key = d2.leader || '||' || d2.base
+        JOIN tournaments t2 ON t2.id = d2.tournament_id
         WHERE d2.player_id = r.player_id
-        GROUP BY d2.leader, d2.base ORDER BY COUNT(*) DESC LIMIT 1) as main_aspects
+        GROUP BY d2.leader, d2.base
+        HAVING COUNT(*) >= 2
+        ORDER BY COUNT(*) DESC, MAX(t2.date) DESC
+        LIMIT 1) as main_aspects
     FROM ratings r
     JOIN players p ON p.id = r.player_id
     WHERE r.wins + r.losses + r.draws >= 3
