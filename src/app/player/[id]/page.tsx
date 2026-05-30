@@ -4,6 +4,7 @@ import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTourname
 import { StatCard } from "@/components/stat-card";
 import { LeadersSection } from "@/components/leaders-section";
 import { PlayerEvents } from "@/components/player-events";
+import { KyberCrystal } from "@/components/kyber-crystal";
 
 export const dynamic = "force-dynamic";
 
@@ -122,32 +123,7 @@ export default async function PlayerPage({
                         : tier === "planetary" ? "#d4a017"
                         : tier === "showdown" ? "#60cdff"
                         : "#a0a0a0";
-                      return (
-                        <svg
-                          key={i}
-                          viewBox="0 0 20 32"
-                          className="h-8 w-5"
-                          title={tier}
-                        >
-                          <path
-                            d="M10 0L17 8V20L10 32L3 20V8L10 0Z"
-                            fill={color}
-                            opacity="0.9"
-                          />
-                          <path
-                            d="M10 0L17 8V20L10 32V16L14 10V9L10 3V0Z"
-                            fill="white"
-                            opacity="0.15"
-                          />
-                          <path
-                            d="M10 0L17 8V20L10 32L3 20V8L10 0Z"
-                            fill="none"
-                            stroke="white"
-                            strokeWidth="0.5"
-                            opacity="0.3"
-                          />
-                        </svg>
-                      );
+                      return <KyberCrystal key={i} color={color} tier={tier} />;
                     })}
                   </div>
                 ) : (
