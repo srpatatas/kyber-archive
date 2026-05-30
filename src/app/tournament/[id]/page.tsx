@@ -90,13 +90,13 @@ export default function TournamentPage() {
     <main className="flex-1">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <Link
-          href="/"
+          href="/tournaments"
           className="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-gold transition-colors"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M10 12L6 8L10 4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Back to Leaderboard
+          Back to Tournaments
         </Link>
 
         <div className="rounded-xl border border-border bg-surface overflow-hidden">
