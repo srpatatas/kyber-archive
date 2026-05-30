@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, HeadToHead } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
 import { StreakIndicator } from "@/components/streak-indicator";
+import { LeadersSection } from "@/components/leaders-section";
 
 export const dynamic = "force-dynamic";
 
@@ -151,28 +152,7 @@ export default async function PlayerPage({
               </div>
             </div>
 
-            {leaders.length > 0 && (
-              <div className="mt-6">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted mb-3">
-                  Leaders Played
-                </p>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {leaders.map((l) => (
-                    <div key={l.leader} className="rounded-lg border border-border bg-background p-3">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-sand">{l.leader}</p>
-                        <span className="text-xs text-muted">
-                          {l.count} event{l.count === 1 ? "" : "s"}
-                        </span>
-                      </div>
-                      {l.base && (
-                        <p className="text-xs text-muted mt-0.5">{l.base}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <LeadersSection leaders={leaders} />
 
             {(rivalries.nemesis || rivalries.rival || rivalries.prey) && (
               <div className="mt-6">
