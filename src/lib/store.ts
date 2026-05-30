@@ -31,6 +31,7 @@ interface DecklistEntry {
   leader: string;
   base: string;
   fullName: string;
+  decklistGuid: string | null;
 }
 
 export function addTournament(
@@ -86,10 +87,10 @@ export function addTournament(
     }
 
     const insertDecklist = db.prepare(`
-      INSERT INTO decklists (tournament_id, player_id, leader, base, full_name) VALUES (?, ?, ?, ?, ?)
+      INSERT INTO decklists (tournament_id, player_id, leader, base, full_name, decklist_guid) VALUES (?, ?, ?, ?, ?, ?)
     `);
     for (const d of decklistEntries) {
-      insertDecklist.run(tournament.id, d.playerId, d.leader, d.base, d.fullName);
+      insertDecklist.run(tournament.id, d.playerId, d.leader, d.base, d.fullName, d.decklistGuid);
     }
 
     recomputeRatings();
@@ -335,25 +336,36 @@ export function getPlayerMostUsedLeader(playerId: string): string | null {
   return row?.leader ?? null;
 }
 
-export function getPlayerLeaders(playerId: string): { leader: string; base: string; count: number; tournamentNames: string[] }[] {
+export interface PlayerLeaderEntry {
+  leader: string;
+  base: string;
+  count: number;
+  events: { tournamentName: string; tournamentId: number; decklistGuid: string | null }[];
+}
+
+export function getPlayerLeaders(playerId: string): PlayerLeaderEntry[] {
   const db = getDb();
   const rows = db.prepare(`
-    SELECT d.leader, d.base, d.full_name, t.name as tournament_name
+    SELECT d.leader, d.base, d.full_name, d.decklist_guid, d.tournament_id, t.name as tournament_name
     FROM decklists d
     JOIN tournaments t ON t.id = d.tournament_id
     WHERE d.player_id = ?
     ORDER BY t.date
-  `).all(playerId) as Array<{ leader: string; base: string; full_name: string; tournament_name: string }>;
+  `).all(playerId) as Array<{
+    leader: string; base: string; full_name: string; decklist_guid: string | null;
+    tournament_id: number; tournament_name: string;
+  }>;
 
-  const grouped = new Map<string, { leader: string; base: string; count: number; tournamentNames: string[] }>();
+  const grouped = new Map<string, PlayerLeaderEntry>();
   for (const r of rows) {
     const key = `${r.leader}||${r.base}`;
     const existing = grouped.get(key);
+    const event = { tournamentName: r.tournament_name, tournamentId: r.tournament_id, decklistGuid: r.decklist_guid };
     if (existing) {
       existing.count++;
-      existing.tournamentNames.push(r.tournament_name);
+      existing.events.push(event);
     } else {
-      grouped.set(key, { leader: r.leader, base: r.base, count: 1, tournamentNames: [r.tournament_name] });
+      grouped.set(key, { leader: r.leader, base: r.base, count: 1, events: [event] });
     }
   }
   return Array.from(grouped.values()).sort((a, b) => b.count - a.count);

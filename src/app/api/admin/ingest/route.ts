@@ -119,12 +119,19 @@ export async function POST(request: NextRequest) {
       }
 
       if (standing.Decklists && standing.Decklists.length > 0) {
-        const deckName = standing.Decklists[0].DecklistName || "";
+        const deck = standing.Decklists[0];
+        const deckName = deck.DecklistName || "";
         if (deckName) {
           const parts = deckName.split(" - ");
           const leader = parts[0]?.trim() || deckName;
           const base = parts[1]?.trim() || "";
-          decklistEntries.push({ playerId, leader, base, fullName: deckName });
+          decklistEntries.push({
+            playerId,
+            leader,
+            base,
+            fullName: deckName,
+            decklistGuid: deck.DecklistId || null,
+          });
         }
       }
     }
