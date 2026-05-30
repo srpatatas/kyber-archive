@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
-type EventTier = "padawan" | "minor" | "showdown" | "planetary" | "sector" | "galactic";
+type EventTier = "padawan" | "minor" | "showdown" | "major" | "planetary" | "sector" | "galactic";
 
 const TIER_LABELS: Record<EventTier, { label: string; color: string }> = {
   padawan: { label: "Padawan", color: "text-muted" },
   minor: { label: "Minor", color: "text-emerald-400" },
   showdown: { label: "Showdown", color: "text-sky-400" },
+  major: { label: "Major", color: "text-purple-400" },
   planetary: { label: "Planetary", color: "text-gold" },
   sector: { label: "Sector", color: "text-orange-400" },
   galactic: { label: "Galactic", color: "text-red-400" },
@@ -288,6 +289,7 @@ export default function AdminPage() {
                       <option value="padawan">Padawan</option>
                       <option value="minor">Minor</option>
                       <option value="showdown">Showdown</option>
+                      <option value="major">Major</option>
                       <option value="planetary">Planetary</option>
                       <option value="sector">Sector</option>
                       <option value="galactic">Galactic</option>

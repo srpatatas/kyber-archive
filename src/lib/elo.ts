@@ -1,11 +1,12 @@
 const DEFAULT_RATING = 1500;
 
-export type EventTier = "padawan" | "minor" | "showdown" | "planetary" | "sector" | "galactic";
+export type EventTier = "padawan" | "minor" | "showdown" | "major" | "planetary" | "sector" | "galactic";
 
 const K_FACTORS: Record<EventTier, number> = {
   padawan: 24,
   minor: 32,
   showdown: 32,
+  major: 36,
   planetary: 40,
   sector: 48,
   galactic: 56,
@@ -15,6 +16,7 @@ const PLACEMENT_BONUSES: Record<EventTier, Record<number, number>> = {
   padawan:   { 1: 10, 2: 5,  3: 3,  4: 3  },
   minor:     { 1: 25, 2: 15, 3: 10, 4: 10, 5: 5,  6: 5,  7: 5,  8: 5  },
   showdown:  { 1: 25, 2: 15, 3: 10, 4: 10, 5: 5,  6: 5,  7: 5,  8: 5  },
+  major:     { 1: 40, 2: 30, 3: 20, 4: 20, 5: 10, 6: 10, 7: 10, 8: 10 },
   planetary: { 1: 60, 2: 45, 3: 30, 4: 30, 5: 15, 6: 15, 7: 15, 8: 15 },
   sector:    { 1: 80, 2: 60, 3: 40, 4: 40, 5: 20, 6: 20, 7: 20, 8: 20 },
   galactic:  { 1: 100, 2: 75, 3: 50, 4: 50, 5: 25, 6: 25, 7: 25, 8: 25 },
@@ -71,7 +73,8 @@ export function classifyEvent(tags: string[], name: string, playerCount?: number
     return playerCount != null && playerCount < 12 ? "padawan" : "showdown";
   }
   if (allText.some((t) => t.includes("invitacional"))) return "minor";
-  if (playerCount != null && playerCount <= 24) return "minor";
+  if (playerCount != null && playerCount >= 32) return "major";
+  if (playerCount != null && playerCount > 12) return "minor";
   return "padawan";
 }
 

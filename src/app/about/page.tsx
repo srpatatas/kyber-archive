@@ -142,6 +142,7 @@ export default function AboutPage() {
                     { tier: "Padawan", color: "text-muted", k: 24, p1: 10, p2: 5, p34: 3, p58: "-" },
                     { tier: "Minor Tournament", color: "text-emerald-400", k: 32, p1: 25, p2: 15, p34: 10, p58: "5" },
                     { tier: "Store Showdown", color: "text-sky-400", k: 32, p1: 25, p2: 15, p34: 10, p58: "5" },
+                    { tier: "Major Tournament", color: "text-purple-400", k: 36, p1: 40, p2: 30, p34: 20, p58: "10" },
                     { tier: "Planetary Qualifier", color: "text-gold", k: 40, p1: 60, p2: 45, p34: 30, p58: "15" },
                     { tier: "Sector Championship", color: "text-orange-400", k: 48, p1: 80, p2: 60, p34: 40, p58: "20" },
                     { tier: "Galactic Championship", color: "text-red-400", k: 56, p1: 100, p2: 75, p34: 50, p58: "25" },

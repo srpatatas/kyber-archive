@@ -9,6 +9,7 @@ export const TIER_CONFIG: Record<EventTier, {
   padawan:  { label: "Padawan",   color: "text-muted",       dot: "bg-muted",       crystalColor: "#a0a0a0" },
   minor:    { label: "Minor",     color: "text-emerald-400", dot: "bg-emerald-400", crystalColor: "#34d399" },
   showdown: { label: "Showdown",  color: "text-sky-400",     dot: "bg-sky-400",     crystalColor: "#60cdff" },
+  major:    { label: "Major",     color: "text-purple-400",  dot: "bg-purple-400",  crystalColor: "#a855f7" },
   planetary:{ label: "Planetary", color: "text-gold",        dot: "bg-gold",        crystalColor: "#d4a017" },
   sector:   { label: "Sector",    color: "text-orange-400",  dot: "bg-orange-400",  crystalColor: "#f97316" },
   galactic: { label: "Galactic",  color: "text-red-400",     dot: "bg-red-400",     crystalColor: "#ef4444" },
