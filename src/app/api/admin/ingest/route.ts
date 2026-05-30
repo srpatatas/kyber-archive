@@ -100,6 +100,11 @@ export async function POST(request: NextRequest) {
       match.eventTier = eventTier;
     }
 
+    const allRoundNames = allRounds.map((r) => r.Name.toLowerCase());
+    const hasQuarters = allRoundNames.some((n) => n.includes("quarter"));
+    const hasSemis = allRoundNames.some((n) => n.includes("semi"));
+    const topCutSize = hasQuarters ? 8 : hasSemis ? 4 : 0;
+
     const standings = await getTournamentStandings(tournamentId);
     const placements: PlacementResult[] = [];
     const decklistEntries: { playerId: string; leader: string; base: string; fullName: string }[] = [];
@@ -109,7 +114,7 @@ export async function POST(request: NextRequest) {
       const sp = standing.Team.Players[0];
       const playerId = (sp.Username || sp.DisplayName).toLowerCase();
 
-      if (standing.Rank <= 8) {
+      if (topCutSize > 0 && standing.Rank <= topCutSize) {
         placements.push({
           playerId,
           tournamentId,
