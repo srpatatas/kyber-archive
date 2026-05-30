@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { PlayerLeaderEntry } from "@/lib/store";
 
 export function LeadersSection({ leaders }: { leaders: PlayerLeaderEntry[] }) {
@@ -46,22 +45,21 @@ export function LeadersSection({ leaders }: { leaders: PlayerLeaderEntry[] }) {
               {isOpen && (
                 <div className="border-t border-border/50 divide-y divide-border/30">
                   {l.events.map((e, i) => (
-                    <div key={i} className="flex items-center justify-between px-3 py-2">
-                      <Link
-                        href={`/tournament/${e.tournamentId}`}
-                        className="text-xs text-muted hover:text-gold transition-colors truncate"
-                      >
-                        {e.tournamentName}
-                      </Link>
-                      {e.decklistGuid && (
+                    <div key={i} className="px-3 py-2">
+                      {e.decklistGuid ? (
                         <a
                           href={`https://melee.gg/Decklist/View/${e.decklistGuid}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-2 shrink-0 rounded border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] font-medium text-gold hover:bg-gold/10 transition-colors"
+                          className="flex items-center justify-between text-xs text-muted hover:text-gold transition-colors"
                         >
-                          View Decklist
+                          <span className="truncate">{e.tournamentName}</span>
+                          <svg className="ml-2 h-3 w-3 shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M3.5 2H10V8.5M10 2L2 10" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
                         </a>
+                      ) : (
+                        <span className="text-xs text-muted">{e.tournamentName}</span>
                       )}
                     </div>
                   ))}
