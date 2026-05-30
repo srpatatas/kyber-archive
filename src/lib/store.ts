@@ -192,7 +192,7 @@ export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: st
   const db = getDb();
   const rows = db.prepare(`
     SELECT r.*, p.melee_id, p.name, p.username,
-      (SELECT leader FROM decklists WHERE player_id = r.player_id GROUP BY leader ORDER BY COUNT(*) DESC LIMIT 1) as main_leader
+      (SELECT leader || ' - ' || base FROM decklists WHERE player_id = r.player_id GROUP BY leader, base ORDER BY COUNT(*) DESC LIMIT 1) as main_leader
     FROM ratings r
     JOIN players p ON p.id = r.player_id
     WHERE r.wins + r.losses + r.draws >= 3
@@ -347,12 +347,13 @@ export function getPlayerLeaders(playerId: string): { leader: string; base: stri
 
   const grouped = new Map<string, { leader: string; base: string; count: number; tournamentNames: string[] }>();
   for (const r of rows) {
-    const existing = grouped.get(r.leader);
+    const key = `${r.leader}||${r.base}`;
+    const existing = grouped.get(key);
     if (existing) {
       existing.count++;
       existing.tournamentNames.push(r.tournament_name);
     } else {
-      grouped.set(r.leader, { leader: r.leader, base: r.base, count: 1, tournamentNames: [r.tournament_name] });
+      grouped.set(key, { leader: r.leader, base: r.base, count: 1, tournamentNames: [r.tournament_name] });
     }
   }
   return Array.from(grouped.values()).sort((a, b) => b.count - a.count);
