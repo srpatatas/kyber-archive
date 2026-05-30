@@ -50,7 +50,7 @@ export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: Bracket
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center mb-2">
                     {round.name}
                   </p>
-                  <div className="flex-1 flex flex-col justify-around">
+                  <div className="flex-1 flex flex-col justify-around gap-4">
                     {round.matches.map((m, mi) => {
                       const p1Won = m.player1Wins > m.player2Wins;
                       const p2Won = m.player2Wins > m.player1Wins;
@@ -83,7 +83,9 @@ export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: Bracket
                 </div>
 
                 {!isLast && (
-                  <Connectors matchCount={round.matches.length} />
+                  <svg className="w-6 shrink-0 flex-1" preserveAspectRatio="none">
+                    <ConnectorLines matchCount={round.matches.length} />
+                  </svg>
                 )}
               </div>
             );
@@ -91,7 +93,9 @@ export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: Bracket
 
           {champion && (
             <>
-              <Connectors matchCount={1} />
+              <svg className="w-6 shrink-0 flex-1" preserveAspectRatio="none">
+                <ConnectorLines matchCount={1} />
+              </svg>
               <div className="flex-1 flex flex-col">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gold text-center mb-2">
                   Champion
@@ -118,33 +122,36 @@ export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: Bracket
   );
 }
 
-function Connectors({ matchCount }: { matchCount: number }) {
-  return (
-    <div className="w-8 shrink-0 flex flex-col justify-around">
-      {Array.from({ length: Math.ceil(matchCount / 2) }).map((_, i) => (
-        <div key={i} className="flex flex-col flex-1 justify-center">
-          {matchCount > 1 ? (
-            <>
-              <div className="flex-1 flex items-end">
-                <div className="w-1/2 border-t border-border" />
-                <div className="w-1/2 border-t border-l border-border h-full" />
-              </div>
-              <div className="w-full flex">
-                <div className="w-1/2" />
-                <div className="w-1/2 border-t border-border" />
-              </div>
-              <div className="flex-1 flex items-start">
-                <div className="w-1/2 border-t border-border" />
-                <div className="w-1/2 border-t border-l border-border h-full" />
-              </div>
-            </>
-          ) : (
-            <div className="border-t border-border" />
-          )}
-        </div>
-      ))}
-    </div>
-  );
+function ConnectorLines({ matchCount }: { matchCount: number }) {
+  if (matchCount <= 1) {
+    return (
+      <line x1="0" y1="50%" x2="100%" y2="50%" stroke="var(--border)" strokeWidth="1" />
+    );
+  }
+
+  const pairs = Math.ceil(matchCount / 2);
+  const lines: React.ReactNode[] = [];
+
+  for (let i = 0; i < pairs; i++) {
+    const topY = `${((i * 2 + 0.5) / matchCount) * 100}%`;
+    const bottomY = `${((i * 2 + 1.5) / matchCount) * 100}%`;
+    const midY = `${((i * 2 + 1) / matchCount) * 100}%`;
+
+    lines.push(
+      <g key={i}>
+        {/* horizontal from top match */}
+        <line x1="0" y1={topY} x2="50%" y2={topY} stroke="var(--border)" strokeWidth="1" />
+        {/* horizontal from bottom match */}
+        <line x1="0" y1={bottomY} x2="50%" y2={bottomY} stroke="var(--border)" strokeWidth="1" />
+        {/* vertical joining them */}
+        <line x1="50%" y1={topY} x2="50%" y2={bottomY} stroke="var(--border)" strokeWidth="1" />
+        {/* horizontal out to next round */}
+        <line x1="50%" y1={midY} x2="100%" y2={midY} stroke="var(--border)" strokeWidth="1" />
+      </g>
+    );
+  }
+
+  return <>{lines}</>;
 }
 
 function MatchupRow({
