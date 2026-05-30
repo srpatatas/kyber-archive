@@ -2,24 +2,30 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Player } from "@/lib/types";
-import { getWinRate, getTotalGames } from "@/lib/data";
-import { AspectBadge } from "./aspect-badge";
-import { StreakIndicator } from "./streak-indicator";
+import { PlayerRating } from "@/lib/elo";
 import { RankBadge } from "./rank-badge";
-import { TierBadge } from "./tier-badge";
+import { StreakIndicator } from "./streak-indicator";
 
-type SortKey = "rank" | "midichlorianIndex" | "winRate" | "wins" | "tournamentWins" | "streak";
+type SortKey = "rank" | "rating" | "winRate" | "wins" | "streak" | "tournamentCount";
 
-const countryFlags: Record<string, string> = {
-  SG: "\u{1F1F8}\u{1F1EC}", ES: "\u{1F1EA}\u{1F1F8}", US: "\u{1F1FA}\u{1F1F8}", JP: "\u{1F1EF}\u{1F1F5}",
-  GB: "\u{1F1EC}\u{1F1E7}", DE: "\u{1F1E9}\u{1F1EA}", BR: "\u{1F1E7}\u{1F1F7}", CA: "\u{1F1E8}\u{1F1E6}",
-  AE: "\u{1F1E6}\u{1F1EA}", FR: "\u{1F1EB}\u{1F1F7}", KR: "\u{1F1F0}\u{1F1F7}", IT: "\u{1F1EE}\u{1F1F9}",
-  SE: "\u{1F1F8}\u{1F1EA}", IE: "\u{1F1EE}\u{1F1EA}", IN: "\u{1F1EE}\u{1F1F3}", MX: "\u{1F1F2}\u{1F1FD}",
-  NG: "\u{1F1F3}\u{1F1EC}", BG: "\u{1F1E7}\u{1F1EC}", NZ: "\u{1F1F3}\u{1F1FF}", FI: "\u{1F1EB}\u{1F1EE}",
-};
+type RankedPlayer = PlayerRating & { rank: number };
 
-export function LeaderboardTable({ players }: { players: Player[] }) {
+function getWinRate(p: RankedPlayer): number {
+  const total = p.wins + p.losses + p.draws;
+  if (total === 0) return 0;
+  return Math.round((p.wins / total) * 1000) / 10;
+}
+
+function getTierLabel(rating: number, rank: number): { name: string; color: string } {
+  if (rank === 1) return { name: "The Chosen One", color: "text-gold" };
+  if (rating >= 2700) return { name: "Grand Master", color: "text-sky-400" };
+  if (rating >= 2400) return { name: "Jedi Master", color: "text-sky-400" };
+  if (rating >= 2000) return { name: "Jedi Knight", color: "text-sky-400" };
+  if (rating >= 1500) return { name: "Padawan", color: "text-sky-400" };
+  return { name: "Youngling", color: "text-sky-400" };
+}
+
+export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortAsc, setSortAsc] = useState(false);
   const [search, setSearch] = useState("");
@@ -34,13 +40,13 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
   }
 
   const sorted = [...players]
-    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()) || p.username.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
         case "rank":
-        case "midichlorianIndex":
-          cmp = b.midichlorianIndex - a.midichlorianIndex;
+        case "rating":
+          cmp = b.rating - a.rating;
           break;
         case "winRate":
           cmp = getWinRate(b) - getWinRate(a);
@@ -48,11 +54,11 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
         case "wins":
           cmp = b.wins - a.wins;
           break;
-        case "tournamentWins":
-          cmp = b.tournamentWins - a.tournamentWins;
-          break;
         case "streak":
           cmp = b.streak - a.streak;
+          break;
+        case "tournamentCount":
+          cmp = b.tournamentCount - a.tournamentCount;
           break;
       }
       return sortAsc ? -cmp : cmp;
@@ -69,7 +75,7 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
       >
         {label}
         <span className={`transition-transform ${active && sortAsc ? "rotate-180" : ""}`}>
-          {active ? "▾" : "▾"}
+          ▾
         </span>
       </button>
     );
@@ -99,7 +105,7 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[900px]">
+        <table className="w-full min-w-[750px]">
           <thead>
             <tr className="border-b border-border bg-surface">
               <th className="px-4 py-3 text-left">
@@ -108,11 +114,8 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-medium uppercase tracking-wider text-muted">Player</span>
               </th>
-              <th className="px-4 py-3 text-left">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted">Tier</span>
-              </th>
               <th className="px-4 py-3 text-right">
-                <SortHeader label="MI Rating" sortKeyName="midichlorianIndex" />
+                <SortHeader label="MI Rating" sortKeyName="rating" />
               </th>
               <th className="px-4 py-3 text-center">
                 <span className="text-xs font-medium uppercase tracking-wider text-muted">Record</span>
@@ -124,18 +127,15 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
                 <SortHeader label="Streak" sortKeyName="streak" />
               </th>
               <th className="px-4 py-3 text-center">
-                <SortHeader label="Titles" sortKeyName="tournamentWins" />
-              </th>
-              <th className="px-4 py-3 text-left">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted">Aspect</span>
+                <SortHeader label="Events" sortKeyName="tournamentCount" />
               </th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((player, i) => {
-              const rank = players.indexOf(player) + 1;
               const winRate = getWinRate(player);
-              const totalGames = getTotalGames(player);
+              const totalGames = player.wins + player.losses + player.draws;
+              const tier = getTierLabel(player.rating, player.rank);
               return (
                 <tr
                   key={player.id}
@@ -143,30 +143,39 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
                   <td className="px-4 py-3">
-                    <RankBadge rank={rank} />
+                    <RankBadge rank={player.rank} />
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/player/${player.id}`} className="group/link">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg" title={player.country}>
-                          {countryFlags[player.country] ?? player.country}
+                    <Link href={`/player/${player.id}`} className="group/link block">
+                      <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
+                        {player.username}
+                      </p>
+                      <p className="text-xs text-muted">{player.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted">{totalGames} games</p>
+                        <span className={`text-[10px] font-medium ${tier.color}`}>
+                          {tier.name}
                         </span>
-                        <div>
-                          <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
-                            {player.name}
-                          </p>
-                          <p className="text-xs text-muted">{totalGames} games played</p>
-                        </div>
+                        {"mainLeader" in player && player.mainLeader && (
+                          <>
+                            <span className="text-muted">·</span>
+                            <span className="text-[10px] text-sand truncate max-w-[120px]">
+                              {player.mainLeader}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
-                    <TierBadge player={player} rank={rank} />
-                  </td>
                   <td className="px-4 py-3 text-right">
                     <span className="text-lg font-bold text-gold tabular-nums">
-                      {player.midichlorianIndex.toLocaleString()}
+                      {player.rating.toLocaleString()}
                     </span>
+                    {player.peakRating > player.rating && (
+                      <p className="text-[10px] text-muted">
+                        peak {player.peakRating.toLocaleString()}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="text-sm tabular-nums">
@@ -189,19 +198,12 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <StreakIndicator streak={player.streak} />
+                    <StreakIndicator streak={player.streak} compact />
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {player.tournamentWins > 0 ? (
-                      <span className="text-sm font-bold text-gold-light">
-                        {player.tournamentWins}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <AspectBadge aspect={player.favoriteAspect} />
+                    <span className="text-sm tabular-nums text-muted">
+                      {player.tournamentCount}
+                    </span>
                   </td>
                 </tr>
               );
@@ -212,7 +214,7 @@ export function LeaderboardTable({ players }: { players: Player[] }) {
 
       {sorted.length === 0 && (
         <div className="py-12 text-center text-muted">
-          No players found matching your filters
+          No players found matching your search
         </div>
       )}
     </div>

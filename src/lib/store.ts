@@ -1,0 +1,528 @@
+import { getDb } from "./db";
+import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings } from "./elo";
+
+interface StoredTournament {
+  id: number;
+  name: string;
+  organizationName: string;
+  date: string;
+  tags: string[];
+  playerCount: number;
+  matchCount: number;
+  eventTier: EventTier;
+  ingestedAt: string;
+}
+
+interface PlayerInfo {
+  id: string;
+  meleeId: number;
+  name: string;
+  username: string;
+}
+
+export function isTournamentIngested(id: number): boolean {
+  const db = getDb();
+  const row = db.prepare("SELECT 1 FROM tournaments WHERE id = ?").get(id);
+  return !!row;
+}
+
+interface DecklistEntry {
+  playerId: string;
+  leader: string;
+  base: string;
+  fullName: string;
+}
+
+export function addTournament(
+  tournament: StoredTournament,
+  matches: MatchResult[],
+  placements: PlacementResult[],
+  decklistEntries: DecklistEntry[],
+  players: Record<string, PlayerInfo>
+): void {
+  const db = getDb();
+
+  const tx = db.transaction(() => {
+    db.prepare("DELETE FROM matches WHERE tournament_id = ?").run(tournament.id);
+    db.prepare("DELETE FROM placements WHERE tournament_id = ?").run(tournament.id);
+    db.prepare("DELETE FROM decklists WHERE tournament_id = ?").run(tournament.id);
+    db.prepare("DELETE FROM tournaments WHERE id = ?").run(tournament.id);
+
+    db.prepare(`
+      INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      tournament.id,
+      tournament.name,
+      tournament.organizationName,
+      tournament.date,
+      JSON.stringify(tournament.tags),
+      tournament.playerCount,
+      tournament.matchCount,
+      tournament.eventTier,
+      tournament.ingestedAt
+    );
+
+    const insertPlayer = db.prepare(`
+      INSERT OR REPLACE INTO players (id, melee_id, name, username) VALUES (?, ?, ?, ?)
+    `);
+    for (const p of Object.values(players)) {
+      insertPlayer.run(p.id, p.meleeId, p.name, p.username);
+    }
+
+    const insertMatch = db.prepare(`
+      INSERT INTO matches (tournament_id, player1_id, player2_id, player1_wins, player2_wins, round_name, date, event_tier)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const m of matches) {
+      insertMatch.run(m.tournamentId, m.player1Id, m.player2Id, m.player1Wins, m.player2Wins, m.roundName, m.date, m.eventTier);
+    }
+
+    const insertPlacement = db.prepare(`
+      INSERT INTO placements (tournament_id, player_id, placement, event_tier, date) VALUES (?, ?, ?, ?, ?)
+    `);
+    for (const p of placements) {
+      insertPlacement.run(p.tournamentId, p.playerId, p.placement, p.eventTier, p.date);
+    }
+
+    const insertDecklist = db.prepare(`
+      INSERT INTO decklists (tournament_id, player_id, leader, base, full_name) VALUES (?, ?, ?, ?, ?)
+    `);
+    for (const d of decklistEntries) {
+      insertDecklist.run(tournament.id, d.playerId, d.leader, d.base, d.fullName);
+    }
+
+    recomputeRatings();
+  });
+
+  tx();
+}
+
+export function updateTournamentTier(id: number, eventTier: EventTier): boolean {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const info = db.prepare("UPDATE tournaments SET event_tier = ? WHERE id = ?").run(eventTier, id);
+    if (info.changes === 0) return false;
+    db.prepare("UPDATE matches SET event_tier = ? WHERE tournament_id = ?").run(eventTier, id);
+    db.prepare("UPDATE placements SET event_tier = ? WHERE tournament_id = ?").run(eventTier, id);
+    recomputeRatings();
+    return true;
+  });
+  return tx();
+}
+
+export function removeTournament(id: number): boolean {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const info = db.prepare("DELETE FROM tournaments WHERE id = ?").run(id);
+    if (info.changes > 0) {
+      recomputeRatings();
+      return true;
+    }
+    return false;
+  });
+  return tx();
+}
+
+function recomputeRatings(): void {
+  const db = getDb();
+
+  const matchRows = db.prepare(`
+    SELECT player1_id, player2_id, player1_wins, player2_wins, tournament_id,
+           t.name as tournament_name, round_name, matches.date, matches.event_tier
+    FROM matches
+    JOIN tournaments t ON t.id = matches.tournament_id
+    ORDER BY matches.date, matches.id
+  `).all() as Array<{
+    player1_id: string; player2_id: string; player1_wins: number; player2_wins: number;
+    tournament_id: number; tournament_name: string; round_name: string; date: string; event_tier: EventTier;
+  }>;
+
+  const matches: MatchResult[] = matchRows.map((r) => ({
+    player1Id: r.player1_id,
+    player2Id: r.player2_id,
+    player1Wins: r.player1_wins,
+    player2Wins: r.player2_wins,
+    tournamentId: r.tournament_id,
+    tournamentName: r.tournament_name,
+    roundName: r.round_name,
+    date: r.date,
+    eventTier: r.event_tier,
+  }));
+
+  const placementRows = db.prepare(`
+    SELECT player_id, tournament_id, placement, event_tier, date FROM placements
+  `).all() as Array<{
+    player_id: string; tournament_id: number; placement: number; event_tier: EventTier; date: string;
+  }>;
+
+  const placements: PlacementResult[] = placementRows.map((r) => ({
+    playerId: r.player_id,
+    tournamentId: r.tournament_id,
+    placement: r.placement,
+    eventTier: r.event_tier,
+    date: r.date,
+  }));
+
+  const ratings = computeRatings(matches, placements);
+
+  const tournamentsByPlayer = new Map<string, Set<number>>();
+  for (const m of matches) {
+    if (!tournamentsByPlayer.has(m.player1Id)) tournamentsByPlayer.set(m.player1Id, new Set());
+    if (!tournamentsByPlayer.has(m.player2Id)) tournamentsByPlayer.set(m.player2Id, new Set());
+    tournamentsByPlayer.get(m.player1Id)!.add(m.tournamentId);
+    tournamentsByPlayer.get(m.player2Id)!.add(m.tournamentId);
+  }
+
+  for (const [id, player] of ratings) {
+    player.tournamentCount = tournamentsByPlayer.get(id)?.size ?? 0;
+  }
+
+  db.prepare("DELETE FROM ratings").run();
+  const insertRating = db.prepare(`
+    INSERT INTO ratings (player_id, rating, peak_rating, wins, losses, draws, streak, tournament_count, tournament_wins, top8s, last_active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const [id, r] of ratings) {
+    insertRating.run(id, r.rating, r.peakRating, r.wins, r.losses, r.draws, r.streak, r.tournamentCount, r.tournamentWins, r.top8s, r.lastActive);
+  }
+}
+
+export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: string | null })[] {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT r.*, p.melee_id, p.name, p.username,
+      (SELECT leader FROM decklists WHERE player_id = r.player_id GROUP BY leader ORDER BY COUNT(*) DESC LIMIT 1) as main_leader
+    FROM ratings r
+    JOIN players p ON p.id = r.player_id
+    WHERE r.wins + r.losses + r.draws >= 3
+    ORDER BY r.rating DESC
+  `).all() as Array<{
+    player_id: string; rating: number; peak_rating: number; wins: number; losses: number;
+    draws: number; streak: number; tournament_count: number; tournament_wins: number;
+    top8s: number; last_active: string; melee_id: number; name: string; username: string;
+    main_leader: string | null;
+  }>;
+
+  return rows.map((r, i) => ({
+    id: r.player_id,
+    meleeId: r.melee_id,
+    name: r.name,
+    username: r.username,
+    rating: r.rating,
+    peakRating: r.peak_rating,
+    wins: r.wins,
+    losses: r.losses,
+    draws: r.draws,
+    streak: r.streak,
+    tournamentCount: r.tournament_count,
+    tournamentWins: r.tournament_wins,
+    top8s: r.top8s,
+    lastActive: r.last_active,
+    mainLeader: r.main_leader,
+    rank: i + 1,
+  }));
+}
+
+export function getIngestedTournaments(): StoredTournament[] {
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM tournaments ORDER BY date").all() as Array<{
+    id: number; name: string; organization_name: string; date: string; tags: string;
+    player_count: number; match_count: number; event_tier: EventTier; ingested_at: string;
+  }>;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    organizationName: r.organization_name,
+    date: r.date,
+    tags: JSON.parse(r.tags),
+    playerCount: r.player_count,
+    matchCount: r.match_count,
+    eventTier: r.event_tier,
+    ingestedAt: r.ingested_at,
+  }));
+}
+
+export interface HeadToHead {
+  opponentId: string;
+  opponentName: string;
+  opponentUsername: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  totalMatches: number;
+}
+
+export interface PlayerRivalries {
+  nemesis: HeadToHead | null;
+  rival: HeadToHead | null;
+  prey: HeadToHead | null;
+  allMatchups: HeadToHead[];
+}
+
+export function getPlayerRivalries(playerId: string): PlayerRivalries {
+  const db = getDb();
+
+  const rows = db.prepare(`
+    SELECT
+      opponent_id,
+      p.name as opponent_name,
+      p.username as opponent_username,
+      SUM(won) as wins,
+      SUM(lost) as losses,
+      SUM(drew) as draws,
+      COUNT(*) as total_matches
+    FROM (
+      SELECT
+        player2_id as opponent_id,
+        CASE WHEN player1_wins > player2_wins THEN 1 ELSE 0 END as won,
+        CASE WHEN player2_wins > player1_wins THEN 1 ELSE 0 END as lost,
+        CASE WHEN player1_wins = player2_wins THEN 1 ELSE 0 END as drew
+      FROM matches WHERE player1_id = ?
+      UNION ALL
+      SELECT
+        player1_id as opponent_id,
+        CASE WHEN player2_wins > player1_wins THEN 1 ELSE 0 END as won,
+        CASE WHEN player1_wins > player2_wins THEN 1 ELSE 0 END as lost,
+        CASE WHEN player1_wins = player2_wins THEN 1 ELSE 0 END as drew
+      FROM matches WHERE player2_id = ?
+    ) h2h
+    JOIN players p ON p.id = h2h.opponent_id
+    GROUP BY opponent_id
+    ORDER BY total_matches DESC
+  `).all(playerId, playerId) as Array<{
+    opponent_id: string; opponent_name: string; opponent_username: string;
+    wins: number; losses: number; draws: number; total_matches: number;
+  }>;
+
+  const matchups: HeadToHead[] = rows.map((r) => ({
+    opponentId: r.opponent_id,
+    opponentName: r.opponent_name,
+    opponentUsername: r.opponent_username,
+    wins: r.wins,
+    losses: r.losses,
+    draws: r.draws,
+    totalMatches: r.total_matches,
+  }));
+
+  const multiMatch = matchups.filter((m) => m.totalMatches >= 2);
+
+  const nemesis = multiMatch
+    .filter((m) => m.losses > m.wins)
+    .sort((a, b) => b.losses - a.losses || b.totalMatches - a.totalMatches)[0] ?? null;
+
+  const prey = multiMatch
+    .filter((m) => m.wins > m.losses)
+    .sort((a, b) => b.wins - a.wins || b.totalMatches - a.totalMatches)[0] ?? null;
+
+  const rival = multiMatch
+    .sort((a, b) => {
+      const aDiff = Math.abs(a.wins - a.losses);
+      const bDiff = Math.abs(b.wins - b.losses);
+      if (aDiff !== bDiff) return aDiff - bDiff;
+      return b.totalMatches - a.totalMatches;
+    })[0] ?? null;
+
+  return { nemesis, rival, prey, allMatchups: matchups };
+}
+
+export function getPlayerMostUsedLeader(playerId: string): string | null {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT leader, COUNT(*) as cnt FROM decklists
+    WHERE player_id = ? GROUP BY leader ORDER BY cnt DESC LIMIT 1
+  `).get(playerId) as { leader: string; cnt: number } | undefined;
+  return row?.leader ?? null;
+}
+
+export function getPlayerLeaders(playerId: string): { leader: string; base: string; count: number; tournamentNames: string[] }[] {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT d.leader, d.base, d.full_name, t.name as tournament_name
+    FROM decklists d
+    JOIN tournaments t ON t.id = d.tournament_id
+    WHERE d.player_id = ?
+    ORDER BY t.date
+  `).all(playerId) as Array<{ leader: string; base: string; full_name: string; tournament_name: string }>;
+
+  const grouped = new Map<string, { leader: string; base: string; count: number; tournamentNames: string[] }>();
+  for (const r of rows) {
+    const existing = grouped.get(r.leader);
+    if (existing) {
+      existing.count++;
+      existing.tournamentNames.push(r.tournament_name);
+    } else {
+      grouped.set(r.leader, { leader: r.leader, base: r.base, count: 1, tournamentNames: [r.tournament_name] });
+    }
+  }
+  return Array.from(grouped.values()).sort((a, b) => b.count - a.count);
+}
+
+export interface TournamentDetail {
+  id: number;
+  name: string;
+  organizationName: string;
+  date: string;
+  eventTier: EventTier;
+  playerCount: number;
+  matchCount: number;
+  standings: {
+    rank: number;
+    playerId: string;
+    username: string;
+    name: string;
+    leader: string | null;
+    base: string | null;
+    matchWins: number;
+    matchLosses: number;
+    matchDraws: number;
+  }[];
+  rounds: {
+    name: string;
+    matches: {
+      player1Id: string;
+      player1Username: string;
+      player1Wins: number;
+      player2Id: string;
+      player2Username: string;
+      player2Wins: number;
+    }[];
+  }[];
+}
+
+export function getTournamentDetail(id: number): TournamentDetail | null {
+  const db = getDb();
+
+  const tournament = db.prepare("SELECT * FROM tournaments WHERE id = ?").get(id) as {
+    id: number; name: string; organization_name: string; date: string;
+    event_tier: EventTier; player_count: number; match_count: number;
+  } | undefined;
+  if (!tournament) return null;
+
+  const standingRows = db.prepare(`
+    SELECT
+      pl.placement as rank,
+      pl.player_id,
+      p.username,
+      p.name,
+      d.leader,
+      d.base
+    FROM placements pl
+    JOIN players p ON p.id = pl.player_id
+    LEFT JOIN decklists d ON d.player_id = pl.player_id AND d.tournament_id = pl.tournament_id
+    WHERE pl.tournament_id = ?
+    ORDER BY pl.placement
+  `).all(id) as Array<{
+    rank: number; player_id: string; username: string; name: string; leader: string | null; base: string | null;
+  }>;
+
+  const allDecklists = db.prepare(`
+    SELECT player_id, leader, base FROM decklists WHERE tournament_id = ?
+  `).all(id) as Array<{ player_id: string; leader: string; base: string }>;
+  const decklistMap = new Map(allDecklists.map((d) => [d.player_id, d]));
+
+  const matchRows = db.prepare(`
+    SELECT m.round_name, m.player1_id, m.player2_id, m.player1_wins, m.player2_wins,
+           p1.username as p1_username, p2.username as p2_username
+    FROM matches m
+    JOIN players p1 ON p1.id = m.player1_id
+    JOIN players p2 ON p2.id = m.player2_id
+    WHERE m.tournament_id = ?
+    ORDER BY m.id
+  `).all(id) as Array<{
+    round_name: string; player1_id: string; player2_id: string;
+    player1_wins: number; player2_wins: number; p1_username: string; p2_username: string;
+  }>;
+
+  const roundsMap = new Map<string, TournamentDetail["rounds"][0]>();
+  for (const m of matchRows) {
+    if (!roundsMap.has(m.round_name)) {
+      roundsMap.set(m.round_name, { name: m.round_name, matches: [] });
+    }
+    roundsMap.get(m.round_name)!.matches.push({
+      player1Id: m.player1_id,
+      player1Username: m.p1_username,
+      player1Wins: m.player1_wins,
+      player2Id: m.player2_id,
+      player2Username: m.p2_username,
+      player2Wins: m.player2_wins,
+    });
+  }
+
+  // Build full standings from match data for all players (not just top 8)
+  const playerStats = new Map<string, { wins: number; losses: number; draws: number }>();
+  for (const m of matchRows) {
+    for (const pid of [m.player1_id, m.player2_id]) {
+      if (!playerStats.has(pid)) playerStats.set(pid, { wins: 0, losses: 0, draws: 0 });
+    }
+    const s1 = playerStats.get(m.player1_id)!;
+    const s2 = playerStats.get(m.player2_id)!;
+    if (m.player1_wins > m.player2_wins) { s1.wins++; s2.losses++; }
+    else if (m.player2_wins > m.player1_wins) { s2.wins++; s1.losses++; }
+    else { s1.draws++; s2.draws++; }
+  }
+
+  const allPlayerIds = Array.from(playerStats.keys());
+  const playerInfos = new Map<string, { username: string; name: string }>();
+  for (const pid of allPlayerIds) {
+    const info = db.prepare("SELECT username, name FROM players WHERE id = ?").get(pid) as { username: string; name: string } | undefined;
+    if (info) playerInfos.set(pid, info);
+  }
+
+  // Top 8 from placements, rest sorted by wins
+  const top8Ids = new Set(standingRows.map((s) => s.player_id));
+  const restPlayers = allPlayerIds
+    .filter((pid) => !top8Ids.has(pid))
+    .sort((a, b) => {
+      const sa = playerStats.get(a)!;
+      const sb = playerStats.get(b)!;
+      return (sb.wins - sb.losses) - (sa.wins - sa.losses);
+    });
+
+  const standings: TournamentDetail["standings"] = [];
+  for (const s of standingRows) {
+    const stats = playerStats.get(s.player_id) ?? { wins: 0, losses: 0, draws: 0 };
+    standings.push({
+      rank: s.rank,
+      playerId: s.player_id,
+      username: s.username,
+      name: s.name,
+      leader: s.leader,
+      base: s.base,
+      matchWins: stats.wins,
+      matchLosses: stats.losses,
+      matchDraws: stats.draws,
+    });
+  }
+  let rank = standings.length + 1;
+  for (const pid of restPlayers) {
+    const info = playerInfos.get(pid);
+    const stats = playerStats.get(pid)!;
+    const deck = decklistMap.get(pid);
+    if (info) {
+      standings.push({
+        rank: rank++,
+        playerId: pid,
+        username: info.username,
+        name: info.name,
+        leader: deck?.leader ?? null,
+        base: deck?.base ?? null,
+        matchWins: stats.wins,
+        matchLosses: stats.losses,
+        matchDraws: stats.draws,
+      });
+    }
+  }
+
+  return {
+    id: tournament.id,
+    name: tournament.name,
+    organizationName: tournament.organization_name,
+    date: tournament.date,
+    eventTier: tournament.event_tier,
+    playerCount: tournament.player_count,
+    matchCount: tournament.match_count,
+    standings,
+    rounds: Array.from(roundsMap.values()),
+  };
+}

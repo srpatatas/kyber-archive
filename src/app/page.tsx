@@ -1,12 +1,18 @@
-import { players, getWinRate } from "@/lib/data";
+import { getLeaderboard, getIngestedTournaments } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
-import { LeaderboardTable } from "@/components/leaderboard-table";
+import { LiveLeaderboard } from "@/components/live-leaderboard";
+
+export const dynamic = "force-dynamic";
 
 export default function Home() {
-  const topPlayer = players[0];
-  const avgRating = Math.round(
-    players.reduce((sum, p) => sum + p.midichlorianIndex, 0) / players.length
-  );
+  const players = getLeaderboard();
+  const tournaments = getIngestedTournaments();
+
+  const topPlayer = players[0] ?? null;
+  const avgRating =
+    players.length > 0
+      ? Math.round(players.reduce((sum, p) => sum + p.rating, 0) / players.length)
+      : 0;
   const totalGames = players.reduce(
     (sum, p) => sum + p.wins + p.losses + p.draws,
     0
@@ -23,7 +29,9 @@ export default function Home() {
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium text-gold">
             <span className="h-1.5 w-1.5 rounded-full bg-gold glow-pulse" />
-            Season 4 &mdash; A Lawless Time
+            {tournaments.length > 0
+              ? `${tournaments.length} tournament${tournaments.length === 1 ? "" : "s"} tracked`
+              : "No tournaments ingested yet"}
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Competitive Rankings
@@ -34,33 +42,50 @@ export default function Home() {
             Force sensitivity.
           </p>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard
-              label="Top Rated"
-              value={topPlayer.midichlorianIndex.toLocaleString()}
-              subtext={topPlayer.name}
-            />
-            <StatCard
-              label="Avg Rating"
-              value={avgRating.toLocaleString()}
-              subtext="Across all ranked players"
-            />
-            <StatCard
-              label="Total Games"
-              value={totalGames.toLocaleString()}
-              subtext="This season"
-            />
-            <StatCard
-              label="Best Streak"
-              value={`W${longestStreak}`}
-              subtext="Current hot streak"
-            />
-          </div>
+          {players.length > 0 && (
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard
+                label="Top Rated"
+                value={topPlayer!.rating.toLocaleString()}
+                subtext={topPlayer!.username}
+              />
+              <StatCard
+                label="Avg Rating"
+                value={avgRating.toLocaleString()}
+                subtext={`Across ${players.length} ranked players`}
+              />
+              <StatCard
+                label="Total Games"
+                value={totalGames.toLocaleString()}
+                subtext={`From ${tournaments.length} tournament${tournaments.length === 1 ? "" : "s"}`}
+              />
+              <StatCard
+                label="Best Streak"
+                value={longestStreak > 0 ? `W${longestStreak}` : "-"}
+                subtext="Current hot streak"
+              />
+            </div>
+          )}
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <LeaderboardTable players={players} />
+        {players.length > 0 ? (
+          <LiveLeaderboard players={players} />
+        ) : (
+          <div className="rounded-xl border border-border bg-surface p-12 text-center">
+            <p className="text-lg font-medium text-foreground">
+              No rankings yet
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              Head to the{" "}
+              <a href="/admin" className="text-gold hover:underline">
+                Admin page
+              </a>{" "}
+              and ingest some melee.gg tournaments to populate the leaderboard.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );

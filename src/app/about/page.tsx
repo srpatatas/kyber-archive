@@ -59,6 +59,17 @@ export default function AboutPage() {
             competitive strength across sanctioned tournaments.
           </p>
 
+          <p>
+            Your Midichlorian Index is calibrated from your competitive
+            performance, not a blood test. In the lore, a normal human has
+            roughly 2,500 midichlorians per cell while Anakin Skywalker — the
+            Chosen One — measured over 20,000. Our scale compresses that range
+            into a competitive Elo-style rating: new players start at{" "}
+            <span className="font-medium text-gold">1,500</span> and climb
+            through the ranks as they prove themselves in tournament play. The
+            numbers are smaller, but the Force is just as strong.
+          </p>
+
           <div className="rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">How Ratings Work</h2>
             <ul className="mt-4 space-y-3">

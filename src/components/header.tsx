@@ -34,8 +34,14 @@ export function Header() {
           <Link href="/" className="text-sm font-medium text-muted hover:text-gold transition-colors">
             Leaderboard
           </Link>
+          <Link href="/tournaments" className="text-sm font-medium text-muted hover:text-gold transition-colors">
+            Tournaments
+          </Link>
           <Link href="/about" className="text-sm font-medium text-muted hover:text-gold transition-colors">
             About
+          </Link>
+          <Link href="/admin" className="text-sm font-medium text-muted hover:text-gold transition-colors">
+            Admin
           </Link>
         </nav>
       </div>
