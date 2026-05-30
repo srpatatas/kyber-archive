@@ -51,14 +51,17 @@ body {
   animation: glow-pulse 3s ease-in-out infinite;
 }
 
-@keyframes crystal-glow {
-  0%, 100% { filter: drop-shadow(0 0 2px var(--crystal-color)); }
-  50% { filter: drop-shadow(0 0 8px var(--crystal-color)); }
-}
+@keyframes crystal-glow-gold { 0%, 100% { filter: drop-shadow(0 0 2px #d4a017); } 50% { filter: drop-shadow(0 0 8px #d4a017); } }
+@keyframes crystal-glow-blue { 0%, 100% { filter: drop-shadow(0 0 2px #60cdff); } 50% { filter: drop-shadow(0 0 8px #60cdff); } }
+@keyframes crystal-glow-orange { 0%, 100% { filter: drop-shadow(0 0 2px #f97316); } 50% { filter: drop-shadow(0 0 8px #f97316); } }
+@keyframes crystal-glow-red { 0%, 100% { filter: drop-shadow(0 0 2px #ef4444); } 50% { filter: drop-shadow(0 0 8px #ef4444); } }
+@keyframes crystal-glow-gray { 0%, 100% { filter: drop-shadow(0 0 2px #a0a0a0); } 50% { filter: drop-shadow(0 0 8px #a0a0a0); } }
 
-.crystal-glow {
-  animation: crystal-glow 3s ease-in-out infinite;
-}
+.crystal-glow-planetary { animation: crystal-glow-gold 3s ease-in-out infinite; }
+.crystal-glow-showdown { animation: crystal-glow-blue 3s ease-in-out infinite; }
+.crystal-glow-sector { animation: crystal-glow-orange 3s ease-in-out infinite; }
+.crystal-glow-galactic { animation: crystal-glow-red 3s ease-in-out infinite; }
+.crystal-glow-weekly { animation: crystal-glow-gray 3s ease-in-out infinite; }
 
 @keyframes slide-up {
   from {
