@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const leaderboard = getLeaderboard();
-    const tournaments = getIngestedTournaments();
+    const leaderboard = await getLeaderboard();
+    const tournaments = await getIngestedTournaments();
 
     return NextResponse.json({
       players: leaderboard,

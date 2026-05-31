@@ -40,6 +40,7 @@ export interface PlacementResult {
   playerId: string;
   tournamentId: number;
   placement: number;
+  playerCount?: number;
   eventTier: EventTier;
   date: string;
 }
@@ -202,13 +203,16 @@ export function computeRatings(
 
   for (const placement of placements) {
     const player = getOrCreate(placement.playerId);
-    const tierBonuses = PLACEMENT_BONUSES[placement.eventTier];
-    const bonus = tierBonuses[placement.placement] ?? 0;
-    if (bonus > 0) {
-      player.rating += bonus;
-      player.peakRating = Math.max(player.peakRating, player.rating);
+    const hasTopCut = !placement.playerCount || placement.playerCount >= 9;
+    if (hasTopCut) {
+      const tierBonuses = PLACEMENT_BONUSES[placement.eventTier];
+      const bonus = tierBonuses[placement.placement] ?? 0;
+      if (bonus > 0) {
+        player.rating += bonus;
+        player.peakRating = Math.max(player.peakRating, player.rating);
+      }
+      if (placement.placement <= 8) player.top8s++;
     }
-    if (placement.placement <= 8) player.top8s++;
     if (placement.placement === 1) player.tournamentWins++;
   }
 

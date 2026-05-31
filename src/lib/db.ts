@@ -1,22 +1,20 @@
-import Database from "better-sqlite3";
-import path from "path";
+import { Pool } from "@neondatabase/serverless";
+import type { PoolClient } from "@neondatabase/serverless";
 
-const DB_PATH = path.join(process.cwd(), "data", "midichlorian.db");
+let _pool: Pool | null = null;
+let _migrated = false;
 
-let _db: Database.Database | null = null;
-
-export function getDb(): Database.Database {
-  if (!_db) {
-    _db = new Database(DB_PATH);
-    _db.pragma("journal_mode = WAL");
-    _db.pragma("foreign_keys = ON");
-    migrate(_db);
+export function getPool(): Pool {
+  if (!_pool) {
+    _pool = new Pool({ connectionString: process.env.DATABASE_URL });
   }
-  return _db;
+  return _pool;
 }
 
-function migrate(db: Database.Database): void {
-  db.exec(`
+export async function ensureMigrated(): Promise<void> {
+  if (_migrated) return;
+  const pool = getPool();
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS tournaments (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
@@ -37,7 +35,7 @@ function migrate(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS matches (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
       player1_id TEXT NOT NULL,
       player2_id TEXT NOT NULL,
@@ -49,7 +47,7 @@ function migrate(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS placements (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
       player_id TEXT NOT NULL,
       placement INTEGER NOT NULL,
@@ -72,7 +70,7 @@ function migrate(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS decklists (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
       player_id TEXT NOT NULL,
       leader TEXT NOT NULL,
@@ -105,4 +103,28 @@ function migrate(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_placements_tournament ON placements(tournament_id);
     CREATE INDEX IF NOT EXISTS idx_placements_player ON placements(player_id);
   `);
+  _migrated = true;
+}
+
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  await ensureMigrated();
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function query(text: string, params?: unknown[]) {
+  await ensureMigrated();
+  const pool = getPool();
+  return pool.query(text, params);
 }

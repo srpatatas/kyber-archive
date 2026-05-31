@@ -3,9 +3,9 @@ import { StatCard } from "@/components/stat-card";
 import { LiveLeaderboard } from "@/components/live-leaderboard";
 
 
-export default function Home() {
-  const players = getLeaderboard();
-  const tournaments = getIngestedTournaments();
+export default async function Home() {
+  const players = await getLeaderboard();
+  const tournaments = await getIngestedTournaments();
 
   const topPlayer = players[0] ?? null;
   const avgRating =

@@ -122,8 +122,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Cap top cut by player count: <9 = no placements, 9-16 = top 4 max, 17+ = top 8
-    if (playerCount < 9) topCutSize = 0;
+    // Cap top cut by player count: <9 = 1st only, 9-16 = top 4 max, 17+ = top 8
+    if (playerCount < 9) topCutSize = 1;
     else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
 
     const standings = await getTournamentStandings(tournamentId);
@@ -169,16 +169,16 @@ export async function POST(request: NextRequest) {
       const deckKey = `${d.leader}||${d.base}`;
       if (seenDeckKeys.has(deckKey)) continue;
       seenDeckKeys.add(deckKey);
-      const cached = getCachedAspects(deckKey);
+      const cached = await getCachedAspects(deckKey);
       if (cached === null && d.decklistGuid) {
         const aspects = await getDecklistAspects(d.decklistGuid);
         if (aspects.length > 0) {
-          setCachedAspects(deckKey, aspects);
+          await setCachedAspects(deckKey, aspects);
         }
       }
     }
 
-    addTournament(
+    await addTournament(
       {
         id: tournamentId,
         name: tournament.Name,
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       matchesIngested: allMatches.length,
       playersFound: Object.keys(players).length,
       eventTier,
-      alreadyExisted: isTournamentIngested(tournamentId),
+      alreadyExisted: await isTournamentIngested(tournamentId),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -222,7 +222,7 @@ export async function PATCH(request: NextRequest) {
     if (!VALID_TIERS.includes(eventTier)) {
       return NextResponse.json({ error: `Invalid tier. Must be one of: ${VALID_TIERS.join(", ")}` }, { status: 400 });
     }
-    const updated = updateTournamentTier(parseInt(id, 10), eventTier);
+    const updated = await updateTournamentTier(parseInt(id, 10), eventTier);
     if (!updated) {
       return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
     }
@@ -240,7 +240,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "Tournament ID required" }, { status: 400 });
     }
-    const removed = removeTournament(parseInt(id, 10));
+    const removed = await removeTournament(parseInt(id, 10));
     return NextResponse.json({ success: true, removed });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

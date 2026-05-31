@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "Tournament ID required" }, { status: 400 });
     }
-    const success = reingestFromCache(parseInt(id, 10));
+    const success = await reingestFromCache(parseInt(id, 10));
     if (!success) {
       return NextResponse.json({ error: "No cached scrape data found for this tournament" }, { status: 404 });
     }

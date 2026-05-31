@@ -1,11 +1,33 @@
 #!/usr/bin/env node
 import { chromium } from "playwright";
-import Database from "better-sqlite3";
+import { Pool } from "@neondatabase/serverless";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, "data", "midichlorian.db");
+
+// Load .env.local if DATABASE_URL is not already set
+if (!process.env.DATABASE_URL) {
+  const envPath = path.join(__dirname, ".env.local");
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, "utf-8").split("\n")) {
+      const eq = line.indexOf("=");
+      if (eq > 0 && !line.startsWith("#")) {
+        const key = line.slice(0, eq).trim();
+        const val = line.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+        if (!process.env[key]) process.env[key] = val;
+      }
+    }
+  }
+}
+
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL is not set. Create a .env.local file or run: node --env-file=.env.local scrape.mjs <url> [tier]");
+  process.exit(1);
+}
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const args = process.argv.slice(2);
 const tournamentUrl = args[0];
@@ -13,7 +35,7 @@ const tierArg = args[1] || "showdown";
 
 if (!tournamentUrl) {
   console.error("Usage: node scrape.mjs <tournament-url-or-id> [tier]");
-  console.error("Tiers: padawan, minor, showdown, major, planetary, sector, galactic");
+  console.error("Tiers: minor, showdown, major, planetary, sector, galactic");
   process.exit(1);
 }
 
@@ -185,63 +207,67 @@ if (topCutSize === 0) {
 
 const playerCount = Object.keys(players).length;
 
-// Cap top cut by player count: <9 = no placements, 9-16 = top 4 max, 17+ = top 8
-if (playerCount < 9) topCutSize = 0;
+// Cap top cut by player count: <9 = 1st only, 9-16 = top 4 max, 17+ = top 8
+if (playerCount < 9) topCutSize = 1;
 else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
 
 console.log(`Players: ${playerCount}, Matches: ${allMatches.length}, Top cut: ${topCutSize}`);
 
 // Write to database
-const db = new Database(DB_PATH);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+const client = await pool.connect();
+try {
+  await client.query("BEGIN");
 
-// Ensure tables exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS scraped_data (tournament_id INTEGER PRIMARY KEY, raw_json TEXT NOT NULL, scraped_at TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS player_aliases (alias TEXT PRIMARY KEY, canonical_id TEXT NOT NULL);
-`);
+  // Ensure tables exist
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS scraped_data (tournament_id INTEGER PRIMARY KEY, raw_json TEXT NOT NULL, scraped_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS player_aliases (alias TEXT PRIMARY KEY, canonical_id TEXT NOT NULL);
+  `);
 
-const tx = db.transaction(() => {
   // Clear existing data for this tournament
-  db.prepare("DELETE FROM matches WHERE tournament_id = ?").run(tournamentId);
-  db.prepare("DELETE FROM placements WHERE tournament_id = ?").run(tournamentId);
-  db.prepare("DELETE FROM decklists WHERE tournament_id = ?").run(tournamentId);
-  db.prepare("DELETE FROM tournaments WHERE id = ?").run(tournamentId);
+  await client.query("DELETE FROM matches WHERE tournament_id = $1", [tournamentId]);
+  await client.query("DELETE FROM placements WHERE tournament_id = $1", [tournamentId]);
+  await client.query("DELETE FROM decklists WHERE tournament_id = $1", [tournamentId]);
+  await client.query("DELETE FROM tournaments WHERE id = $1", [tournamentId]);
 
   // Insert tournament
-  db.prepare(`
-    INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(tournamentId, name, orgName?.trim() || "Unknown", tournamentDate, "[]", playerCount, allMatches.length, eventTier, tournamentDate);
+  await client.query(
+    `INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [tournamentId, name, orgName?.trim() || "Unknown", tournamentDate, "[]", playerCount, allMatches.length, eventTier, tournamentDate]
+  );
 
   // Insert players
-  const insertPlayer = db.prepare("INSERT OR REPLACE INTO players (id, melee_id, name, username) VALUES (?, ?, ?, ?)");
   for (const p of Object.values(players)) {
-    insertPlayer.run(p.id, p.meleeId, p.name, p.username);
+    await client.query(
+      `INSERT INTO players (id, melee_id, name, username) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO UPDATE SET melee_id = EXCLUDED.melee_id, name = EXCLUDED.name, username = EXCLUDED.username`,
+      [p.id, p.meleeId, p.name, p.username]
+    );
   }
 
   // Insert matches
-  const insertMatch = db.prepare(`
-    INSERT INTO matches (tournament_id, player1_id, player2_id, player1_wins, player2_wins, round_name, date, event_tier)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
   for (const m of allMatches) {
-    insertMatch.run(tournamentId, m.p1Key, m.p2Key, m.p1Wins, m.p2Wins, m.roundName, tournamentDate, eventTier);
+    await client.query(
+      `INSERT INTO matches (tournament_id, player1_id, player2_id, player1_wins, player2_wins, round_name, date, event_tier)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [tournamentId, m.p1Key, m.p2Key, m.p1Wins, m.p2Wins, m.roundName, tournamentDate, eventTier]
+    );
   }
 
   // Insert placements
-  const insertPlacement = db.prepare("INSERT INTO placements (tournament_id, player_id, placement, event_tier, date) VALUES (?, ?, ?, ?, ?)");
   for (const s of latestStandings) {
     if (!s.Team?.Players?.length) continue;
     const playerId = (s.Team.Players[0].Username || s.Team.Players[0].DisplayName).toLowerCase();
     if (s.Rank <= topCutSize) {
-      insertPlacement.run(tournamentId, playerId, s.Rank, eventTier, tournamentDate);
+      await client.query(
+        "INSERT INTO placements (tournament_id, player_id, placement, event_tier, date) VALUES ($1, $2, $3, $4, $5)",
+        [tournamentId, playerId, s.Rank, eventTier, tournamentDate]
+      );
     }
   }
 
   // Insert decklists
-  const insertDecklist = db.prepare("INSERT INTO decklists (tournament_id, player_id, leader, base, full_name, decklist_guid) VALUES (?, ?, ?, ?, ?, ?)");
   for (const s of latestStandings) {
     if (!s.Team?.Players?.length || !s.Decklists?.length) continue;
     const playerId = (s.Team.Players[0].Username || s.Team.Players[0].DisplayName).toLowerCase();
@@ -251,19 +277,27 @@ const tx = db.transaction(() => {
       const parts = deckName.split(" - ");
       const leader = parts[0]?.trim() || deckName;
       const base = parts[1]?.trim() || "";
-      insertDecklist.run(tournamentId, playerId, leader, base, deckName, deck.DecklistId || null);
+      await client.query(
+        "INSERT INTO decklists (tournament_id, player_id, leader, base, full_name, decklist_guid) VALUES ($1, $2, $3, $4, $5, $6)",
+        [tournamentId, playerId, leader, base, deckName, deck.DecklistId || null]
+      );
     }
   }
 
   // Store raw data for re-ingestion
-  db.prepare("INSERT OR REPLACE INTO scraped_data (tournament_id, raw_json, scraped_at) VALUES (?, ?, ?)").run(
-    tournamentId,
-    JSON.stringify({ name, standings: latestStandings, matchesByRound: [...matchesByRound.entries()], roundNames: [...roundButtonNames.entries()] }),
-    tournamentDate,
+  await client.query(
+    `INSERT INTO scraped_data (tournament_id, raw_json, scraped_at) VALUES ($1, $2, $3)
+     ON CONFLICT (tournament_id) DO UPDATE SET raw_json = EXCLUDED.raw_json, scraped_at = EXCLUDED.scraped_at`,
+    [tournamentId, JSON.stringify({ name, standings: latestStandings, matchesByRound: [...matchesByRound.entries()], roundNames: [...roundButtonNames.entries()] }), tournamentDate]
   );
-});
 
-tx();
+  await client.query("COMMIT");
+} catch (err) {
+  await client.query("ROLLBACK");
+  throw err;
+} finally {
+  client.release();
+}
 
 // Trigger rating recalculation via the API
 console.log("Recalculating ratings...");
@@ -274,3 +308,5 @@ try {
 }
 
 console.log(`\nDone! Ingested ${name}: ${allMatches.length} matches, ${playerCount} players, tier: ${eventTier}`);
+
+await pool.end();

@@ -17,18 +17,13 @@ function getTierLabel(rating: number, rank: number): { name: string; color: stri
   return { name: "Youngling", color: "text-sky-400" };
 }
 
-export function generateStaticParams() {
-  const leaderboard = getLeaderboard();
-  return leaderboard.map((p) => ({ id: p.id }));
-}
-
 export default async function PlayerPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const leaderboard = getLeaderboard();
+  const leaderboard = await getLeaderboard();
   const player = leaderboard.find((p) => p.id === id);
   if (!player) notFound();
 
@@ -38,11 +33,11 @@ export default async function PlayerPage({
       ? Math.round((player.wins / totalGames) * 1000) / 10
       : 0;
   const tier = getTierLabel(player.rating, player.rank);
-  const rivalries = getPlayerRivalries(id);
-  const leaders = getPlayerLeaders(id);
-  const tournaments = getPlayerTournaments(id);
-  const bestFinish = getPlayerBestFinish(id);
-  const titleTiers = getPlayerTitleTiers(id);
+  const rivalries = await getPlayerRivalries(id);
+  const leaders = await getPlayerLeaders(id);
+  const tournaments = await getPlayerTournaments(id);
+  const bestFinish = await getPlayerBestFinish(id);
+  const titleTiers = await getPlayerTitleTiers(id);
   const topCutRate = player.tournamentCount > 0
     ? Math.round((player.top8s / player.tournamentCount) * 100)
     : 0;

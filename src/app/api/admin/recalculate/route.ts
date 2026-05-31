@@ -3,7 +3,7 @@ import { forceRecalculate } from "@/lib/store";
 
 export async function POST() {
   try {
-    forceRecalculate();
+    await forceRecalculate();
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

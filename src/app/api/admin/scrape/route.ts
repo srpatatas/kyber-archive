@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { spawn } from "child_process";
-import path from "path";
 import { parseTournamentUrl } from "@/lib/melee-client";
-import { isTournamentIngested } from "@/lib/store";
-import { getDb } from "@/lib/db";
 
 let activeScrape: { tournamentId: number; status: "running" | "done" | "error"; message: string } | null = null;
+
+// Escape Turbopack static analysis — scraping uses child_process + Playwright, only works locally
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const load = new Function("m", "return require(m)") as (m: string) => typeof import("child_process");
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,9 +32,12 @@ export async function POST(request: NextRequest) {
     }
 
     const tier = eventTier || "showdown";
-    const scriptPath = path.join(process.cwd(), "scrape.mjs");
 
     activeScrape = { tournamentId, status: "running", message: "Scraping..." };
+
+    const { spawn } = load("child_process");
+    const { join } = load("path") as unknown as typeof import("path");
+    const scriptPath = join(process.cwd(), "scrape.mjs");
 
     const child = spawn("node", [scriptPath, String(tournamentId), tier], {
       cwd: process.cwd(),
@@ -43,10 +46,10 @@ export async function POST(request: NextRequest) {
     });
 
     let output = "";
-    child.stdout?.on("data", (data) => { output += data.toString(); });
-    child.stderr?.on("data", (data) => { output += data.toString(); });
+    child.stdout?.on("data", (data: Buffer) => { output += data.toString(); });
+    child.stderr?.on("data", (data: Buffer) => { output += data.toString(); });
 
-    child.on("close", (code) => {
+    child.on("close", (code: number | null) => {
       if (code === 0) {
         activeScrape = { tournamentId, status: "done", message: output.trim().split("\n").pop() || "Done" };
       } else {
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    child.on("error", (err) => {
+    child.on("error", (err: Error) => {
       activeScrape = { tournamentId, status: "error", message: err.message };
     });
 

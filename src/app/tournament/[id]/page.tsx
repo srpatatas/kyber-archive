@@ -6,19 +6,13 @@ import { KyberCrystal } from "@/components/kyber-crystal";
 import { BracketView } from "@/components/bracket-view";
 import { TournamentRounds } from "@/components/tournament-rounds";
 
-export function generateStaticParams() {
-  const { getIngestedTournaments } = require("@/lib/store");
-  const tournaments = getIngestedTournaments();
-  return tournaments.map((t: { id: number }) => ({ id: String(t.id) }));
-}
-
 export default async function TournamentPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const data = getTournamentDetail(parseInt(id, 10));
+  const data = await getTournamentDetail(parseInt(id, 10));
   if (!data) notFound();
 
   const tier = getTierConfig(data.eventTier);

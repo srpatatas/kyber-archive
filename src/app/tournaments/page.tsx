@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   title: "Tournaments | The Midichlorian Index",
 };
 
-export default function TournamentsPage() {
-  const tournaments = getIngestedTournaments().slice().reverse();
+export default async function TournamentsPage() {
+  const tournaments = (await getIngestedTournaments()).slice().reverse();
 
   const grouped = new Map<string, typeof tournaments>();
   for (const t of tournaments) {
