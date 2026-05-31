@@ -77,58 +77,139 @@ export default function AboutPage() {
               by the Jedi path &mdash; your score only goes up, never down.
               Every match is a learning experience, but winning is how you grow.
             </p>
-            <ul className="mt-4 space-y-3">
+
+            <h3 className="mt-5 text-sm font-bold text-foreground">Match Points</h3>
+            <ul className="mt-2 space-y-3">
               <li className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[10px] font-bold text-gold">
-                  1
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-400">
+                  W
                 </span>
                 <span>
-                  Players start at{" "}
-                  <span className="font-medium text-gold">1,500</span>. Your score
-                  can only increase &mdash; losses don&apos;t subtract points.
+                  <span className="font-medium text-emerald-400">Wins</span>{" "}
+                  earn base points that depend on the event tier (see table below).
+                  These points are then scaled by your{" "}
+                  <span className="font-medium text-foreground">quality multiplier</span>{" "}
+                  &mdash; how well you performed in that tournament overall.
+                  A strong record amplifies your gains, while a poor record reduces them.
                 </span>
               </li>
               <li className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[10px] font-bold text-gold">
-                  2
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-[10px] font-bold text-red-400">
+                  L
                 </span>
                 <span>
-                  <span className="font-medium text-emerald-400">Wins</span> earn
-                  base points scaled by event tier. Higher-tier events award more
-                  points per win.
+                  <span className="font-medium text-red-400">Losses</span>{" "}
+                  earn 0 points. Your score never decreases &mdash; a bad
+                  tournament won&apos;t undo your progress. You simply don&apos;t
+                  gain from matches you lose.
                 </span>
               </li>
               <li className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[10px] font-bold text-gold">
-                  3
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted/20 text-[10px] font-bold text-muted">
+                  D
                 </span>
                 <span>
                   <span className="font-medium text-foreground">Draws</span>{" "}
-                  earn +1 point &mdash; recognizing strategic intentional draws when
-                  you&apos;ve already secured your position.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[10px] font-bold text-gold">
-                  4
-                </span>
-                <span>
-                  <span className="font-medium text-gold">Upset bonus</span>: +2
-                  extra points when you defeat a higher-rated opponent, rewarding
-                  growth and underdog victories.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[10px] font-bold text-gold">
-                  5
-                </span>
-                <span>
-                  <span className="font-medium text-foreground">Top cut bonuses</span>{" "}
-                  reward placement in the elimination rounds &mdash; the higher
-                  the event tier and the better your finish, the bigger the bonus.
+                  earn <span className="text-gold">+1 point</span>. This recognizes
+                  strategic intentional draws &mdash; common in the last Swiss
+                  rounds when you&apos;ve already locked in your top cut position.
                 </span>
               </li>
             </ul>
+
+            <h3 className="mt-5 text-sm font-bold text-foreground">Bonuses</h3>
+            <ul className="mt-2 space-y-3">
+              <li className="flex gap-3">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[10px] font-bold text-gold">
+                  ↑
+                </span>
+                <span>
+                  <span className="font-medium text-gold">Upset bonus</span>:{" "}
+                  <span className="text-gold">+2 extra points</span> when you
+                  defeat an opponent with a higher Midichlorian Index than yours.
+                  This rewards growth and underdog victories.
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-[10px] font-bold text-sky-400">
+                  P
+                </span>
+                <span>
+                  <span className="font-medium text-sky-400">Participation bonus</span>:{" "}
+                  <span className="text-gold">+5 points × quality multiplier</span>{" "}
+                  per tournament, but <strong className="text-foreground">only if your
+                  win rate is 50% or above</strong>. This rewards consistent
+                  competitors who show up and perform. Players with losing records
+                  earn no participation bonus &mdash; only their individual win
+                  points.
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-[10px] font-bold text-gold">
+                  🏆
+                </span>
+                <span>
+                  <span className="font-medium text-foreground">Top cut bonuses</span>{" "}
+                  reward your final placement in the elimination rounds. The
+                  higher the event tier and the better your finish, the bigger
+                  the bonus (see Event Tiers table below).
+                </span>
+              </li>
+            </ul>
+
+            <h3 className="mt-5 text-sm font-bold text-foreground">Total Score Formula</h3>
+            <div className="mt-2 rounded-lg border border-border bg-background p-4">
+              <p className="text-sm text-foreground font-mono">
+                Score per tournament ={" "}
+                <span className="text-emerald-400">Σ(win points × quality multiplier)</span>
+                {" + "}
+                <span className="text-gold">upset bonuses</span>
+                {" + "}
+                <span className="text-muted">draw points</span>
+                {" + "}
+                <span className="text-sky-400">participation bonus</span>
+                {" + "}
+                <span className="text-gold">placement bonus</span>
+              </p>
+            </div>
+
+            <h3 className="mt-5 text-sm font-bold text-foreground">Worked Example</h3>
+            <p className="mt-2 text-xs text-muted">
+              Two players at a <span className="text-sky-400">Store Showdown</span>{" "}
+              (6 base points per win):
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <p className="text-xs font-bold text-emerald-400">Player A: 5-1 record (83% WR)</p>
+                <p className="mt-0.5 text-[10px] text-muted">Quality multiplier: 1.4x</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted">
+                  <li>5 wins × 6 × 1.4x = <span className="text-foreground">42 pts</span></li>
+                  <li>1 loss × 0 = <span className="text-foreground">0 pts</span></li>
+                  <li>Upset bonus (2 upsets) = <span className="text-gold">+4 pts</span></li>
+                  <li>Participation (50%+ WR) = 5 × 1.4x = <span className="text-sky-400">+7 pts</span></li>
+                  <li>Top 4 placement = <span className="text-gold">+10 pts</span></li>
+                </ul>
+                <p className="mt-2 text-sm font-bold text-emerald-400">Total: +63 points</p>
+              </div>
+              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                <p className="text-xs font-bold text-red-400">Player B: 2-4 record (33% WR)</p>
+                <p className="mt-0.5 text-[10px] text-muted">Quality multiplier: 0.8x</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted">
+                  <li>2 wins × 6 × 0.8x = <span className="text-foreground">10 pts</span></li>
+                  <li>4 losses × 0 = <span className="text-foreground">0 pts</span></li>
+                  <li>Upset bonus (0 upsets) = <span className="text-foreground">0 pts</span></li>
+                  <li>Participation (below 50%) = <span className="text-red-400">0 pts</span></li>
+                  <li>No top cut = <span className="text-foreground">0 pts</span></li>
+                </ul>
+                <p className="mt-2 text-sm font-bold text-red-400">Total: +10 points</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted">
+              Player A earns <span className="text-foreground">6× more points</span>{" "}
+              from a single event than Player B. Over time, quality players climb
+              the rankings significantly faster than grinders with poor records,
+              even if they attend fewer events.
+            </p>
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-6">
