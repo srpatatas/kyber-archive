@@ -64,21 +64,43 @@ export default function AboutPage() {
             performance, not a blood test. In the lore, a normal human has
             roughly 2,500 midichlorians per cell while Anakin Skywalker — the
             Chosen One — measured over 20,000. Our scale compresses that range
-            into a competitive Elo-style rating: new players start at{" "}
-            <span className="font-medium text-gold">1,500</span> and climb
-            through the ranks as they prove themselves in tournament play. The
-            numbers are smaller, but the Force is just as strong.
+            into a competitive Elo rating: new players start at{" "}
+            <span className="font-medium text-gold">1,500</span> and their
+            rating rises or falls as they prove themselves in tournament play.
+            The numbers are smaller, but the Force is just as strong.
           </p>
 
           <div className="rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">How Scoring Works</h2>
             <p className="mt-2">
-              The Midichlorian Index uses a progressive scoring system inspired
-              by the Jedi path &mdash; your score only goes up, never down.
-              Every match is a learning experience, but winning is how you grow.
+              The Midichlorian Index uses an{" "}
+              <strong className="text-foreground">ELO rating system</strong>{" "}
+              enhanced with tournament tier bonuses and a Trial of Skill
+              mechanic. Unlike progressive systems where scores only go up,
+              your rating goes up when you win and down when you lose &mdash;
+              reflecting your true competitive level at any given moment.
             </p>
 
-            <h3 className="mt-5 text-sm font-bold text-foreground">Match Points</h3>
+            <h3 className="mt-5 text-sm font-bold text-foreground">ELO Rating</h3>
+            <p className="mt-2">
+              Every player starts at <span className="text-gold">1,500</span>.
+              When two players face each other, rating is transferred from the
+              loser to the winner based on the expected outcome. Beat someone
+              much higher rated than you? You gain a lot of points and they
+              lose a lot. Beat someone much lower? You gain very little. This
+              naturally calibrates each player&apos;s rating to their skill level.
+            </p>
+            <div className="mt-3 rounded-lg border border-border bg-background p-4">
+              <p className="text-xs font-mono text-muted">
+                Expected score: <span className="text-foreground">E = 1 / (1 + 10<sup>(R<sub>opponent</sub> - R<sub>you</sub>) / 400</sup>)</span>
+              </p>
+              <p className="text-xs font-mono text-muted mt-1">
+                New rating: <span className="text-foreground">R&apos; = R + K × (S - E)</span>
+                <span className="text-muted ml-2">where K=32, S=1 (win), 0 (loss), 0.5 (draw)</span>
+              </p>
+            </div>
+
+            <h3 className="mt-5 text-sm font-bold text-foreground">Match Outcomes</h3>
             <ul className="mt-2 space-y-3">
               <li className="flex gap-3">
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-400">
@@ -86,11 +108,9 @@ export default function AboutPage() {
                 </span>
                 <span>
                   <span className="font-medium text-emerald-400">Wins</span>{" "}
-                  earn base points that depend on the event tier (see table below).
-                  These points are then scaled by your{" "}
-                  <span className="font-medium text-foreground">quality multiplier</span>{" "}
-                  &mdash; how well you performed in that tournament overall.
-                  A strong record amplifies your gains, while a poor record reduces them.
+                  increase your rating. The amount depends on how strong your
+                  opponent is &mdash; beating a higher-rated player earns more
+                  points than beating a lower-rated one.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -99,9 +119,9 @@ export default function AboutPage() {
                 </span>
                 <span>
                   <span className="font-medium text-red-400">Losses</span>{" "}
-                  earn 0 points. Your score never decreases &mdash; a bad
-                  tournament won&apos;t undo your progress. You simply don&apos;t
-                  gain from matches you lose.
+                  decrease your rating. Losing to a much higher-rated opponent
+                  costs you very little, while losing to someone below you costs
+                  more. Rating is a zero-sum transfer between the two players.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -110,9 +130,8 @@ export default function AboutPage() {
                 </span>
                 <span>
                   <span className="font-medium text-foreground">Draws</span>{" "}
-                  earn <span className="text-gold">+1 point</span>. This recognizes
-                  strategic intentional draws &mdash; common in the last Swiss
-                  rounds when you&apos;ve already locked in your top cut position.
+                  adjust both ratings toward 0.5 expected &mdash; the higher-rated
+                  player loses a small amount and the lower-rated player gains.
                 </span>
               </li>
             </ul>
@@ -126,24 +145,12 @@ export default function AboutPage() {
                 <span>
                   <span className="font-medium text-gold">Trial of Skill</span>:{" "}
                   <span className="text-gold">+2 extra points</span>{" "}when you
-                  defeat an opponent with a higher Midichlorian Index than yours.
-                  In Jedi lore, the Trial of Skill tests a Padawan&apos;s combat
-                  ability against a stronger opponent &mdash; here it rewards
-                  growth and underdog victories.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-[10px] font-bold text-sky-400">
-                  P
-                </span>
-                <span>
-                  <span className="font-medium text-sky-400">Participation bonus</span>:{" "}
-                  <span className="text-gold">+5 points × quality multiplier</span>{" "}
-                  per tournament, but <strong className="text-foreground">only if your
-                  win rate is 50% or above</strong>. This rewards consistent
-                  competitors who show up and perform. Players with losing records
-                  earn no participation bonus &mdash; only their individual win
-                  points.
+                  defeat an opponent with a higher rating than yours. The
+                  comparison uses each player&apos;s rating at the{" "}
+                  <strong className="text-foreground">start of the tournament</strong>,
+                  not mid-tournament ratings that shift with each round. In Jedi
+                  lore, the Trial of Skill tests a Padawan&apos;s combat ability
+                  against a stronger opponent &mdash; here it rewards underdog victories.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -154,78 +161,62 @@ export default function AboutPage() {
                   <span className="font-medium text-foreground">Top cut bonuses</span>{" "}
                   reward your final placement in the elimination rounds. The
                   higher the event tier and the better your finish, the bigger
-                  the bonus (see Event Tiers table below).
+                  the bonus (see Event Tiers table below). Tournaments with
+                  fewer than 9 players record the winner but award no placement
+                  bonus points.
                 </span>
               </li>
             </ul>
 
-            <h3 className="mt-5 text-sm font-bold text-foreground">Total Score Formula</h3>
-            <div className="mt-2 rounded-lg border border-border bg-background p-4">
-              <p className="text-sm text-foreground font-mono">
-                Score per tournament ={" "}
-                <span className="text-emerald-400">Σ(win points × quality multiplier)</span>
-                {" + "}
-                <span className="text-gold">trial of skill</span>
-                {" + "}
-                <span className="text-muted">draw points</span>
-                {" + "}
-                <span className="text-sky-400">participation bonus</span>
-                {" + "}
-                <span className="text-gold">placement bonus</span>
-              </p>
-            </div>
-
             <h3 className="mt-5 text-sm font-bold text-foreground">Worked Example</h3>
             <p className="mt-2 text-xs text-muted">
-              Two players at a <span className="text-sky-400">Store Showdown</span>{" "}
-              (6 base points per win):
+              Player A (rated <span className="text-foreground">1,600</span>) faces
+              Player B (rated <span className="text-foreground">1,500</span>) at
+              a <span className="text-sky-400">Store Showdown</span>:
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <p className="text-xs font-bold text-emerald-400">Player A: 5-1 record (83% WR)</p>
-                <p className="mt-0.5 text-[10px] text-muted">Quality multiplier: 1.4x</p>
+                <p className="text-xs font-bold text-emerald-400">If Player A wins (expected)</p>
                 <ul className="mt-2 space-y-1 text-xs text-muted">
-                  <li>5 wins × 6 × 1.4x = <span className="text-foreground">42 pts</span></li>
-                  <li>1 loss × 0 = <span className="text-foreground">0 pts</span></li>
-                  <li>Trial of Skill (2 trials) = <span className="text-gold">+4 pts</span></li>
-                  <li>Participation (50%+ WR) = 5 × 1.4x = <span className="text-sky-400">+7 pts</span></li>
-                  <li>Top 4 placement = <span className="text-gold">+10 pts</span></li>
+                  <li>Expected score: 0.64 (64% favored)</li>
+                  <li>ELO gain: 32 × (1 - 0.64) = <span className="text-emerald-400">+12 pts</span></li>
+                  <li>Trial of Skill: <span className="text-muted">none (opponent rated lower)</span></li>
+                  <li>Player B loses: 32 × (0 - 0.36) = <span className="text-red-400">-12 pts</span></li>
                 </ul>
-                <p className="mt-2 text-sm font-bold text-emerald-400">Total: +63 points</p>
+                <p className="mt-2 text-[10px] text-muted">A: 1,600 → 1,612 &nbsp;|&nbsp; B: 1,500 → 1,488</p>
               </div>
-              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                <p className="text-xs font-bold text-red-400">Player B: 2-4 record (33% WR)</p>
-                <p className="mt-0.5 text-[10px] text-muted">Quality multiplier: 0.8x</p>
+              <div className="rounded-lg border border-gold/20 bg-gold/5 p-3">
+                <p className="text-xs font-bold text-gold">If Player B wins (upset)</p>
                 <ul className="mt-2 space-y-1 text-xs text-muted">
-                  <li>2 wins × 6 × 0.8x = <span className="text-foreground">10 pts</span></li>
-                  <li>4 losses × 0 = <span className="text-foreground">0 pts</span></li>
-                  <li>Trial of Skill (0 trials) = <span className="text-foreground">0 pts</span></li>
-                  <li>Participation (below 50%) = <span className="text-red-400">0 pts</span></li>
-                  <li>No top cut = <span className="text-foreground">0 pts</span></li>
+                  <li>Expected score: 0.36 (underdog)</li>
+                  <li>ELO gain: 32 × (1 - 0.36) = <span className="text-emerald-400">+20 pts</span></li>
+                  <li>Trial of Skill: <span className="text-gold">+2 pts (beat higher-rated)</span></li>
+                  <li>Player A loses: 32 × (0 - 0.64) = <span className="text-red-400">-20 pts</span></li>
                 </ul>
-                <p className="mt-2 text-sm font-bold text-red-400">Total: +10 points</p>
+                <p className="mt-2 text-[10px] text-muted">B: 1,500 → 1,522 &nbsp;|&nbsp; A: 1,600 → 1,580</p>
               </div>
             </div>
             <p className="mt-3 text-xs text-muted">
-              Player A earns <span className="text-foreground">6× more points</span>{" "}
-              from a single event than Player B. Over time, quality players climb
-              the rankings significantly faster than grinders with poor records,
-              even if they attend fewer events.
+              Upsets are heavily rewarded: Player B gains{" "}
+              <span className="text-foreground">22 points</span> (including Trial of
+              Skill) while the expected winner would only gain 12. Over time, this
+              self-corrects &mdash; players settle at the rating where they win about
+              half their games against opponents of similar strength.
             </p>
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">Event Tiers</h2>
             <p className="mt-2">
-              Each event is classified into a tier that determines points per
-              win and placement bonuses:
+              Each event is classified into a tier that determines placement
+              bonuses. Top cut placements earn bonus points on top of the ELO
+              gains from matches:
             </p>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50">
                     <th className="pb-2 pr-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Tier</th>
-                    <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">Per Win</th>
                     <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">1st</th>
                     <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">2nd</th>
                     <th className="pb-2 px-3 text-center text-xs font-medium uppercase tracking-wider text-muted">3rd-4th</th>
@@ -234,70 +225,29 @@ export default function AboutPage() {
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {[
-                    { tier: "Minor Tournament", color: "text-emerald-400", win: 6, p1: 25, p2: 15, p34: 10, p58: "5" },
-                    { tier: "Store Showdown", color: "text-sky-400", win: 6, p1: 25, p2: 15, p34: 10, p58: "5" },
-                    { tier: "Major Tournament", color: "text-purple-400", win: 8, p1: 40, p2: 30, p34: 20, p58: "10" },
-                    { tier: "Planetary Qualifier", color: "text-gold", win: 10, p1: 60, p2: 45, p34: 30, p58: "15" },
-                    { tier: "Sector Championship", color: "text-orange-400", win: 12, p1: 80, p2: 60, p34: 40, p58: "20" },
-                    { tier: "Galactic Championship", color: "text-red-400", win: 15, p1: 100, p2: 75, p34: 50, p58: "25" },
+                    { tier: "Minor Tournament", color: "text-emerald-400", p1: 25, p2: 15, p34: 10, p58: 5 },
+                    { tier: "Store Showdown", color: "text-sky-400", p1: 25, p2: 15, p34: 10, p58: 5 },
+                    { tier: "Major Tournament", color: "text-purple-400", p1: 40, p2: 30, p34: 20, p58: 10 },
+                    { tier: "Planetary Qualifier", color: "text-gold", p1: 60, p2: 45, p34: 30, p58: 15 },
+                    { tier: "Sector Championship", color: "text-orange-400", p1: 80, p2: 60, p34: 40, p58: 20 },
+                    { tier: "Galactic Championship", color: "text-red-400", p1: 100, p2: 75, p34: 50, p58: 25 },
                   ].map((row) => (
                     <tr key={row.tier}>
                       <td className={`py-2 pr-3 font-medium ${row.color}`}>{row.tier}</td>
-                      <td className="py-2 px-3 text-center tabular-nums text-foreground">+{row.win}</td>
                       <td className="py-2 px-3 text-center tabular-nums text-gold">+{row.p1}</td>
                       <td className="py-2 px-3 text-center tabular-nums text-sand-light">+{row.p2}</td>
                       <td className="py-2 px-3 text-center tabular-nums text-muted">+{row.p34}</td>
-                      <td className="py-2 pl-3 text-center tabular-nums text-muted">{row.p58 === "-" ? "-" : `+${row.p58}`}</td>
+                      <td className="py-2 pl-3 text-center tabular-nums text-muted">+{row.p58}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <p className="mt-3 text-xs text-muted">
-              Win points are further scaled by the quality multiplier (see below).
-              Sanctioned Store Showdowns always count as Showdown tier regardless
-              of player count.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-surface p-6">
-            <h2 className="text-lg font-bold text-foreground">Quality Multiplier</h2>
-            <p className="mt-2">
-              Your points per win are scaled by how well you perform at each
-              tournament. A strong showing amplifies your gains, while a poor
-              record reduces them. This ensures that quality matters more than
-              volume.
-            </p>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="pb-2 pr-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Win Rate</th>
-                    <th className="pb-2 px-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Example</th>
-                    <th className="pb-2 pl-3 text-center text-xs font-medium uppercase tracking-wider text-muted">Multiplier</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/30">
-                  {[
-                    { wr: "83%", ex: "5-1 record", mult: "1.4x", color: "text-emerald-400" },
-                    { wr: "67%", ex: "4-2 record", mult: "1.2x", color: "text-emerald-400" },
-                    { wr: "50%", ex: "3-3 record", mult: "1.0x", color: "text-foreground" },
-                    { wr: "33%", ex: "2-4 record", mult: "0.8x", color: "text-red-400" },
-                    { wr: "17%", ex: "1-5 record", mult: "0.6x", color: "text-red-400" },
-                  ].map((row) => (
-                    <tr key={row.wr}>
-                      <td className="py-2 pr-3 font-medium text-foreground">{row.wr}</td>
-                      <td className="py-2 px-3 text-muted">{row.ex}</td>
-                      <td className={`py-2 pl-3 text-center font-bold tabular-nums ${row.color}`}>{row.mult}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-xs text-muted">
-              Players with 50%+ win rate at a tournament also earn a participation
-              bonus (+5 × multiplier), rewarding consistent competitors. Below 50%
-              you only earn points from your individual wins.
+              Placement bonuses are added on top of ELO match gains. Tournaments
+              with fewer than 9 players record the winner (for the kyber crystal
+              award) but do not award placement bonus points. Sanctioned Store
+              Showdowns always count as Showdown tier regardless of player count.
             </p>
           </div>
 
