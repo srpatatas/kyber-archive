@@ -184,6 +184,11 @@ if (topCutSize === 0) {
 }
 
 const playerCount = Object.keys(players).length;
+
+// Cap top cut by player count: <9 = no placements, 9-16 = top 4 max, 17+ = top 8
+if (playerCount < 9) topCutSize = 0;
+else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
+
 console.log(`Players: ${playerCount}, Matches: ${allMatches.length}, Top cut: ${topCutSize}`);
 
 // Write to database
