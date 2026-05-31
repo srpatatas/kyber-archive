@@ -8,7 +8,7 @@ mv src/app/api src/app/_api_excluded
 mv src/app/admin src/app/_admin_excluded
 
 # Build for production (generates .vercel/output)
-vercel build --prod
+STATIC_EXPORT=1 vercel build --prod
 
 # Restore API routes and admin
 mv src/app/_api_excluded src/app/api

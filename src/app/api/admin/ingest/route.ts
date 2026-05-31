@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     ).sort((a, b) => a.phaseSort - b.phaseSort || a.SortOrder - b.SortOrder);
 
     const allMatches: MatchResult[] = [];
-    const pendingTier = "padawan" as const;
+    const pendingTier = "minor" as const;
     const players: Record<string, { id: string; meleeId: number; name: string; username: string }> = {};
 
     for (const round of allRounds) {
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-const VALID_TIERS: EventTier[] = ["padawan", "minor", "showdown", "major", "planetary", "sector", "galactic"];
+const VALID_TIERS: EventTier[] = ["minor", "showdown", "major", "planetary", "sector", "galactic"];
 
 export async function PATCH(request: NextRequest) {
   try {

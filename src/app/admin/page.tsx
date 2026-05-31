@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
-type EventTier = "padawan" | "minor" | "showdown" | "major" | "planetary" | "sector" | "galactic";
+type EventTier = "minor" | "showdown" | "major" | "planetary" | "sector" | "galactic";
 
 const TIER_LABELS: Record<EventTier, { label: string; color: string }> = {
-  padawan: { label: "Padawan", color: "text-muted" },
   minor: { label: "Minor", color: "text-emerald-400" },
   showdown: { label: "Showdown", color: "text-sky-400" },
   major: { label: "Major", color: "text-purple-400" },
@@ -395,7 +394,7 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-border/50">
               {tournaments.map((t) => {
-                const tierInfo = TIER_LABELS[t.eventTier] ?? TIER_LABELS.padawan;
+                const tierInfo = TIER_LABELS[t.eventTier] ?? TIER_LABELS.minor;
                 return (
                   <div
                     key={t.id}
@@ -423,7 +422,6 @@ export default function AdminPage() {
                       onChange={(e) => handleTierChange(t.id, t.name, e.target.value as EventTier)}
                       className={`rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium ${tierInfo.color} cursor-pointer focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30`}
                     >
-                      <option value="padawan">Padawan</option>
                       <option value="minor">Minor</option>
                       <option value="showdown">Showdown</option>
                       <option value="major">Major</option>

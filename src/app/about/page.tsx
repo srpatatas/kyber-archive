@@ -234,7 +234,6 @@ export default function AboutPage() {
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {[
-                    { tier: "Padawan", color: "text-muted", win: 4, p1: 10, p2: 5, p34: 3, p58: "-" },
                     { tier: "Minor Tournament", color: "text-emerald-400", win: 6, p1: 25, p2: 15, p34: 10, p58: "5" },
                     { tier: "Store Showdown", color: "text-sky-400", win: 6, p1: 25, p2: 15, p34: 10, p58: "5" },
                     { tier: "Major Tournament", color: "text-purple-400", win: 8, p1: 40, p2: 30, p34: 20, p58: "10" },

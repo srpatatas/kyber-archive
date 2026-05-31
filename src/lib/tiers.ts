@@ -6,7 +6,6 @@ export const TIER_CONFIG: Record<EventTier, {
   dot: string;
   crystalColor: string;
 }> = {
-  padawan:  { label: "Padawan",   color: "text-muted",       dot: "bg-muted",       crystalColor: "#a0a0a0" },
   minor:    { label: "Minor",     color: "text-emerald-400", dot: "bg-emerald-400", crystalColor: "#34d399" },
   showdown: { label: "Showdown",  color: "text-sky-400",     dot: "bg-sky-400",     crystalColor: "#60cdff" },
   major:    { label: "Major",     color: "text-purple-400",  dot: "bg-purple-400",  crystalColor: "#a855f7" },
@@ -16,5 +15,5 @@ export const TIER_CONFIG: Record<EventTier, {
 };
 
 export function getTierConfig(tier: string) {
-  return TIER_CONFIG[tier as EventTier] ?? TIER_CONFIG.padawan;
+  return TIER_CONFIG[tier as EventTier] ?? TIER_CONFIG.minor;
 }

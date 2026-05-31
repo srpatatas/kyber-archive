@@ -1,10 +1,9 @@
 const DEFAULT_RATING = 1500;
 
-export type EventTier = "padawan" | "minor" | "showdown" | "major" | "planetary" | "sector" | "galactic";
+export type EventTier = "minor" | "showdown" | "major" | "planetary" | "sector" | "galactic";
 
 // Base points earned per WIN at each event tier
 const WIN_POINTS: Record<EventTier, number> = {
-  padawan: 4,
   minor: 6,
   showdown: 6,
   major: 8,
@@ -17,7 +16,6 @@ const WIN_POINTS: Record<EventTier, number> = {
 const TRIAL_OF_SKILL_BONUS = 2;
 
 const PLACEMENT_BONUSES: Record<EventTier, Record<number, number>> = {
-  padawan:   { 1: 10, 2: 5,  3: 3,  4: 3  },
   minor:     { 1: 25, 2: 15, 3: 10, 4: 10, 5: 5,  6: 5,  7: 5,  8: 5  },
   showdown:  { 1: 25, 2: 15, 3: 10, 4: 10, 5: 5,  6: 5,  7: 5,  8: 5  },
   major:     { 1: 40, 2: 30, 3: 20, 4: 20, 5: 10, 6: 10, 7: 10, 8: 10 },
@@ -73,7 +71,7 @@ export function classifyEvent(tags: string[], name: string, playerCount?: number
   if (allText.some((t) => t.includes("invitacional"))) return "minor";
   if (playerCount != null && playerCount >= 32) return "major";
   if (playerCount != null && playerCount > 12) return "minor";
-  return "padawan";
+  return "minor";
 }
 
 function computeQualityMultipliers(matches: MatchResult[]): Map<string, Map<number, number>> {
