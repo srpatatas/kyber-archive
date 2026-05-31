@@ -2,15 +2,19 @@ const DEFAULT_RATING = 1500;
 
 export type EventTier = "padawan" | "minor" | "showdown" | "major" | "planetary" | "sector" | "galactic";
 
-const K_FACTORS: Record<EventTier, number> = {
-  padawan: 24,
-  minor: 32,
-  showdown: 32,
-  major: 36,
-  planetary: 40,
-  sector: 48,
-  galactic: 56,
+// Base points earned per WIN at each event tier
+const WIN_POINTS: Record<EventTier, number> = {
+  padawan: 4,
+  minor: 6,
+  showdown: 6,
+  major: 8,
+  planetary: 10,
+  sector: 12,
+  galactic: 15,
 };
+
+// Bonus for beating a higher-rated opponent (upset)
+const UPSET_BONUS = 2;
 
 const PLACEMENT_BONUSES: Record<EventTier, Record<number, number>> = {
   padawan:   { 1: 10, 2: 5,  3: 3,  4: 3  },
@@ -59,10 +63,6 @@ export interface PlayerRating {
   lastActive: string;
 }
 
-function expectedScore(ratingA: number, ratingB: number): number {
-  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
-}
-
 export function classifyEvent(tags: string[], name: string, playerCount?: number): EventTier {
   const allText = [...tags, name].map((s) => s.toLowerCase());
   if (allText.some((t) => t.includes("galactic championship"))) return "galactic";
@@ -98,7 +98,6 @@ function computeQualityMultipliers(matches: MatchResult[]): Map<string, Map<numb
     else { s1.wins += 0.5; s2.wins += 0.5; }
   }
 
-  // Convert win rates to multipliers: 50% WR = 1.0x, 80% = 1.3x, 30% = 0.7x
   const multipliers = new Map<string, Map<number, number>>();
   for (const [playerId, tournaments] of stats) {
     const playerMults = new Map<number, number>();
@@ -146,47 +145,61 @@ export function computeRatings(
     const p1 = getOrCreate(match.player1Id);
     const p2 = getOrCreate(match.player2Id);
 
-    const baseK = K_FACTORS[match.eventTier];
     const q1 = qualityMultipliers.get(match.player1Id)?.get(match.tournamentId) ?? 1;
     const q2 = qualityMultipliers.get(match.player2Id)?.get(match.tournamentId) ?? 1;
-
-    const e1 = expectedScore(p1.rating, p2.rating);
-    const e2 = expectedScore(p2.rating, p1.rating);
-
-    let s1: number;
-    let s2: number;
+    const tier = match.eventTier;
 
     if (match.player1Wins > match.player2Wins) {
-      s1 = 1;
-      s2 = 0;
+      let pts = Math.round(WIN_POINTS[tier] * q1);
+      if (p2.rating > p1.rating) pts += UPSET_BONUS;
+      p1.rating += pts;
       p1.wins++;
       p2.losses++;
       p1.streak = p1.streak > 0 ? p1.streak + 1 : 1;
       p2.streak = p2.streak < 0 ? p2.streak - 1 : -1;
     } else if (match.player2Wins > match.player1Wins) {
-      s1 = 0;
-      s2 = 1;
+      let pts = Math.round(WIN_POINTS[tier] * q2);
+      if (p1.rating > p2.rating) pts += UPSET_BONUS;
+      p2.rating += pts;
       p1.losses++;
       p2.wins++;
       p1.streak = p1.streak < 0 ? p1.streak - 1 : -1;
       p2.streak = p2.streak > 0 ? p2.streak + 1 : 1;
     } else {
-      s1 = 0.5;
-      s2 = 0.5;
+      p1.rating += 1;
+      p2.rating += 1;
       p1.draws++;
       p2.draws++;
       p1.streak = 0;
       p2.streak = 0;
     }
 
-    p1.rating = Math.round(p1.rating + baseK * q1 * (s1 - e1));
-    p2.rating = Math.round(p2.rating + baseK * q2 * (s2 - e2));
-
     p1.peakRating = Math.max(p1.peakRating, p1.rating);
     p2.peakRating = Math.max(p2.peakRating, p2.rating);
 
     if (match.date > p1.lastActive) p1.lastActive = match.date;
     if (match.date > p2.lastActive) p2.lastActive = match.date;
+  }
+
+  // Performance-scaled participation bonus — only awarded above 50% WR
+  // Rewards grinding IF you're performing well. Below 50% WR = no bonus.
+  const PARTICIPATION_BASE = 5;
+  const participationTournaments = new Map<string, Set<number>>();
+  for (const match of matches) {
+    for (const pid of [match.player1Id, match.player2Id]) {
+      if (!participationTournaments.has(pid)) participationTournaments.set(pid, new Set());
+      participationTournaments.get(pid)!.add(match.tournamentId);
+    }
+  }
+  for (const [playerId, tournamentIds] of participationTournaments) {
+    const player = getOrCreate(playerId);
+    for (const tid of tournamentIds) {
+      const q = qualityMultipliers.get(playerId)?.get(tid) ?? 1;
+      if (q >= 1.0) {
+        player.rating += Math.round(PARTICIPATION_BASE * q);
+      }
+    }
+    player.peakRating = Math.max(player.peakRating, player.rating);
   }
 
   for (const placement of placements) {

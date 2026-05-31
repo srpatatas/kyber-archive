@@ -18,10 +18,10 @@ function getWinRate(p: RankedPlayer): number {
 
 function getTierLabel(rating: number, rank: number): { name: string; color: string } {
   if (rank === 1) return { name: "The Chosen One", color: "text-gold" };
-  if (rating >= 2700) return { name: "Grand Master", color: "text-sky-400" };
-  if (rating >= 2400) return { name: "Jedi Master", color: "text-sky-400" };
-  if (rating >= 2000) return { name: "Jedi Knight", color: "text-sky-400" };
-  if (rating >= 1700) return { name: "Padawan", color: "text-sky-400" };
+  if (rating >= 3200) return { name: "Grand Master", color: "text-sky-400" };
+  if (rating >= 2700) return { name: "Jedi Master", color: "text-sky-400" };
+  if (rating >= 1900) return { name: "Jedi Knight", color: "text-sky-400" };
+  if (rating >= 1650) return { name: "Padawan", color: "text-sky-400" };
   return { name: "Youngling", color: "text-sky-400" };
 }
 

@@ -6,35 +6,35 @@ export const metadata: Metadata = {
 
 const factionTiers = [
   {
-    rating: "2,700+",
+    rating: "3,200+",
     jedi: "Grand Master",
     rebels: "General",
     sith: "Darth",
     empire: "Grand Admiral",
   },
   {
-    rating: "2,400–2,699",
+    rating: "2,700–3,199",
     jedi: "Jedi Master",
     rebels: "Commander",
     sith: "Sith Lord",
     empire: "Grand Moff",
   },
   {
-    rating: "2,000–2,399",
+    rating: "1,900–2,699",
     jedi: "Jedi Knight",
     rebels: "Pathfinder",
     sith: "Sith Warrior",
     empire: "Commander",
   },
   {
-    rating: "1,700–1,999",
+    rating: "1,650–1,899",
     jedi: "Padawan",
     rebels: "Trooper",
     sith: "Apprentice",
     empire: "Officer",
   },
   {
-    rating: "< 1,700",
+    rating: "< 1,650",
     jedi: "Youngling",
     rebels: "Recruit",
     sith: "Acolyte",
