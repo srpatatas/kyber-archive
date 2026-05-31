@@ -117,7 +117,7 @@ await context.close();
 const allMatches = [];
 const players = {};
 const eventTier = tierArg;
-const tournamentDate = new Date().toISOString();
+const tournamentDate = latestStandings[0]?.DateCreated || new Date().toISOString();
 
 for (const [roundId, matches] of matchesByRound) {
   const roundName = roundButtonNames.get(roundId) || `Round ${roundId}`;

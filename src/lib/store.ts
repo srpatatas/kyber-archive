@@ -116,7 +116,8 @@ export function reingestFromCache(tournamentId: number): boolean {
     { event_tier: EventTier; organization_name: string } | undefined;
   const eventTier = existing?.event_tier ?? ("showdown" as EventTier);
   const orgName = existing?.organization_name ?? "Unknown";
-  const tournamentDate = row.scraped_at;
+  const firstStanding = standings[0] as Record<string, unknown> | undefined;
+  const tournamentDate = (firstStanding?.DateCreated as string) || row.scraped_at;
 
   const allMatches: MatchResult[] = [];
   const players: Record<string, { id: string; meleeId: number; name: string; username: string }> = {};
