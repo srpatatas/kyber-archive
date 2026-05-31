@@ -818,6 +818,16 @@ export function getTournamentDetail(id: number): TournamentDetail | null {
     matchCount: tournament.match_count,
     topCutSize,
     standings,
-    rounds: Array.from(roundsMap.values()),
+    rounds: Array.from(roundsMap.values()).sort((a, b) => {
+      const order = (name: string): number => {
+        const lower = name.toLowerCase();
+        if (lower.includes("final") && !lower.includes("semi") && !lower.includes("quarter")) return 900;
+        if (lower.includes("semi")) return 800;
+        if (lower.includes("quarter")) return 700;
+        const num = parseInt(name.replace(/\D/g, ""), 10);
+        return isNaN(num) ? 500 : num;
+      };
+      return order(a.name) - order(b.name);
+    }),
   };
 }
