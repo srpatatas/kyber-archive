@@ -93,8 +93,18 @@ const roundButtonNames = new Map();
 const pairingsButtons = await page.locator("#pairings-round-selector-container .round-selector").all();
 console.log(`Found ${pairingsButtons.length} rounds`);
 
+// Collect button texts first
+const buttonTexts = [];
 for (const btn of pairingsButtons) {
-  const text = (await btn.textContent().catch(() => ""))?.trim() || "";
+  buttonTexts.push((await btn.textContent().catch(() => ""))?.trim() || "");
+}
+
+// Click each button and track which round ID it loads
+for (let i = 0; i < pairingsButtons.length; i++) {
+  const btn = pairingsButtons[i];
+  const text = buttonTexts[i];
+  const sizesBefore = new Set(matchesByRound.keys());
+
   await btn.scrollIntoViewIfNeeded();
   await btn.click();
   await page.waitForResponse(
@@ -103,9 +113,19 @@ for (const btn of pairingsButtons) {
   ).catch(() => null);
   await page.waitForTimeout(500);
 
-  const lastRoundId = [...matchesByRound.keys()].pop();
-  if (lastRoundId && text) {
-    roundButtonNames.set(lastRoundId, text);
+  // Find the newly added round ID
+  for (const roundId of matchesByRound.keys()) {
+    if (!sizesBefore.has(roundId) && text) {
+      roundButtonNames.set(roundId, text);
+    }
+  }
+  // If no new round was added (already cached from page load), find the unmatched one
+  if (matchesByRound.size === sizesBefore.size) {
+    for (const roundId of matchesByRound.keys()) {
+      if (!roundButtonNames.has(roundId) && text) {
+        roundButtonNames.set(roundId, text);
+      }
+    }
   }
   process.stdout.write(".");
 }
