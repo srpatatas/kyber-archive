@@ -42,9 +42,13 @@ interface Toast {
   timestamp: number;
 }
 
+type IngestMode = "api" | "scrape";
+
 export default function AdminPage() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<IngestMode>("api");
+  const [scrapeTier, setScrapeTier] = useState<EventTier>("showdown");
   const [result, setResult] = useState<IngestResult | null>(null);
   const [tournaments, setTournaments] = useState<IngestedTournament[]>([]);
   const [loadingTournaments, setLoadingTournaments] = useState(true);
@@ -82,10 +86,14 @@ export default function AdminPage() {
     setResult(null);
 
     try {
-      const res = await fetch("/api/admin/ingest", {
+      const endpoint = mode === "scrape" ? "/api/admin/scrape" : "/api/admin/ingest";
+      const payload = mode === "scrape"
+        ? { url: url.trim(), eventTier: scrapeTier }
+        : { url: url.trim() };
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       setResult(data);
@@ -174,7 +182,31 @@ export default function AdminPage() {
           </Link>
         </div>
 
-        <form onSubmit={handleIngest} className="mb-8">
+        <form onSubmit={handleIngest} className="mb-8 space-y-3">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setMode("api")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === "api"
+                  ? "border-gold/40 bg-gold/10 text-gold"
+                  : "border-border bg-surface text-muted hover:text-foreground"
+              }`}
+            >
+              API (with access)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("scrape")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === "scrape"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                  : "border-border bg-surface text-muted hover:text-foreground"
+              }`}
+            >
+              Scrape (no access needed)
+            </button>
+          </div>
           <div className="flex gap-3">
             <input
               type="text"
@@ -184,14 +216,41 @@ export default function AdminPage() {
               className="flex-1 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
               disabled={loading}
             />
+            {mode === "scrape" && (
+              <select
+                value={scrapeTier}
+                onChange={(e) => setScrapeTier(e.target.value as EventTier)}
+                className="rounded-lg border border-border bg-surface px-3 py-2.5 text-xs font-medium text-foreground focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+              >
+                <option value="padawan">Padawan</option>
+                <option value="minor">Minor</option>
+                <option value="showdown">Showdown</option>
+                <option value="major">Major</option>
+                <option value="planetary">Planetary</option>
+                <option value="sector">Sector</option>
+                <option value="galactic">Galactic</option>
+              </select>
+            )}
             <button
               type="submit"
               disabled={loading || !url.trim()}
-              className="rounded-lg bg-gold px-6 py-2.5 text-sm font-medium text-background transition-colors hover:bg-gold-light disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`rounded-lg px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                mode === "scrape"
+                  ? "bg-emerald-500 text-background hover:bg-emerald-400"
+                  : "bg-gold text-background hover:bg-gold-light"
+              }`}
             >
-              {loading ? "Ingesting..." : "Ingest"}
+              {loading
+                ? mode === "scrape" ? "Scraping..." : "Ingesting..."
+                : mode === "scrape" ? "Scrape" : "Ingest"
+              }
             </button>
           </div>
+          {mode === "scrape" && (
+            <p className="text-[10px] text-muted">
+              Scraping opens a browser to fetch public tournament data. Takes 30-60 seconds. Select the event tier since it can&apos;t be auto-detected.
+            </p>
+          )}
         </form>
 
         {result && (

@@ -81,6 +81,17 @@ function migrate(db: Database.Database): void {
       decklist_guid TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS scraped_data (
+      tournament_id INTEGER PRIMARY KEY,
+      raw_json TEXT NOT NULL,
+      scraped_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS player_aliases (
+      alias TEXT PRIMARY KEY,
+      canonical_id TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS aspect_cache (
       deck_key TEXT PRIMARY KEY,
       aspects TEXT NOT NULL DEFAULT '[]'
