@@ -13,8 +13,8 @@ const WIN_POINTS: Record<EventTier, number> = {
   galactic: 15,
 };
 
-// Bonus for beating a higher-rated opponent (upset)
-const UPSET_BONUS = 2;
+// Trial of Skill: bonus for beating a higher-rated opponent
+const TRIAL_OF_SKILL_BONUS = 2;
 
 const PLACEMENT_BONUSES: Record<EventTier, Record<number, number>> = {
   padawan:   { 1: 10, 2: 5,  3: 3,  4: 3  },
@@ -151,7 +151,7 @@ export function computeRatings(
 
     if (match.player1Wins > match.player2Wins) {
       let pts = Math.round(WIN_POINTS[tier] * q1);
-      if (p2.rating > p1.rating) pts += UPSET_BONUS;
+      if (p2.rating > p1.rating) pts += TRIAL_OF_SKILL_BONUS;
       p1.rating += pts;
       p1.wins++;
       p2.losses++;
@@ -159,7 +159,7 @@ export function computeRatings(
       p2.streak = p2.streak < 0 ? p2.streak - 1 : -1;
     } else if (match.player2Wins > match.player1Wins) {
       let pts = Math.round(WIN_POINTS[tier] * q2);
-      if (p1.rating > p2.rating) pts += UPSET_BONUS;
+      if (p1.rating > p2.rating) pts += TRIAL_OF_SKILL_BONUS;
       p2.rating += pts;
       p1.losses++;
       p2.wins++;

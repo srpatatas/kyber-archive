@@ -124,10 +124,12 @@ export default function AboutPage() {
                   ↑
                 </span>
                 <span>
-                  <span className="font-medium text-gold">Upset bonus</span>:{" "}
+                  <span className="font-medium text-gold">Trial of Skill</span>:{" "}
                   <span className="text-gold">+2 extra points</span> when you
                   defeat an opponent with a higher Midichlorian Index than yours.
-                  This rewards growth and underdog victories.
+                  In Jedi lore, the Trial of Skill tests a Padawan&apos;s combat
+                  ability against a stronger opponent &mdash; here it rewards
+                  growth and underdog victories.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -163,7 +165,7 @@ export default function AboutPage() {
                 Score per tournament ={" "}
                 <span className="text-emerald-400">Σ(win points × quality multiplier)</span>
                 {" + "}
-                <span className="text-gold">upset bonuses</span>
+                <span className="text-gold">trial of skill</span>
                 {" + "}
                 <span className="text-muted">draw points</span>
                 {" + "}
@@ -185,7 +187,7 @@ export default function AboutPage() {
                 <ul className="mt-2 space-y-1 text-xs text-muted">
                   <li>5 wins × 6 × 1.4x = <span className="text-foreground">42 pts</span></li>
                   <li>1 loss × 0 = <span className="text-foreground">0 pts</span></li>
-                  <li>Upset bonus (2 upsets) = <span className="text-gold">+4 pts</span></li>
+                  <li>Trial of Skill (2 trials) = <span className="text-gold">+4 pts</span></li>
                   <li>Participation (50%+ WR) = 5 × 1.4x = <span className="text-sky-400">+7 pts</span></li>
                   <li>Top 4 placement = <span className="text-gold">+10 pts</span></li>
                 </ul>
@@ -197,7 +199,7 @@ export default function AboutPage() {
                 <ul className="mt-2 space-y-1 text-xs text-muted">
                   <li>2 wins × 6 × 0.8x = <span className="text-foreground">10 pts</span></li>
                   <li>4 losses × 0 = <span className="text-foreground">0 pts</span></li>
-                  <li>Upset bonus (0 upsets) = <span className="text-foreground">0 pts</span></li>
+                  <li>Trial of Skill (0 trials) = <span className="text-foreground">0 pts</span></li>
                   <li>Participation (below 50%) = <span className="text-red-400">0 pts</span></li>
                   <li>No top cut = <span className="text-foreground">0 pts</span></li>
                 </ul>
