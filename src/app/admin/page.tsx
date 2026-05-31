@@ -95,7 +95,7 @@ export default function AdminPage() {
         });
         const data = await res.json();
         if (data.success) {
-          setResult({ success: true, tournament: "Scraping in progress...", matchesIngested: 0, playersFound: 0, eventTier: scrapeTier });
+          setResult(null);
           pollScrapeStatus();
         } else {
           setResult(data);
@@ -137,8 +137,13 @@ export default function AdminPage() {
           setLoading(false);
           setUrl("");
           setLastRecalc(new Date().toISOString());
-          setResult({ success: true, tournament: data.message, matchesIngested: 0, playersFound: 0 });
-          showToast("Scrape complete — tournament ingested");
+          const msg = data.message || "";
+          const matchCount = parseInt(msg.match(/(\d+) matches/)?.[1] || "0", 10);
+          const playerCount = parseInt(msg.match(/(\d+) players/)?.[1] || "0", 10);
+          const tournamentName = msg.match(/Ingested (.+?):/)?.[1] || "Tournament";
+          const tier = msg.match(/tier: (\w+)/)?.[1] as EventTier | undefined;
+          setResult({ success: true, tournament: tournamentName, matchesIngested: matchCount, playersFound: playerCount, eventTier: tier });
+          showToast(`Scraped ${tournamentName} — ratings recalculated`);
           fetchTournaments();
         } else if (data.status === "error") {
           setLoading(false);
