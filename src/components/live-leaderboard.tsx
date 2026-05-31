@@ -106,8 +106,8 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[750px]">
+      <div className="overflow-x-auto rounded-xl border border-border -mx-4 sm:mx-0">
+        <table className="w-full min-w-[500px]">
           <thead>
             <tr className="border-b border-border bg-surface">
               <th className="px-4 py-3 text-left">
@@ -158,12 +158,12 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                           {tier.name}
                         </span>
                         {player.mainLeader && (
-                          <>
+                          <span className="contents">
                             <span className="text-muted">·</span>
                             <span className="text-[10px] text-sand truncate max-w-[120px]">
                               {player.mainLeader}
                             </span>
-                          </>
+                          </span>
                         )}
                         {player.aspects && player.aspects.length > 0 && (
                           <span className="inline-flex gap-0.5">

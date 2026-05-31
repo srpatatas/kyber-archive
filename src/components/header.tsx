@@ -1,11 +1,24 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  const links = [
+    { href: "/", label: "Leaderboard" },
+    { href: "/tournaments", label: "Tournaments" },
+    { href: "/about", label: "About" },
+  ];
+
   return (
     <header className="border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <Link href="/" className="group flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center">
+        <Link href="/" className="group flex items-center gap-3" onClick={() => setMenuOpen(false)}>
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
             <div className="absolute inset-0 rounded-full bg-gold/20 glow-pulse" />
             <svg viewBox="0 0 32 44" className="relative h-8 w-6">
               <line x1="16" y1="2" x2="16" y2="0" stroke="#d4a017" strokeWidth="1" opacity="0.5" className="glow-pulse" />
@@ -24,28 +37,63 @@ export function Header() {
             <h1 className="text-lg font-bold tracking-tight text-foreground group-hover:text-gold transition-colors">
               The Midichlorian Index
             </h1>
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted">
+            <p className="hidden text-[10px] font-medium uppercase tracking-[0.2em] text-muted sm:block">
               Star Wars Unlimited Rankings
             </p>
           </div>
         </Link>
+
         <nav className="hidden items-center gap-6 sm:flex">
-          <Link href="/" className="text-sm font-medium text-muted hover:text-gold transition-colors">
-            Leaderboard
-          </Link>
-          <Link href="/tournaments" className="text-sm font-medium text-muted hover:text-gold transition-colors">
-            Tournaments
-          </Link>
-          <Link href="/about" className="text-sm font-medium text-muted hover:text-gold transition-colors">
-            About
-          </Link>
-          {process.env.NODE_ENV === "development" && (
-            <Link href="/admin" className="text-sm font-medium text-muted hover:text-gold transition-colors">
-              Admin
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`text-sm font-medium transition-colors ${
+                pathname === link.href ? "text-gold" : "text-muted hover:text-gold"
+              }`}
+            >
+              {link.label}
             </Link>
-          )}
+          ))}
         </nav>
+
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:text-foreground transition-colors sm:hidden"
+          aria-label="Toggle menu"
+        >
+          {menuOpen ? (
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M5 5L15 15M15 5L5 15" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 5H17M3 10H17M3 15H17" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
       </div>
+
+      {menuOpen && (
+        <nav className="border-t border-border bg-surface px-4 py-3 sm:hidden">
+          <div className="flex flex-col gap-1">
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMenuOpen(false)}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  pathname === link.href
+                    ? "bg-gold/10 text-gold"
+                    : "text-muted hover:bg-surface-light hover:text-foreground"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+      )}
     </header>
   );
 }
