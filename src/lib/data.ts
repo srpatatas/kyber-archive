@@ -22,7 +22,7 @@ export const factions: Record<Faction, FactionInfo> = {
     tiers: [
       { name: "General", minRating: 3200 },
       { name: "Commander", minRating: 2700 },
-      { name: "Pathfinder", minRating: 1900 },
+      { name: "Lieutenant", minRating: 1900 },
       { name: "Trooper", minRating: 1650 },
       { name: "Recruit", minRating: 0 },
     ],
@@ -33,8 +33,8 @@ export const factions: Record<Faction, FactionInfo> = {
     side: "dark",
     path: "force",
     tiers: [
-      { name: "Darth", minRating: 3200 },
-      { name: "Sith Lord", minRating: 2700 },
+      { name: "Sith Lord", minRating: 3200 },
+      { name: "Darth", minRating: 2700 },
       { name: "Sith Warrior", minRating: 1900 },
       { name: "Apprentice", minRating: 1650 },
       { name: "Acolyte", minRating: 0 },
