@@ -2,7 +2,6 @@ import { getLeaderboard, getIngestedTournaments } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
 import { LiveLeaderboard } from "@/components/live-leaderboard";
 
-export const dynamic = "force-dynamic";
 
 export default function Home() {
   const players = getLeaderboard();

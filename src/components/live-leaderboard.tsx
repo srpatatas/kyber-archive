@@ -8,7 +8,7 @@ import { RankBadge } from "./rank-badge";
 
 type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentCount";
 
-type RankedPlayer = PlayerRating & { rank: number; aspects?: string[] };
+type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number };
 
 function getWinRate(p: RankedPlayer): number {
   const total = p.wins + p.losses + p.draws;
@@ -157,7 +157,7 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                         <span className={`text-[10px] font-medium ${tier.color}`}>
                           {tier.name}
                         </span>
-                        {"mainLeader" in player && player.mainLeader && (
+                        {player.mainLeader && (
                           <>
                             <span className="text-muted">·</span>
                             <span className="text-[10px] text-sand truncate max-w-[120px]">

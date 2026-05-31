@@ -4,7 +4,6 @@ import { KyberCrystal } from "@/components/kyber-crystal";
 import { getTierConfig } from "@/lib/tiers";
 import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Tournaments | The Midichlorian Index",

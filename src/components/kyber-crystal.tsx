@@ -18,7 +18,7 @@ export function KyberCrystal({ color, tier, size = "md" }: { color: string; tier
       <svg
         viewBox="0 0 20 32"
         className={sizeClass}
-        title={tier}
+        aria-label={tier}
         style={{ animation: `kyber-${id} 3s ease-in-out infinite` }}
       >
         <path

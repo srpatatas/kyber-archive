@@ -7,7 +7,6 @@ import { LeadersSection } from "@/components/leaders-section";
 import { PlayerEvents } from "@/components/player-events";
 import { KyberCrystal } from "@/components/kyber-crystal";
 
-export const dynamic = "force-dynamic";
 
 function getTierLabel(rating: number, rank: number): { name: string; color: string } {
   if (rank === 1) return { name: "The Chosen One", color: "text-gold" };
@@ -16,6 +15,11 @@ function getTierLabel(rating: number, rank: number): { name: string; color: stri
   if (rating >= 1900) return { name: "Jedi Knight", color: "text-sky-400" };
   if (rating >= 1650) return { name: "Padawan", color: "text-sky-400" };
   return { name: "Youngling", color: "text-sky-400" };
+}
+
+export function generateStaticParams() {
+  const leaderboard = getLeaderboard();
+  return leaderboard.map((p) => ({ id: p.id }));
 }
 
 export default async function PlayerPage({
