@@ -99,6 +99,144 @@ export function addTournament(
   tx();
 }
 
+export function reingestFromCache(tournamentId: number): boolean {
+  const db = getDb();
+  const row = db.prepare("SELECT raw_json, scraped_at FROM scraped_data WHERE tournament_id = ?").get(tournamentId) as
+    { raw_json: string; scraped_at: string } | undefined;
+  if (!row) return false;
+
+  const raw = JSON.parse(row.raw_json);
+  const standings = raw.standings || [];
+  const matchEntries: [string, unknown[]][] = raw.matchesByRound || [];
+  const roundNameEntries: [string, string][] = raw.roundNames || [];
+  const roundNameMap = new Map<string, string>(roundNameEntries);
+  const tournamentName = raw.name || `Tournament ${tournamentId}`;
+
+  const existing = db.prepare("SELECT event_tier, organization_name FROM tournaments WHERE id = ?").get(tournamentId) as
+    { event_tier: EventTier; organization_name: string } | undefined;
+  const eventTier = existing?.event_tier ?? ("showdown" as EventTier);
+  const orgName = existing?.organization_name ?? "Unknown";
+  const tournamentDate = row.scraped_at;
+
+  const allMatches: MatchResult[] = [];
+  const players: Record<string, { id: string; meleeId: number; name: string; username: string }> = {};
+
+  for (const [roundId, matches] of matchEntries) {
+    const roundName = roundNameMap.get(roundId) || `Round ${roundId}`;
+    for (const match of matches as Record<string, unknown>[]) {
+      if (match.ByeReason != null || match.GhostMatch || !match.HasResult) continue;
+      const competitors = match.Competitors as Record<string, unknown>[];
+      if (!competitors || competitors.length < 2) continue;
+
+      const c1 = competitors[0] as Record<string, unknown>;
+      const c2 = competitors[1] as Record<string, unknown>;
+      const t1 = c1.Team as Record<string, unknown>;
+      const t2 = c2.Team as Record<string, unknown>;
+      if (!t1?.Players || !t2?.Players) continue;
+      const p1 = (t1.Players as Record<string, unknown>[])[0];
+      const p2 = (t2.Players as Record<string, unknown>[])[0];
+      if (!p1 || !p2) continue;
+
+      const p1Key = ((p1.Username || p1.DisplayName) as string).toLowerCase();
+      const p2Key = ((p2.Username || p2.DisplayName) as string).toLowerCase();
+
+      players[p1Key] = {
+        id: p1Key,
+        meleeId: p1.ID as number,
+        name: (p1.Name || p1.DisplayName) as string,
+        username: (p1.Username || p1.DisplayName) as string,
+      };
+      players[p2Key] = {
+        id: p2Key,
+        meleeId: p2.ID as number,
+        name: (p2.Name || p2.DisplayName) as string,
+        username: (p2.Username || p2.DisplayName) as string,
+      };
+
+      allMatches.push({
+        player1Id: p1Key,
+        player2Id: p2Key,
+        player1Wins: ((c1.GameWins as number) || 0) + ((c1.GameByes as number) || 0),
+        player2Wins: ((c2.GameWins as number) || 0) + ((c2.GameByes as number) || 0),
+        tournamentId,
+        tournamentName,
+        roundName: (match.RoundName as string) || roundName,
+        date: tournamentDate,
+        eventTier,
+      });
+    }
+  }
+
+  // Detect top cut
+  const roundNames = [...roundNameMap.values()];
+  const rnLower = roundNames.map((n) => n.toLowerCase());
+  const hasQuarters = rnLower.some((n) => n.includes("quarter"));
+  const hasSemis = rnLower.some((n) => n.includes("semi"));
+  let topCutSize = hasQuarters ? 8 : hasSemis ? 4 : 0;
+  if (topCutSize === 0) {
+    const mpr = roundNames.map((rn) => allMatches.filter((m) => m.roundName === rn).length).filter((c) => c > 0);
+    const l3 = mpr.slice(-3);
+    if (l3.length === 3 && l3[0] === 4 && l3[1] === 2 && l3[2] === 1) topCutSize = 8;
+    else {
+      const l2 = mpr.slice(-2);
+      if (l2.length === 2 && l2[0] === 2 && l2[1] === 1) topCutSize = 4;
+      else topCutSize = 4;
+    }
+  }
+
+  const placements: PlacementResult[] = [];
+  const decklistEntries: { playerId: string; leader: string; base: string; fullName: string; decklistGuid: string | null }[] = [];
+
+  for (const s of standings as Record<string, unknown>[]) {
+    const team = s.Team as Record<string, unknown>;
+    if (!team?.Players) continue;
+    const sp = (team.Players as Record<string, unknown>[])[0];
+    if (!sp) continue;
+    const playerId = ((sp.Username || sp.DisplayName) as string).toLowerCase();
+
+    if (topCutSize > 0 && (s.Rank as number) <= topCutSize) {
+      placements.push({ playerId, tournamentId, placement: s.Rank as number, eventTier, date: tournamentDate });
+    }
+
+    const decks = (s.Decklists || []) as Record<string, unknown>[];
+    if (decks.length > 0) {
+      const deckName = (decks[0].DecklistName || "") as string;
+      if (deckName) {
+        const parts = deckName.split(" - ");
+        decklistEntries.push({
+          playerId,
+          leader: parts[0]?.trim() || deckName,
+          base: parts[1]?.trim() || "",
+          fullName: deckName,
+          decklistGuid: (decks[0].DecklistId as string) || null,
+        });
+      }
+    }
+  }
+
+  const playerCount = Object.keys(players).length;
+
+  addTournament(
+    {
+      id: tournamentId,
+      name: tournamentName,
+      organizationName: orgName,
+      date: tournamentDate,
+      tags: [],
+      playerCount,
+      matchCount: allMatches.length,
+      eventTier,
+      ingestedAt: new Date().toISOString(),
+    },
+    allMatches,
+    placements,
+    decklistEntries,
+    players,
+  );
+
+  return true;
+}
+
 export function updateTournamentTier(id: number, eventTier: EventTier): boolean {
   const db = getDb();
   const tx = db.transaction(() => {
@@ -274,6 +412,7 @@ export function getLeaderboard(): (PlayerRating & { rank: number; mainLeader: st
 
 export interface TournamentSummary extends StoredTournament {
   winnerUsername: string | null;
+  hasCachedScrape: boolean;
 }
 
 export function getIngestedTournaments(): TournamentSummary[] {
@@ -281,12 +420,13 @@ export function getIngestedTournaments(): TournamentSummary[] {
   const rows = db.prepare(`
     SELECT t.*,
       (SELECT p.username FROM placements pl JOIN players p ON p.id = pl.player_id
-       WHERE pl.tournament_id = t.id AND pl.placement = 1 LIMIT 1) as winner_username
+       WHERE pl.tournament_id = t.id AND pl.placement = 1 LIMIT 1) as winner_username,
+      (SELECT 1 FROM scraped_data sd WHERE sd.tournament_id = t.id) as has_cached_scrape
     FROM tournaments t ORDER BY t.date
   `).all() as Array<{
     id: number; name: string; organization_name: string; date: string; tags: string;
     player_count: number; match_count: number; event_tier: EventTier; ingested_at: string;
-    winner_username: string | null;
+    winner_username: string | null; has_cached_scrape: number | null;
   }>;
   return rows.map((r) => ({
     id: r.id,
@@ -299,6 +439,7 @@ export function getIngestedTournaments(): TournamentSummary[] {
     eventTier: r.event_tier,
     ingestedAt: r.ingested_at,
     winnerUsername: r.winner_username,
+    hasCachedScrape: !!r.has_cached_scrape,
   }));
 }
 

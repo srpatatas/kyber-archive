@@ -25,6 +25,7 @@ interface IngestedTournament {
   matchCount: number;
   eventTier: EventTier;
   ingestedAt: string;
+  hasCachedScrape?: boolean;
 }
 
 interface IngestResult {
@@ -139,6 +140,26 @@ export default function AdminPage() {
         showToast("All ratings recalculated");
       } else {
         showToast(data.error ?? "Recalculation failed", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  }
+
+  async function handleReingest(id: number, name: string) {
+    try {
+      const res = await fetch("/api/admin/reingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLastRecalc(new Date().toISOString());
+        showToast(`Re-ingested ${name} from cache — ratings recalculated`);
+        fetchTournaments();
+      } else {
+        showToast(data.error ?? "Re-ingest failed", "error");
       }
     } catch {
       showToast("Network error", "error");
@@ -353,6 +374,18 @@ export default function AdminPage() {
                       <option value="sector">Sector</option>
                       <option value="galactic">Galactic</option>
                     </select>
+                    {t.hasCachedScrape && (
+                      <button
+                        onClick={() => handleReingest(t.id, t.name)}
+                        className="rounded p-1 text-muted hover:text-emerald-400 transition-colors"
+                        title="Re-ingest from cached scrape data"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M2 8a6 6 0 0111.5-2.5M14 8a6 6 0 01-11.5 2.5" strokeLinecap="round" />
+                          <path d="M14 2v4h-4M2 14v-4h4" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(t.id)}
                       className="rounded p-1 text-muted hover:text-red-400 transition-colors"
