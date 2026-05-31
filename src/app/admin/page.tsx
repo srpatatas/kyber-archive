@@ -86,29 +86,72 @@ export default function AdminPage() {
     setLoading(true);
     setResult(null);
 
-    try {
-      const endpoint = mode === "scrape" ? "/api/admin/scrape" : "/api/admin/ingest";
-      const payload = mode === "scrape"
-        ? { url: url.trim(), eventTier: scrapeTier }
-        : { url: url.trim() };
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      setResult(data);
-      if (data.success) {
-        setUrl("");
-        setLastRecalc(new Date().toISOString());
-        showToast(`Ingested ${data.tournament} — ratings recalculated`);
-        fetchTournaments();
+    if (mode === "scrape") {
+      try {
+        const res = await fetch("/api/admin/scrape", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: url.trim(), eventTier: scrapeTier }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setResult({ success: true, tournament: "Scraping in progress...", matchesIngested: 0, playersFound: 0, eventTier: scrapeTier });
+          pollScrapeStatus();
+        } else {
+          setResult(data);
+          setLoading(false);
+        }
+      } catch {
+        setResult({ error: "Network error — is the server running?" });
+        setLoading(false);
       }
-    } catch {
-      setResult({ error: "Network error — is the server running?" });
-    } finally {
-      setLoading(false);
+    } else {
+      try {
+        const res = await fetch("/api/admin/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: url.trim() }),
+        });
+        const data = await res.json();
+        setResult(data);
+        if (data.success) {
+          setUrl("");
+          setLastRecalc(new Date().toISOString());
+          showToast(`Ingested ${data.tournament} — ratings recalculated`);
+          fetchTournaments();
+        }
+      } catch {
+        setResult({ error: "Network error — is the server running?" });
+      } finally {
+        setLoading(false);
+      }
     }
+  }
+
+  async function pollScrapeStatus() {
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/admin/scrape");
+        const data = await res.json();
+        if (data.status === "done") {
+          setLoading(false);
+          setUrl("");
+          setLastRecalc(new Date().toISOString());
+          setResult({ success: true, tournament: data.message, matchesIngested: 0, playersFound: 0 });
+          showToast("Scrape complete — tournament ingested");
+          fetchTournaments();
+        } else if (data.status === "error") {
+          setLoading(false);
+          setResult({ error: data.message });
+        } else {
+          setTimeout(poll, 2000);
+        }
+      } catch {
+        setLoading(false);
+        setResult({ error: "Lost connection while scraping" });
+      }
+    };
+    setTimeout(poll, 3000);
   }
 
   async function handleTierChange(id: number, name: string, eventTier: EventTier) {
