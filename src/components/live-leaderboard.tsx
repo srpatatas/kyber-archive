@@ -215,7 +215,7 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                   <td className="px-4 py-3 text-center">
                     {player.top8s > 0 ? (
                       <div>
-                        <span className="text-sm font-bold tabular-nums text-gold">
+                        <span className="text-sm font-bold tabular-nums text-foreground">
                           {Math.round((player.top8s / player.tournamentCount) * 100)}%
                         </span>
                         <p className="text-[10px] tabular-nums text-muted">
