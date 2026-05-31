@@ -120,7 +120,7 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                 <SortHeader label="MI Rating" sortKeyName="rating" />
               </th>
               <th className="px-4 py-3 text-right">
-                <SortHeader label="Win %" sortKeyName="winRate" />
+                <SortHeader label="Win Rate %" sortKeyName="winRate" />
               </th>
               <th className="px-4 py-3 text-center">
                 <SortHeader label="Top Cut %" sortKeyName="top8s" />
