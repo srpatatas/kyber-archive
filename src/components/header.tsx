@@ -7,10 +7,17 @@ export function Header() {
         <Link href="/" className="group flex items-center gap-3">
           <div className="relative flex h-10 w-10 items-center justify-center">
             <div className="absolute inset-0 rounded-full bg-gold/20 glow-pulse" />
-            <svg viewBox="0 0 20 32" className="relative h-7 w-4">
-              <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill="#d4a017" opacity="0.9" />
-              <path d="M10 0L17 8V20L10 32V16L14 10V9L10 3V0Z" fill="white" opacity="0.15" />
-              <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
+            <svg viewBox="0 0 32 44" className="relative h-8 w-6">
+              <line x1="16" y1="2" x2="16" y2="0" stroke="#d4a017" strokeWidth="1" opacity="0.5" className="glow-pulse" />
+              <line x1="24" y1="8" x2="27" y2="5" stroke="#d4a017" strokeWidth="0.8" opacity="0.4" className="glow-pulse" />
+              <line x1="8" y1="8" x2="5" y2="5" stroke="#d4a017" strokeWidth="0.8" opacity="0.4" className="glow-pulse" />
+              <line x1="26" y1="16" x2="29" y2="16" stroke="#d4a017" strokeWidth="0.8" opacity="0.3" className="glow-pulse" />
+              <line x1="6" y1="16" x2="3" y2="16" stroke="#d4a017" strokeWidth="0.8" opacity="0.3" className="glow-pulse" />
+              <g transform="translate(6, 6)">
+                <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill="#d4a017" opacity="0.9" />
+                <path d="M10 0L17 8V20L10 32V16L14 10V9L10 3V0Z" fill="white" opacity="0.15" />
+                <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
+              </g>
             </svg>
           </div>
           <div>
