@@ -49,7 +49,7 @@ export const factions: Record<Faction, FactionInfo> = {
       { name: "Grand Admiral", minRating: 3200 },
       { name: "Grand Moff", minRating: 2700 },
       { name: "Captain", minRating: 1900 },
-      { name: "Stormtrooper", minRating: 1650 },
+      { name: "Trooper", minRating: 1650 },
       { name: "Cadet", minRating: 0 },
     ],
   },
