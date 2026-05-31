@@ -185,10 +185,6 @@ export function reingestFromCache(tournamentId: number): boolean {
     }
   }
 
-  // Cap top cut by player count: <9 = no placements, 9-16 = top 4 max, 17+ = top 8
-  if (playerCount < 9) topCutSize = 0;
-  else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
-
   const placements: PlacementResult[] = [];
   const decklistEntries: { playerId: string; leader: string; base: string; fullName: string; decklistGuid: string | null }[] = [];
 
@@ -220,6 +216,10 @@ export function reingestFromCache(tournamentId: number): boolean {
   }
 
   const playerCount = Object.keys(players).length;
+
+  // Cap top cut by player count: <9 = no placements, 9-16 = top 4 max, 17+ = top 8
+  if (playerCount < 9) topCutSize = 0;
+  else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
 
   addTournament(
     {
