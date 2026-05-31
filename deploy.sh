@@ -1,24 +1,30 @@
 #!/bin/bash
 set -e
 
+# Ensure directories are restored on any exit (error or success)
+cleanup() {
+  [ -d src/app/_api_excluded ] && mv src/app/_api_excluded src/app/api
+  [ -d src/app/_admin_excluded ] && mv src/app/_admin_excluded src/app/admin
+}
+trap cleanup EXIT
+
 echo "Preparing static export..."
 
-# Temporarily move API routes and admin out of the build
+# Move API routes and admin out of the build
 mv src/app/api src/app/_api_excluded
 mv src/app/admin src/app/_admin_excluded
 
-# Build for production (generates .vercel/output)
-STATIC_EXPORT=1 vercel build --prod
+# Clean previous builds
+rm -rf out .next
 
-# Restore API routes and admin
-mv src/app/_api_excluded src/app/api
-mv src/app/_admin_excluded src/app/admin
+# Build static site
+STATIC_EXPORT=1 npx next build
 
 echo ""
 echo "Deploying to Vercel..."
 
-# Deploy the prebuilt output
-vercel deploy --prebuilt --prod
+# Deploy the out/ directory directly as static
+vercel deploy out/ --prod
 
 echo ""
 echo "Done! Your site is live."
