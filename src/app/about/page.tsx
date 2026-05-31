@@ -125,7 +125,7 @@ export default function AboutPage() {
                 </span>
                 <span>
                   <span className="font-medium text-gold">Trial of Skill</span>:{" "}
-                  <span className="text-gold">+2 extra points</span> when you
+                  <span className="text-gold">+2 extra points</span>{" "}when you
                   defeat an opponent with a higher Midichlorian Index than yours.
                   In Jedi lore, the Trial of Skill tests a Padawan&apos;s combat
                   ability against a stronger opponent &mdash; here it rewards
