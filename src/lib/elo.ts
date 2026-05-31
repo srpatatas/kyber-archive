@@ -218,3 +218,157 @@ export function computeRatings(
 
   return ratings;
 }
+
+const ELO_K = 32;
+
+export function computePureElo(matches: MatchResult[]): Map<string, PlayerRating> {
+  const ratings = new Map<string, PlayerRating>();
+
+  function getOrCreate(id: string): PlayerRating {
+    if (!ratings.has(id)) {
+      ratings.set(id, {
+        id, meleeId: 0, name: "", username: "",
+        rating: DEFAULT_RATING, peakRating: DEFAULT_RATING,
+        wins: 0, losses: 0, draws: 0, streak: 0,
+        tournamentCount: 0, tournamentWins: 0, top8s: 0, lastActive: "",
+      });
+    }
+    return ratings.get(id)!;
+  }
+
+  for (const match of matches) {
+    const p1 = getOrCreate(match.player1Id);
+    const p2 = getOrCreate(match.player2Id);
+
+    const e1 = 1 / (1 + Math.pow(10, (p2.rating - p1.rating) / 400));
+    const e2 = 1 - e1;
+
+    let s1: number, s2: number;
+    if (match.player1Wins > match.player2Wins) {
+      s1 = 1; s2 = 0;
+      p1.wins++; p2.losses++;
+      p1.streak = p1.streak > 0 ? p1.streak + 1 : 1;
+      p2.streak = p2.streak < 0 ? p2.streak - 1 : -1;
+    } else if (match.player2Wins > match.player1Wins) {
+      s1 = 0; s2 = 1;
+      p1.losses++; p2.wins++;
+      p1.streak = p1.streak < 0 ? p1.streak - 1 : -1;
+      p2.streak = p2.streak > 0 ? p2.streak + 1 : 1;
+    } else {
+      s1 = 0.5; s2 = 0.5;
+      p1.draws++; p2.draws++;
+      p1.streak = 0; p2.streak = 0;
+    }
+
+    p1.rating = Math.round(p1.rating + ELO_K * (s1 - e1));
+    p2.rating = Math.round(p2.rating + ELO_K * (s2 - e2));
+
+    p1.peakRating = Math.max(p1.peakRating, p1.rating);
+    p2.peakRating = Math.max(p2.peakRating, p2.rating);
+
+    if (match.date > p1.lastActive) p1.lastActive = match.date;
+    if (match.date > p2.lastActive) p2.lastActive = match.date;
+  }
+
+  return ratings;
+}
+
+export function computeEloTrial(matches: MatchResult[]): Map<string, PlayerRating> {
+  const ratings = new Map<string, PlayerRating>();
+
+  function getOrCreate(id: string): PlayerRating {
+    if (!ratings.has(id)) {
+      ratings.set(id, {
+        id, meleeId: 0, name: "", username: "",
+        rating: DEFAULT_RATING, peakRating: DEFAULT_RATING,
+        wins: 0, losses: 0, draws: 0, streak: 0,
+        tournamentCount: 0, tournamentWins: 0, top8s: 0, lastActive: "",
+      });
+    }
+    return ratings.get(id)!;
+  }
+
+  // Snapshot ratings at the start of each tournament for Trial of Skill checks
+  const tournamentSnapshots = new Map<number, Map<string, number>>();
+  let currentTournamentId = -1;
+
+  for (const match of matches) {
+    if (match.tournamentId !== currentTournamentId) {
+      currentTournamentId = match.tournamentId;
+      const snapshot = new Map<string, number>();
+      for (const [id, p] of ratings) snapshot.set(id, p.rating);
+      tournamentSnapshots.set(currentTournamentId, snapshot);
+    }
+
+    const p1 = getOrCreate(match.player1Id);
+    const p2 = getOrCreate(match.player2Id);
+
+    const snapshot = tournamentSnapshots.get(currentTournamentId)!;
+    const p1Snap = snapshot.get(match.player1Id) ?? DEFAULT_RATING;
+    const p2Snap = snapshot.get(match.player2Id) ?? DEFAULT_RATING;
+
+    const e1 = 1 / (1 + Math.pow(10, (p2.rating - p1.rating) / 400));
+    const e2 = 1 - e1;
+
+    let s1: number, s2: number;
+    if (match.player1Wins > match.player2Wins) {
+      s1 = 1; s2 = 0;
+      p1.wins++; p2.losses++;
+      p1.streak = p1.streak > 0 ? p1.streak + 1 : 1;
+      p2.streak = p2.streak < 0 ? p2.streak - 1 : -1;
+    } else if (match.player2Wins > match.player1Wins) {
+      s1 = 0; s2 = 1;
+      p1.losses++; p2.wins++;
+      p1.streak = p1.streak < 0 ? p1.streak - 1 : -1;
+      p2.streak = p2.streak > 0 ? p2.streak + 1 : 1;
+    } else {
+      s1 = 0.5; s2 = 0.5;
+      p1.draws++; p2.draws++;
+      p1.streak = 0; p2.streak = 0;
+    }
+
+    p1.rating = Math.round(p1.rating + ELO_K * (s1 - e1));
+    p2.rating = Math.round(p2.rating + ELO_K * (s2 - e2));
+
+    if (match.player1Wins > match.player2Wins && p2Snap > p1Snap) p1.rating += TRIAL_OF_SKILL_BONUS;
+    if (match.player2Wins > match.player1Wins && p1Snap > p2Snap) p2.rating += TRIAL_OF_SKILL_BONUS;
+
+    p1.peakRating = Math.max(p1.peakRating, p1.rating);
+    p2.peakRating = Math.max(p2.peakRating, p2.rating);
+
+    if (match.date > p1.lastActive) p1.lastActive = match.date;
+    if (match.date > p2.lastActive) p2.lastActive = match.date;
+  }
+
+  return ratings;
+}
+
+function applyPlacementBonuses(ratings: Map<string, PlayerRating>, placements: PlacementResult[]): void {
+  for (const placement of placements) {
+    const player = ratings.get(placement.playerId);
+    if (!player) continue;
+    const hasTopCut = !placement.playerCount || placement.playerCount >= 9;
+    if (hasTopCut) {
+      const tierBonuses = PLACEMENT_BONUSES[placement.eventTier];
+      const bonus = tierBonuses[placement.placement] ?? 0;
+      if (bonus > 0) {
+        player.rating += bonus;
+        player.peakRating = Math.max(player.peakRating, player.rating);
+      }
+      if (placement.placement <= 8) player.top8s++;
+    }
+    if (placement.placement === 1) player.tournamentWins++;
+  }
+}
+
+export function computeEloWithPlacements(matches: MatchResult[], placements: PlacementResult[]): Map<string, PlayerRating> {
+  const ratings = computePureElo(matches);
+  applyPlacementBonuses(ratings, placements);
+  return ratings;
+}
+
+export function computeEloTrialWithPlacements(matches: MatchResult[], placements: PlacementResult[]): Map<string, PlayerRating> {
+  const ratings = computeEloTrial(matches);
+  applyPlacementBonuses(ratings, placements);
+  return ratings;
+}

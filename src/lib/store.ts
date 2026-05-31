@@ -1,6 +1,6 @@
 import { query, withTransaction } from "./db";
 import type { PoolClient } from "@neondatabase/serverless";
-import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings } from "./elo";
+import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings, computePureElo, computeEloWithPlacements, computeEloTrialWithPlacements, computeEloTrial } from "./elo";
 
 interface StoredTournament {
   id: number;
@@ -289,7 +289,7 @@ async function recomputeRatings(client: PoolClient): Promise<void> {
     date: r.date as string,
   }));
 
-  const ratings = computeRatings(matches, placements);
+  const ratings = computeEloTrialWithPlacements(matches, placements);
 
   const tournamentsByPlayer = new Map<string, Set<number>>();
   for (const m of matches) {
@@ -779,4 +779,116 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
       return order(a.name) - order(b.name);
     }),
   };
+}
+
+export interface EloComparisonEntry {
+  id: string;
+  username: string;
+  name: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  tournamentCount: number;
+  miRating: number;
+  miRank: number;
+  eloRating: number;
+  eloRank: number;
+  eloTierRating: number;
+  eloTierRank: number;
+  eloTierTrialRating: number;
+  eloTierTrialRank: number;
+}
+
+export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
+  const { rows: matchRows } = await query(`
+    SELECT player1_id, player2_id, player1_wins, player2_wins, tournament_id,
+           t.name as tournament_name, round_name, matches.date, matches.event_tier
+    FROM matches
+    JOIN tournaments t ON t.id = matches.tournament_id
+    ORDER BY matches.date, matches.id
+  `);
+
+  const matches: MatchResult[] = matchRows.map((r: Record<string, unknown>) => ({
+    player1Id: r.player1_id as string,
+    player2Id: r.player2_id as string,
+    player1Wins: r.player1_wins as number,
+    player2Wins: r.player2_wins as number,
+    tournamentId: r.tournament_id as number,
+    tournamentName: r.tournament_name as string,
+    roundName: r.round_name as string,
+    date: r.date as string,
+    eventTier: r.event_tier as EventTier,
+  }));
+
+  const { rows: placementRows } = await query(
+    "SELECT p.player_id, p.tournament_id, p.placement, p.event_tier, p.date, t.player_count FROM placements p JOIN tournaments t ON t.id = p.tournament_id"
+  );
+  const placements: PlacementResult[] = placementRows.map((r: Record<string, unknown>) => ({
+    playerId: r.player_id as string,
+    tournamentId: r.tournament_id as number,
+    placement: r.placement as number,
+    playerCount: r.player_count as number,
+    eventTier: r.event_tier as EventTier,
+    date: r.date as string,
+  }));
+
+  const eloRatings = computePureElo(matches);
+  const eloTierRatings = computeEloWithPlacements(matches, placements);
+  const eloTierTrialRatings = computeEloTrialWithPlacements(matches, placements);
+
+  const { rows: playerRows } = await query("SELECT id, melee_id, name, username FROM players");
+  const playerInfo = new Map((playerRows as Record<string, unknown>[]).map((p) => [p.id as string, p]));
+
+  const tournamentsByPlayer = new Map<string, Set<number>>();
+  for (const m of matches) {
+    for (const pid of [m.player1Id, m.player2Id]) {
+      if (!tournamentsByPlayer.has(pid)) tournamentsByPlayer.set(pid, new Set());
+      tournamentsByPlayer.get(pid)!.add(m.tournamentId);
+    }
+  }
+
+  const miLeaderboard = await getLeaderboard();
+  const miMap = new Map(miLeaderboard.map((p) => [p.id, { rating: p.rating, rank: p.rank }]));
+
+  const allPlayerIds = new Set([...eloRatings.keys()]);
+  const entries: EloComparisonEntry[] = [];
+
+  for (const id of allPlayerIds) {
+    const elo = eloRatings.get(id)!;
+    const total = elo.wins + elo.losses + elo.draws;
+    if (total < 3) continue;
+    const info = playerInfo.get(id);
+    const mi = miMap.get(id);
+    const eloTier = eloTierRatings.get(id);
+    const eloTierTrial = eloTierTrialRatings.get(id);
+
+    entries.push({
+      id,
+      username: (info?.username as string) ?? id,
+      name: (info?.name as string) ?? "",
+      wins: elo.wins,
+      losses: elo.losses,
+      draws: elo.draws,
+      tournamentCount: tournamentsByPlayer.get(id)?.size ?? 0,
+      miRating: mi?.rating ?? 0,
+      miRank: mi?.rank ?? 0,
+      eloRating: elo.rating,
+      eloRank: 0,
+      eloTierRating: eloTier?.rating ?? elo.rating,
+      eloTierRank: 0,
+      eloTierTrialRating: eloTierTrial?.rating ?? elo.rating,
+      eloTierTrialRank: 0,
+    });
+  }
+
+  const byElo = [...entries].sort((a, b) => b.eloRating - a.eloRating);
+  byElo.forEach((e, i) => { e.eloRank = i + 1; });
+
+  const byEloTier = [...entries].sort((a, b) => b.eloTierRating - a.eloTierRating);
+  byEloTier.forEach((e, i) => { e.eloTierRank = i + 1; });
+
+  const byEloTierTrial = [...entries].sort((a, b) => b.eloTierTrialRating - a.eloTierTrialRating);
+  byEloTierTrial.forEach((e, i) => { e.eloTierTrialRank = i + 1; });
+
+  return byEloTier;
 }
