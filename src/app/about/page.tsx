@@ -278,12 +278,12 @@ export default function AboutPage() {
             </p>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[
-                { name: "Vigilance", color: "#3b82f6", desc: "Defensive and protective strategies" },
-                { name: "Command", color: "#22c55e", desc: "Leadership and unit coordination" },
-                { name: "Aggression", color: "#ef4444", desc: "Aggressive direct combat" },
-                { name: "Cunning", color: "#eab308", desc: "Tricks, disruption, and resource denial" },
-                { name: "Villainy", color: "#a855f7", desc: "Dark side power and domination" },
-                { name: "Heroism", color: "#06b6d4", desc: "Light side courage and sacrifice" },
+                { name: "Vigilance", abbrev: "VIG", color: "#6694ce", desc: "Defensive and protective strategies" },
+                { name: "Command", abbrev: "CMD", color: "#41ad49", desc: "Leadership and unit coordination" },
+                { name: "Aggression", abbrev: "AGG", color: "#d2232a", desc: "Aggressive direct combat" },
+                { name: "Cunning", abbrev: "CUN", color: "#fdb933", desc: "Tricks, disruption, and resource denial" },
+                { name: "Heroism", abbrev: "HER", color: "#c6c1a0", desc: "Light side courage and sacrifice" },
+                { name: "Villainy", abbrev: "VIL", color: "#040004", desc: "Dark side power and domination" },
               ].map((aspect) => (
                 <div
                   key={aspect.name}
@@ -291,10 +291,22 @@ export default function AboutPage() {
                 >
                   <span
                     className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: aspect.color }}
+                    style={{ backgroundColor: aspect.color, boxShadow: aspect.name === "Villainy" ? "0 0 0 1px rgba(255,255,255,0.2)" : undefined }}
                   />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{aspect.name}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{aspect.name}</p>
+                      <span
+                        className="rounded px-1 py-px text-[8px] font-bold leading-tight"
+                        style={{
+                          backgroundColor: aspect.name === "Villainy" ? aspect.color : `${aspect.color}25`,
+                          color: aspect.name === "Villainy" ? "#ffffff" : aspect.color,
+                          border: `1px solid ${aspect.name === "Villainy" ? "rgba(255,255,255,0.25)" : `${aspect.color}40`}`,
+                        }}
+                      >
+                        {aspect.abbrev}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted">{aspect.desc}</p>
                   </div>
                 </div>
