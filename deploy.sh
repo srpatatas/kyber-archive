@@ -7,8 +7,8 @@ echo "Preparing static export..."
 mv src/app/api src/app/_api_excluded
 mv src/app/admin src/app/_admin_excluded
 
-# Build using vercel build (generates .vercel/output)
-vercel build
+# Build for production (generates .vercel/output)
+vercel build --prod
 
 # Restore API routes and admin
 mv src/app/_api_excluded src/app/api
@@ -18,7 +18,7 @@ echo ""
 echo "Deploying to Vercel..."
 
 # Deploy the prebuilt output
-vercel deploy --prebuilt
+vercel deploy --prebuilt --prod
 
 echo ""
 echo "Done! Your site is live."
