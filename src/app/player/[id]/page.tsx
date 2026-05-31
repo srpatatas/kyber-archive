@@ -14,7 +14,7 @@ function getTierLabel(rating: number, rank: number): { name: string; color: stri
   if (rating >= 2700) return { name: "Grand Master", color: "text-sky-400" };
   if (rating >= 2400) return { name: "Jedi Master", color: "text-sky-400" };
   if (rating >= 2000) return { name: "Jedi Knight", color: "text-sky-400" };
-  if (rating >= 1500) return { name: "Padawan", color: "text-sky-400" };
+  if (rating >= 1700) return { name: "Padawan", color: "text-sky-400" };
   return { name: "Youngling", color: "text-sky-400" };
 }
 
