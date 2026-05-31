@@ -72,7 +72,9 @@ if (await acceptCookies.isVisible().catch(() => false)) {
 
 const title = await page.title();
 const name = title.replace(" | Melee", "").trim();
+const orgName = await page.locator(".tournament-organizer-name, a[href*='/Hub/Organization/']").first().textContent().catch(() => null);
 console.log(`Tournament: ${name}`);
+console.log(`Organization: ${orgName?.trim() || "Unknown"}`);
 
 // Click last standings round for final standings
 const standingsButtons = await page.locator("#standings-round-selector-container .round-selector").all();
@@ -186,7 +188,7 @@ const tx = db.transaction(() => {
   db.prepare(`
     INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(tournamentId, name, "Scraped", tournamentDate, "[]", playerCount, allMatches.length, eventTier, tournamentDate);
+  `).run(tournamentId, name, orgName?.trim() || "Unknown", tournamentDate, "[]", playerCount, allMatches.length, eventTier, tournamentDate);
 
   // Insert players
   const insertPlayer = db.prepare("INSERT OR REPLACE INTO players (id, melee_id, name, username) VALUES (?, ?, ?, ?)");
