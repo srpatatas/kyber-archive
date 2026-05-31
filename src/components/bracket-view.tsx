@@ -22,7 +22,7 @@ function detectBracketRounds(rounds: BracketRound[]): BracketRound[] {
     const name = r.name.toLowerCase();
     return name.includes("quarter") || name.includes("semi") || name.includes("final");
   });
-  if (named.length > 0) return named;
+  if (named.length > 0) return named.sort((a, b) => b.matches.length - a.matches.length);
 
   const counts = rounds.map((r) => r.matches.length);
   const last3 = counts.slice(-3);
