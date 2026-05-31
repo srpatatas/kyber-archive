@@ -48,7 +48,7 @@ export const factions: Record<Faction, FactionInfo> = {
     tiers: [
       { name: "Grand Admiral", minRating: 3200 },
       { name: "Grand Moff", minRating: 2700 },
-      { name: "Commander", minRating: 1900 },
+      { name: "Captain", minRating: 1900 },
       { name: "Officer", minRating: 1650 },
       { name: "Cadet", minRating: 0 },
     ],

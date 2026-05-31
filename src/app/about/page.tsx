@@ -24,7 +24,7 @@ const factionTiers = [
     jedi: "Jedi Knight",
     rebels: "Pathfinder",
     sith: "Sith Warrior",
-    empire: "Commander",
+    empire: "Captain",
   },
   {
     rating: "1,650–1,899",
