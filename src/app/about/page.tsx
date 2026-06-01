@@ -225,12 +225,12 @@ export default function AboutPage() {
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {[
-                    { tier: "Minor Tournament", color: "text-emerald-400", p1: 25, p2: 15, p34: 10, p58: 5 },
-                    { tier: "Store Showdown", color: "text-sky-400", p1: 25, p2: 15, p34: 10, p58: 5 },
-                    { tier: "Major Tournament", color: "text-purple-400", p1: 40, p2: 30, p34: 20, p58: 10 },
-                    { tier: "Planetary Qualifier", color: "text-gold", p1: 60, p2: 45, p34: 30, p58: 15 },
-                    { tier: "Sector Championship", color: "text-orange-400", p1: 80, p2: 60, p34: 40, p58: 20 },
-                    { tier: "Galactic Championship", color: "text-red-400", p1: 100, p2: 75, p34: 50, p58: 25 },
+                    { tier: "Minor Tournament", color: "text-emerald-400", p1: 12, p2: 8, p34: 5, p58: 2 },
+                    { tier: "Store Showdown", color: "text-sky-400", p1: 12, p2: 8, p34: 5, p58: 2 },
+                    { tier: "Major Tournament", color: "text-purple-400", p1: 20, p2: 15, p34: 10, p58: 5 },
+                    { tier: "Planetary Qualifier", color: "text-gold", p1: 30, p2: 22, p34: 15, p58: 8 },
+                    { tier: "Sector Championship", color: "text-orange-400", p1: 40, p2: 30, p34: 20, p58: 10 },
+                    { tier: "Galactic Championship", color: "text-red-400", p1: 50, p2: 38, p34: 25, p58: 12 },
                   ].map((row) => (
                     <tr key={row.tier}>
                       <td className={`py-2 pr-3 font-medium ${row.color}`}>{row.tier}</td>

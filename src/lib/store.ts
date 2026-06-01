@@ -289,7 +289,7 @@ async function recomputeRatings(client: PoolClient): Promise<void> {
     date: r.date as string,
   }));
 
-  const ratings = computeEloTrialWithPlacements(matches, placements);
+  const ratings = computeEloTrialScaledPlacements(matches, placements);
 
   const tournamentsByPlayer = new Map<string, Set<number>>();
   for (const m of matches) {
@@ -903,5 +903,5 @@ export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
   const byEloTierTrialHalf = [...entries].sort((a, b) => b.eloTierTrialHalfRating - a.eloTierTrialHalfRating);
   byEloTierTrialHalf.forEach((e, i) => { e.eloTierTrialHalfRank = i + 1; });
 
-  return byEloTierTrial;
+  return byEloTierTrialHalf;
 }
