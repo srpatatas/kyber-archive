@@ -4,10 +4,6 @@ import { requireAdminPin } from "@/lib/admin-auth";
 
 let activeScrape: { tournamentId: number; status: "running" | "done" | "error"; message: string } | null = null;
 
-// Escape Turbopack static analysis — scraping uses child_process + Playwright, only works locally
-// eslint-disable-next-line @typescript-eslint/no-implied-eval
-const load = new Function("m", "return require(m)") as (m: string) => typeof import("child_process");
-
 export async function POST(request: NextRequest) {
   const denied = requireAdminPin(request);
   if (denied) return denied;
@@ -38,11 +34,11 @@ export async function POST(request: NextRequest) {
 
     activeScrape = { tournamentId, status: "running", message: "Scraping..." };
 
-    const { spawn } = load("child_process");
-    const { join } = load("path") as unknown as typeof import("path");
-    const scriptPath = join(process.cwd(), "scrape.mjs");
+    const cp = await import("node:child_process");
+    const scriptName = ["scrape", "mjs"].join(".");
+    const scriptPath = [process.cwd(), scriptName].join("/");
 
-    const child = spawn("node", [scriptPath, String(tournamentId), tier], {
+    const child = cp.spawn("node", [scriptPath, String(tournamentId), tier], {
       cwd: process.cwd(),
       stdio: ["ignore", "pipe", "pipe"],
       detached: false,
