@@ -25,8 +25,9 @@ export default async function EloPage() {
           <p className="mt-2 max-w-2xl text-sm text-muted">
             Sorted by <strong className="text-emerald-400">MI</strong> (current system: ELO + Trial of Skill + 50% tier bonuses).
             Compare with <strong className="text-sky-400">ELO</strong> (pure),{" "}
-            <strong className="text-gold">ELO+Tier</strong> (full tier bonuses, no Trial of Skill),
-            and <strong className="text-purple-400">ELO+T+ToS 100%</strong> (full tier bonuses).
+            <strong className="text-gold">ELO+Tier</strong> (full tier bonuses, no Trial of Skill),{" "}
+            <strong className="text-purple-400">ELO+T+ToS 100%</strong> (full tier bonuses),
+            and <strong className="text-orange-400">+Size</strong> (K scaled by log2 of player count).
           </p>
           <div className="mt-4">
             <Link href="/" className="text-sm text-gold hover:underline">
@@ -56,6 +57,9 @@ export default async function EloPage() {
                 </th>
                 <th className="px-3 py-3 text-center border-l border-border/50">
                   <span className="text-xs font-medium uppercase tracking-wider text-purple-400">ELO+T+ToS 100%</span>
+                </th>
+                <th className="px-3 py-3 text-center border-l border-border/50">
+                  <span className="text-xs font-medium uppercase tracking-wider text-orange-400">+Size</span>
                 </th>
               </tr>
             </thead>
@@ -103,6 +107,13 @@ export default async function EloPage() {
                         <RankDiff current={p.eloTierTrialRank} baseline={p.eloTierTrialHalfRank} />
                       </div>
                       <p className="text-[10px] text-muted tabular-nums text-center">{p.eloTierTrialRating}</p>
+                    </td>
+                    <td className="px-3 py-3 border-l border-border/50">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="text-sm font-bold text-orange-400 tabular-nums">#{p.eloSizeRank}</span>
+                        <RankDiff current={p.eloSizeRank} baseline={p.eloTierTrialHalfRank} />
+                      </div>
+                      <p className="text-[10px] text-muted tabular-nums text-center">{p.eloSizeRating}</p>
                     </td>
                   </tr>
                 );

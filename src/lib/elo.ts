@@ -34,6 +34,7 @@ export interface MatchResult {
   roundName: string;
   date: string;
   eventTier: EventTier;
+  playerCount?: number;
 }
 
 export interface PlacementResult {
@@ -375,6 +376,82 @@ export function computeEloTrialWithPlacements(matches: MatchResult[], placements
 
 export function computeEloTrialScaledPlacements(matches: MatchResult[], placements: PlacementResult[]): Map<string, PlayerRating> {
   const ratings = computeEloTrial(matches);
+  applyPlacementBonuses(ratings, placements, 0.5);
+  return ratings;
+}
+
+function sizeMultiplier(playerCount?: number): number {
+  if (!playerCount || playerCount <= 0) return 1;
+  return Math.log2(playerCount) / Math.log2(16);
+}
+
+export function computeEloTrialSizePlacements(matches: MatchResult[], placements: PlacementResult[]): Map<string, PlayerRating> {
+  const ratings = new Map<string, PlayerRating>();
+
+  function getOrCreate(id: string): PlayerRating {
+    if (!ratings.has(id)) {
+      ratings.set(id, {
+        id, meleeId: 0, name: "", username: "",
+        rating: DEFAULT_RATING, peakRating: DEFAULT_RATING,
+        wins: 0, losses: 0, draws: 0, streak: 0,
+        tournamentCount: 0, tournamentWins: 0, top8s: 0, lastActive: "",
+      });
+    }
+    return ratings.get(id)!;
+  }
+
+  const tournamentSnapshots = new Map<number, Map<string, number>>();
+  let currentTournamentId = -1;
+
+  for (const match of matches) {
+    if (match.tournamentId !== currentTournamentId) {
+      currentTournamentId = match.tournamentId;
+      const snapshot = new Map<string, number>();
+      for (const [id, p] of ratings) snapshot.set(id, p.rating);
+      tournamentSnapshots.set(currentTournamentId, snapshot);
+    }
+
+    const p1 = getOrCreate(match.player1Id);
+    const p2 = getOrCreate(match.player2Id);
+
+    const snapshot = tournamentSnapshots.get(currentTournamentId)!;
+    const p1Snap = snapshot.get(match.player1Id) ?? DEFAULT_RATING;
+    const p2Snap = snapshot.get(match.player2Id) ?? DEFAULT_RATING;
+
+    const K = ELO_K * sizeMultiplier(match.playerCount);
+    const e1 = 1 / (1 + Math.pow(10, (p2.rating - p1.rating) / 400));
+    const e2 = 1 - e1;
+
+    let s1: number, s2: number;
+    if (match.player1Wins > match.player2Wins) {
+      s1 = 1; s2 = 0;
+      p1.wins++; p2.losses++;
+      p1.streak = p1.streak > 0 ? p1.streak + 1 : 1;
+      p2.streak = p2.streak < 0 ? p2.streak - 1 : -1;
+    } else if (match.player2Wins > match.player1Wins) {
+      s1 = 0; s2 = 1;
+      p1.losses++; p2.wins++;
+      p1.streak = p1.streak < 0 ? p1.streak - 1 : -1;
+      p2.streak = p2.streak > 0 ? p2.streak + 1 : 1;
+    } else {
+      s1 = 0.5; s2 = 0.5;
+      p1.draws++; p2.draws++;
+      p1.streak = 0; p2.streak = 0;
+    }
+
+    p1.rating = Math.round(p1.rating + K * (s1 - e1));
+    p2.rating = Math.round(p2.rating + K * (s2 - e2));
+
+    if (match.player1Wins > match.player2Wins && p2Snap > p1Snap) p1.rating += TRIAL_OF_SKILL_BONUS;
+    if (match.player2Wins > match.player1Wins && p1Snap > p2Snap) p2.rating += TRIAL_OF_SKILL_BONUS;
+
+    p1.peakRating = Math.max(p1.peakRating, p1.rating);
+    p2.peakRating = Math.max(p2.peakRating, p2.rating);
+
+    if (match.date > p1.lastActive) p1.lastActive = match.date;
+    if (match.date > p2.lastActive) p2.lastActive = match.date;
+  }
+
   applyPlacementBonuses(ratings, placements, 0.5);
   return ratings;
 }
