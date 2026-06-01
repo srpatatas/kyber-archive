@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseTournamentUrl } from "@/lib/melee-client";
+import { requireAdminPin } from "@/lib/admin-auth";
 
 let activeScrape: { tournamentId: number; status: "running" | "done" | "error"; message: string } | null = null;
 
@@ -8,6 +9,8 @@ let activeScrape: { tournamentId: number; status: "running" | "done" | "error"; 
 const load = new Function("m", "return require(m)") as (m: string) => typeof import("child_process");
 
 export async function POST(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
   try {
     const body = await request.json();
     const { url, eventTier } = body;

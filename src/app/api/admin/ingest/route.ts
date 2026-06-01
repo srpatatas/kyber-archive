@@ -8,8 +8,11 @@ import {
 } from "@/lib/melee-client";
 import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects } from "@/lib/store";
 import { MatchResult, PlacementResult, EventTier, classifyEvent } from "@/lib/elo";
+import { requireAdminPin } from "@/lib/admin-auth";
 
 export async function POST(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
   try {
     const body = await request.json();
     const { url } = body;
@@ -213,6 +216,8 @@ export async function POST(request: NextRequest) {
 const VALID_TIERS: EventTier[] = ["minor", "showdown", "major", "planetary", "sector", "galactic"];
 
 export async function PATCH(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
   try {
     const body = await request.json();
     const { id, eventTier } = body;
@@ -234,6 +239,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

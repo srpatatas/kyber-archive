@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { forceRecalculate } from "@/lib/store";
+import { requireAdminPin } from "@/lib/admin-auth";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
   try {
     await forceRecalculate();
     return NextResponse.json({ success: true });

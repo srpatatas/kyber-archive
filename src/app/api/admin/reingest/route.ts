@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reingestFromCache } from "@/lib/store";
+import { requireAdminPin } from "@/lib/admin-auth";
 
 export async function POST(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
   try {
     const body = await request.json();
     const { id } = body;

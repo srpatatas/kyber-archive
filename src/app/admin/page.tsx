@@ -45,6 +45,8 @@ interface Toast {
 type IngestMode = "api" | "scrape";
 
 export default function AdminPage() {
+  const [pin, setPin] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<IngestMode>("api");
@@ -55,9 +57,18 @@ export default function AdminPage() {
   const [lastRecalc, setLastRecalc] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
 
+  const [pinError, setPinError] = useState(false);
+
   function showToast(message: string, type: "success" | "error" = "success") {
     setToast({ message, type, timestamp: Date.now() });
     setTimeout(() => setToast(null), 3000);
+  }
+
+  function adminFetch(url: string, init?: RequestInit) {
+    return fetch(url, {
+      ...init,
+      headers: { ...init?.headers, "x-admin-pin": pin },
+    });
   }
 
   const fetchTournaments = useCallback(async () => {
@@ -75,8 +86,56 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    fetchTournaments();
-  }, [fetchTournaments]);
+    if (authenticated) fetchTournaments();
+  }, [authenticated, fetchTournaments]);
+
+  if (!authenticated) {
+    return (
+      <main className="flex-1 flex items-center justify-center">
+        <div className="rounded-xl border border-border bg-surface p-8 w-full max-w-xs">
+          <h2 className="text-lg font-bold text-foreground text-center">Admin Access</h2>
+          <p className="mt-2 text-sm text-muted text-center">Enter PIN to continue</p>
+          <form
+            className="mt-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setPinError(false);
+              const res = await fetch("/api/admin/verify", {
+                method: "POST",
+                headers: { "x-admin-pin": pin },
+              });
+              if (res.ok) {
+                setAuthenticated(true);
+              } else {
+                setPinError(true);
+                setPin("");
+              }
+            }}
+          >
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => { setPin(e.target.value); setPinError(false); }}
+              placeholder="••••"
+              className={`w-full rounded-lg border bg-background py-3 px-4 text-center text-2xl tracking-[0.5em] text-foreground placeholder:text-muted focus:outline-none focus:ring-1 ${
+                pinError ? "border-red-500 focus:border-red-500 focus:ring-red-500/30" : "border-border focus:border-gold/50 focus:ring-gold/30"
+              }`}
+              autoFocus
+            />
+            {pinError && <p className="mt-2 text-xs text-red-400 text-center">Incorrect PIN</p>}
+            <button
+              type="submit"
+              className="mt-3 w-full rounded-lg bg-gold/10 border border-gold/20 py-2 text-sm font-medium text-gold hover:bg-gold/20 transition-colors"
+            >
+              Enter
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
 
   async function handleIngest(e: React.FormEvent) {
     e.preventDefault();
@@ -87,7 +146,7 @@ export default function AdminPage() {
 
     if (mode === "scrape") {
       try {
-        const res = await fetch("/api/admin/scrape", {
+        const res = await adminFetch("/api/admin/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: url.trim(), eventTier: scrapeTier }),
@@ -106,7 +165,7 @@ export default function AdminPage() {
       }
     } else {
       try {
-        const res = await fetch("/api/admin/ingest", {
+        const res = await adminFetch("/api/admin/ingest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: url.trim() }),
@@ -130,7 +189,7 @@ export default function AdminPage() {
   async function pollScrapeStatus() {
     const poll = async () => {
       try {
-        const res = await fetch("/api/admin/scrape");
+        const res = await adminFetch("/api/admin/scrape");
         const data = await res.json();
         if (data.status === "done") {
           setLoading(false);
@@ -160,7 +219,7 @@ export default function AdminPage() {
 
   async function handleTierChange(id: number, name: string, eventTier: EventTier) {
     try {
-      const res = await fetch("/api/admin/ingest", {
+      const res = await adminFetch("/api/admin/ingest", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, eventTier }),
@@ -180,7 +239,7 @@ export default function AdminPage() {
 
   async function handleRecalculate() {
     try {
-      const res = await fetch("/api/admin/recalculate", { method: "POST" });
+      const res = await adminFetch("/api/admin/recalculate", { method: "POST" });
       const data = await res.json();
       if (data.success) {
         setLastRecalc(new Date().toISOString());
@@ -197,13 +256,13 @@ export default function AdminPage() {
     try {
       let res;
       if (hasCachedScrape) {
-        res = await fetch("/api/admin/reingest", {
+        res = await adminFetch("/api/admin/reingest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id }),
         });
       } else {
-        res = await fetch("/api/admin/ingest", {
+        res = await adminFetch("/api/admin/ingest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: String(id) }),
@@ -226,7 +285,7 @@ export default function AdminPage() {
     if (!confirm("Remove this tournament and recalculate ratings?")) return;
 
     try {
-      const res = await fetch(`/api/admin/ingest?id=${id}`, { method: "DELETE" });
+      const res = await adminFetch(`/api/admin/ingest?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
         setLastRecalc(new Date().toISOString());
