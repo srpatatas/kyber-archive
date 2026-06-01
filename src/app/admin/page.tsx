@@ -319,30 +319,32 @@ export default function AdminPage() {
         </div>
 
         <form onSubmit={handleIngest} className="mb-8 space-y-3">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setMode("api")}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                mode === "api"
-                  ? "border-gold/40 bg-gold/10 text-gold"
-                  : "border-border bg-surface text-muted hover:text-foreground"
-              }`}
-            >
-              API (with access)
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("scrape")}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                mode === "scrape"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                  : "border-border bg-surface text-muted hover:text-foreground"
-              }`}
-            >
-              Scrape (no access needed)
-            </button>
-          </div>
+          {typeof window !== "undefined" && window.location.hostname === "localhost" && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMode("api")}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  mode === "api"
+                    ? "border-gold/40 bg-gold/10 text-gold"
+                    : "border-border bg-surface text-muted hover:text-foreground"
+                }`}
+              >
+                API (with access)
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("scrape")}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  mode === "scrape"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                    : "border-border bg-surface text-muted hover:text-foreground"
+                }`}
+              >
+                Scrape (no access needed)
+              </button>
+            </div>
+          )}
           <div className="flex gap-3">
             <input
               type="text"
