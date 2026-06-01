@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getLeaderboard, getIngestedTournaments } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
 import { LiveLeaderboard } from "@/components/live-leaderboard";
