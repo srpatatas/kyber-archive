@@ -18,18 +18,28 @@ export function SeasonalLeaderboard({
   year1,
   year0,
   allTime,
+  tournamentCounts,
 }: {
   year1: RankedPlayer[];
   year0: RankedPlayer[];
   allTime: RankedPlayer[];
+  tournamentCounts: { year1: number; year0: number; allTime: number };
 }) {
   const [season, setSeason] = useState<Season>("year1");
 
   const data = { year1, year0, allTime };
   const players = data[season];
+  const count = tournamentCounts[season];
 
   return (
     <div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium text-gold">
+          <span className="h-1.5 w-1.5 rounded-full bg-gold glow-pulse" />
+          {count} tournament{count === 1 ? "" : "s"} tracked
+        </div>
+      </div>
+
       <div className="mb-4 flex gap-1 rounded-lg border border-border bg-surface p-1">
         {TABS.map((tab) => (
           <button

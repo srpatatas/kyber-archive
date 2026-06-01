@@ -17,6 +17,9 @@ export default async function Home() {
     getIngestedTournaments(),
   ]);
 
+  const year1Tournaments = tournaments.filter((t) => t.date >= YEAR_1_START && t.date < YEAR_1_END).length;
+  const year0Tournaments = tournaments.filter((t) => t.date < YEAR_0_END).length;
+
   const players = year1.length > 0 ? year1 : allTime;
   const topPlayer = players[0] ?? null;
   const avgRating =
@@ -37,12 +40,6 @@ export default async function Home() {
       <section className="relative overflow-hidden border-b border-border bg-surface/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--gold)_0%,_transparent_60%)] opacity-[0.03]" />
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium text-gold">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold glow-pulse" />
-            {tournaments.length > 0
-              ? `${tournaments.length} tournament${tournaments.length === 1 ? "" : "s"} tracked`
-              : "No tournaments ingested yet"}
-          </div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Competitive Rankings
           </h2>
@@ -85,6 +82,7 @@ export default async function Home() {
             year1={year1}
             year0={year0}
             allTime={allTime}
+            tournamentCounts={{ year1: year1Tournaments, year0: year0Tournaments, allTime: tournaments.length }}
           />
         ) : (
           <div className="rounded-xl border border-border bg-surface p-12 text-center">
