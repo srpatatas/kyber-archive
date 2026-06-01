@@ -301,7 +301,10 @@ try {
 // Trigger rating recalculation via the API
 console.log("Recalculating ratings...");
 try {
-  await fetch("http://localhost:3001/api/admin/recalculate", { method: "POST" });
+  await fetch("http://localhost:3001/api/admin/recalculate", {
+    method: "POST",
+    headers: { "x-admin-pin": process.env.ADMIN_PIN || "" },
+  });
 } catch {
   console.log("Warning: could not trigger recalculation. Hit Recalculate on the admin page.");
 }
