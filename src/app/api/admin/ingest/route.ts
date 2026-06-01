@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Cap top cut by player count: <9 = 1st only, 9-16 = top 4 max, 17+ = top 8
-    if (playerCount < 9) topCutSize = 1;
+    // No bracket detected = kyber only; cap by player count otherwise
+    if (topCutSize === 0) topCutSize = 1;
     else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
 
     const standings = await getTournamentStandings(tournamentId);

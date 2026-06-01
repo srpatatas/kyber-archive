@@ -176,6 +176,11 @@ export async function reingestFromCache(tournamentId: number): Promise<boolean> 
     }
   }
 
+  const playerCount = Object.keys(players).length;
+
+  if (topCutSize === 0) topCutSize = 1;
+  else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
+
   const placementResults: PlacementResult[] = [];
   const decklistEntries: { playerId: string; leader: string; base: string; fullName: string; decklistGuid: string | null }[] = [];
 
@@ -205,11 +210,6 @@ export async function reingestFromCache(tournamentId: number): Promise<boolean> 
       }
     }
   }
-
-  const playerCount = Object.keys(players).length;
-
-  if (playerCount < 9) topCutSize = 1;
-  else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
 
   await addTournament(
     {
