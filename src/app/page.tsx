@@ -1,14 +1,23 @@
 export const dynamic = "force-dynamic";
 
-import { getLeaderboard, getIngestedTournaments } from "@/lib/store";
+import { getSeasonLeaderboard, getLeaderboard, getIngestedTournaments, SeasonPlayer } from "@/lib/store";
 import { StatCard } from "@/components/stat-card";
-import { LiveLeaderboard } from "@/components/live-leaderboard";
+import { SeasonalLeaderboard } from "@/components/seasonal-leaderboard";
 
+const YEAR_1_START = "2025-07-28";
+const YEAR_1_END = "2026-07-28";
+const YEAR_0_END = "2025-07-28";
+const YEAR_0_START = "2000-01-01";
 
 export default async function Home() {
-  const players = await getLeaderboard();
-  const tournaments = await getIngestedTournaments();
+  const [year1, year0, allTime, tournaments] = await Promise.all([
+    getSeasonLeaderboard(YEAR_1_START, YEAR_1_END),
+    getSeasonLeaderboard(YEAR_0_START, YEAR_0_END, 1),
+    getLeaderboard(),
+    getIngestedTournaments(),
+  ]);
 
+  const players = year1.length > 0 ? year1 : allTime;
   const topPlayer = players[0] ?? null;
   const avgRating =
     players.length > 0
@@ -71,8 +80,12 @@ export default async function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        {players.length > 0 ? (
-          <LiveLeaderboard players={players} />
+        {allTime.length > 0 ? (
+          <SeasonalLeaderboard
+            year1={year1}
+            year0={year0}
+            allTime={allTime}
+          />
         ) : (
           <div className="rounded-xl border border-border bg-surface p-12 text-center">
             <p className="text-lg font-medium text-foreground">

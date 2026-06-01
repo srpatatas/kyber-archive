@@ -347,7 +347,6 @@ export async function forceRecalculate(): Promise<void> {
 }
 
 export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] })[]> {
-  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const { rows } = await query(`
     SELECT r.*, p.melee_id, p.name, p.username,
       (SELECT d1.leader || ' - ' || d1.base FROM decklists d1
@@ -368,9 +367,8 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
     FROM ratings r
     JOIN players p ON p.id = r.player_id
     WHERE r.tournament_count >= 3
-      AND r.last_active >= $1
     ORDER BY r.rating DESC
-  `, [cutoff]);
+  `);
 
   return rows.map((r: Record<string, unknown>, i: number) => ({
     id: r.player_id as string,
@@ -391,6 +389,124 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
     aspects: r.main_aspects ? JSON.parse(r.main_aspects as string) : [],
     rank: i + 1,
   }));
+}
+
+export type SeasonPlayer = PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] };
+
+export async function getSeasonLeaderboard(startDate: string, endDate: string, minEvents = 3): Promise<SeasonPlayer[]> {
+  const { rows: matchRows } = await query(`
+    SELECT player1_id, player2_id, player1_wins, player2_wins, tournament_id,
+           t.name as tournament_name, round_name, matches.date, matches.event_tier, t.player_count
+    FROM matches
+    JOIN tournaments t ON t.id = matches.tournament_id
+    WHERE t.date >= $1 AND t.date < $2
+    ORDER BY matches.date, matches.id
+  `, [startDate, endDate]);
+
+  const matches: MatchResult[] = matchRows.map((r: Record<string, unknown>) => ({
+    player1Id: r.player1_id as string,
+    player2Id: r.player2_id as string,
+    player1Wins: r.player1_wins as number,
+    player2Wins: r.player2_wins as number,
+    tournamentId: r.tournament_id as number,
+    tournamentName: r.tournament_name as string,
+    roundName: r.round_name as string,
+    date: r.date as string,
+    eventTier: r.event_tier as EventTier,
+    playerCount: r.player_count as number,
+  }));
+
+  const { rows: placementRows } = await query(
+    `SELECT p.player_id, p.tournament_id, p.placement, p.event_tier, p.date, t.player_count
+     FROM placements p JOIN tournaments t ON t.id = p.tournament_id
+     WHERE t.date >= $1 AND t.date < $2`,
+    [startDate, endDate]
+  );
+  const placements: PlacementResult[] = placementRows.map((r: Record<string, unknown>) => ({
+    playerId: r.player_id as string,
+    tournamentId: r.tournament_id as number,
+    placement: r.placement as number,
+    playerCount: r.player_count as number,
+    eventTier: r.event_tier as EventTier,
+    date: r.date as string,
+  }));
+
+  const ratings = computeEloTrialScaledPlacements(matches, placements);
+
+  const { rows: playerRows } = await query("SELECT id, melee_id, name, username FROM players");
+  for (const p of playerRows as Record<string, unknown>[]) {
+    const r = ratings.get(p.id as string);
+    if (r) {
+      r.meleeId = p.melee_id as number;
+      r.name = p.name as string;
+      r.username = p.username as string;
+    }
+  }
+
+  const tournamentsByPlayer = new Map<string, Set<number>>();
+  for (const m of matches) {
+    for (const pid of [m.player1Id, m.player2Id]) {
+      if (!tournamentsByPlayer.has(pid)) tournamentsByPlayer.set(pid, new Set());
+      tournamentsByPlayer.get(pid)!.add(m.tournamentId);
+    }
+  }
+  for (const [id, player] of ratings) {
+    player.tournamentCount = tournamentsByPlayer.get(id)?.size ?? 0;
+  }
+
+  const eligible = Array.from(ratings.values())
+    .filter((r) => {
+      const tc = tournamentsByPlayer.get(r.id)?.size ?? 0;
+      return tc >= minEvents && r.name;
+    })
+    .sort((a, b) => b.rating - a.rating);
+
+  const { rows: deckRows } = await query(`
+    SELECT d.player_id, d.leader, d.base, ac.aspects
+    FROM decklists d
+    JOIN tournaments t ON t.id = d.tournament_id
+    LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
+    WHERE t.date >= $1 AND t.date < $2
+  `, [startDate, endDate]);
+
+  const decksByPlayer = new Map<string, Map<string, { leader: string; base: string; aspects: string | null; count: number }>>();
+  for (const d of deckRows as Record<string, unknown>[]) {
+    const pid = d.player_id as string;
+    if (!decksByPlayer.has(pid)) decksByPlayer.set(pid, new Map());
+    const key = `${d.leader}||${d.base}`;
+    const existing = decksByPlayer.get(pid)!.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      decksByPlayer.get(pid)!.set(key, {
+        leader: d.leader as string,
+        base: d.base as string,
+        aspects: d.aspects as string | null,
+        count: 1,
+      });
+    }
+  }
+
+  return eligible.map((r, i) => {
+    const decks = decksByPlayer.get(r.id);
+    let mainLeader: string | null = null;
+    let aspects: string[] = [];
+    if (decks) {
+      const top = Array.from(decks.values())
+        .filter((d) => d.count >= 2)
+        .sort((a, b) => b.count - a.count)[0];
+      if (top) {
+        mainLeader = `${top.leader} - ${top.base}`;
+        aspects = top.aspects ? JSON.parse(top.aspects) : [];
+      }
+    }
+    return {
+      ...r,
+      rank: i + 1,
+      mainLeader,
+      aspects,
+    };
+  });
 }
 
 export interface TournamentSummary extends StoredTournament {
@@ -865,8 +981,6 @@ export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
     const elo = eloRatings.get(id)!;
     const tc = tournamentsByPlayer.get(id)?.size ?? 0;
     if (tc < 3) continue;
-    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    if (elo.lastActive < cutoff) continue;
     const info = playerInfo.get(id);
     const mi = miMap.get(id);
     const eloTier = eloTierRatings.get(id);
