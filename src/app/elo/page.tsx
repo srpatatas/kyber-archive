@@ -21,11 +21,10 @@ export default async function EloPage() {
             Rating System Comparison
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            Four ranking systems side by side. <strong className="text-gold">MI</strong> is the
-            progressive scoring (only goes up). <strong className="text-sky-400">ELO</strong> is
-            pure skill rating (goes up and down). <strong className="text-emerald-400">ELO+Tier</strong> adds
-            placement bonuses. <strong className="text-purple-400">ELO+T+ToS</strong> adds
-            Trial of Skill (+2 for beating higher-rated opponents).
+            Sorted by <strong className="text-emerald-400">ELO+T+ToS</strong> (current system).
+            Compare with <strong className="text-sky-400">ELO</strong> (pure),{" "}
+            <strong className="text-gold">ELO+Tier</strong> (no Trial of Skill),
+            and <strong className="text-purple-400">ELO+T+ToS 50%</strong> (tier bonuses halved).
           </p>
           <div className="mt-4">
             <Link href="/" className="text-sm text-gold hover:underline">
@@ -37,7 +36,7 @@ export default async function EloPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="overflow-x-auto rounded-xl border border-border -mx-4 sm:mx-0">
-          <table className="w-full min-w-[700px]">
+          <table className="w-full min-w-[750px]">
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted">#</th>
@@ -45,16 +44,16 @@ export default async function EloPage() {
                 <th className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted">W-L-D</th>
                 <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted">Win%</th>
                 <th className="px-3 py-3 text-center border-l border-border/50">
-                  <span className="text-xs font-medium uppercase tracking-wider text-emerald-400">ELO+Tier</span>
-                </th>
-                <th className="px-3 py-3 text-center border-l border-border/50">
-                  <span className="text-xs font-medium uppercase tracking-wider text-gold">MI</span>
+                  <span className="text-xs font-medium uppercase tracking-wider text-emerald-400">ELO+T+ToS</span>
                 </th>
                 <th className="px-3 py-3 text-center border-l border-border/50">
                   <span className="text-xs font-medium uppercase tracking-wider text-sky-400">ELO</span>
                 </th>
                 <th className="px-3 py-3 text-center border-l border-border/50">
-                  <span className="text-xs font-medium uppercase tracking-wider text-purple-400">ELO+T+ToS</span>
+                  <span className="text-xs font-medium uppercase tracking-wider text-gold">ELO+Tier</span>
+                </th>
+                <th className="px-3 py-3 text-center border-l border-border/50">
+                  <span className="text-xs font-medium uppercase tracking-wider text-purple-400">ELO+T+ToS 50%</span>
                 </th>
               </tr>
             </thead>
@@ -64,7 +63,7 @@ export default async function EloPage() {
                 const wr = total > 0 ? Math.round((p.wins / total) * 1000) / 10 : 0;
                 return (
                   <tr key={p.id} className="border-b border-border/50 hover:bg-surface-light/50 transition-colors">
-                    <td className="px-3 py-3 text-right text-sm tabular-nums text-muted">{p.eloTierRank}</td>
+                    <td className="px-3 py-3 text-right text-sm tabular-nums text-muted">{p.eloTierTrialRank}</td>
                     <td className="px-3 py-3">
                       <Link href={`/player/${p.id}`} className="group">
                         <p className="font-medium text-foreground group-hover:text-gold transition-colors">
@@ -79,29 +78,29 @@ export default async function EloPage() {
                     <td className="px-3 py-3 text-right text-sm tabular-nums">{wr}%</td>
                     <td className="px-3 py-3 border-l border-border/50">
                       <div className="text-center">
-                        <span className="text-sm font-bold text-emerald-400 tabular-nums">{p.eloTierRating}</span>
+                        <span className="text-sm font-bold text-emerald-400 tabular-nums">{p.eloTierTrialRating}</span>
                       </div>
-                    </td>
-                    <td className="px-3 py-3 border-l border-border/50">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className="text-sm font-bold text-gold tabular-nums">#{p.miRank}</span>
-                        <RankDiff current={p.miRank} baseline={p.eloTierRank} />
-                      </div>
-                      <p className="text-[10px] text-muted tabular-nums text-center">{p.miRating}</p>
                     </td>
                     <td className="px-3 py-3 border-l border-border/50">
                       <div className="flex items-center justify-center gap-1.5">
                         <span className="text-sm font-bold text-sky-400 tabular-nums">#{p.eloRank}</span>
-                        <RankDiff current={p.eloRank} baseline={p.eloTierRank} />
+                        <RankDiff current={p.eloRank} baseline={p.eloTierTrialRank} />
                       </div>
                       <p className="text-[10px] text-muted tabular-nums text-center">{p.eloRating}</p>
                     </td>
                     <td className="px-3 py-3 border-l border-border/50">
                       <div className="flex items-center justify-center gap-1.5">
-                        <span className="text-sm font-bold text-purple-400 tabular-nums">#{p.eloTierTrialRank}</span>
-                        <RankDiff current={p.eloTierTrialRank} baseline={p.eloTierRank} />
+                        <span className="text-sm font-bold text-gold tabular-nums">#{p.eloTierRank}</span>
+                        <RankDiff current={p.eloTierRank} baseline={p.eloTierTrialRank} />
                       </div>
-                      <p className="text-[10px] text-muted tabular-nums text-center">{p.eloTierTrialRating}</p>
+                      <p className="text-[10px] text-muted tabular-nums text-center">{p.eloTierRating}</p>
+                    </td>
+                    <td className="px-3 py-3 border-l border-border/50">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="text-sm font-bold text-purple-400 tabular-nums">#{p.eloTierTrialHalfRank}</span>
+                        <RankDiff current={p.eloTierTrialHalfRank} baseline={p.eloTierTrialRank} />
+                      </div>
+                      <p className="text-[10px] text-muted tabular-nums text-center">{p.eloTierTrialHalfRating}</p>
                     </td>
                   </tr>
                 );

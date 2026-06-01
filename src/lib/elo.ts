@@ -343,14 +343,14 @@ export function computeEloTrial(matches: MatchResult[]): Map<string, PlayerRatin
   return ratings;
 }
 
-function applyPlacementBonuses(ratings: Map<string, PlayerRating>, placements: PlacementResult[]): void {
+function applyPlacementBonuses(ratings: Map<string, PlayerRating>, placements: PlacementResult[], scale = 1): void {
   for (const placement of placements) {
     const player = ratings.get(placement.playerId);
     if (!player) continue;
     const hasTopCut = !placement.playerCount || placement.playerCount >= 9;
     if (hasTopCut) {
       const tierBonuses = PLACEMENT_BONUSES[placement.eventTier];
-      const bonus = tierBonuses[placement.placement] ?? 0;
+      const bonus = Math.round((tierBonuses[placement.placement] ?? 0) * scale);
       if (bonus > 0) {
         player.rating += bonus;
         player.peakRating = Math.max(player.peakRating, player.rating);
@@ -370,5 +370,11 @@ export function computeEloWithPlacements(matches: MatchResult[], placements: Pla
 export function computeEloTrialWithPlacements(matches: MatchResult[], placements: PlacementResult[]): Map<string, PlayerRating> {
   const ratings = computeEloTrial(matches);
   applyPlacementBonuses(ratings, placements);
+  return ratings;
+}
+
+export function computeEloTrialScaledPlacements(matches: MatchResult[], placements: PlacementResult[]): Map<string, PlayerRating> {
+  const ratings = computeEloTrial(matches);
+  applyPlacementBonuses(ratings, placements, 0.5);
   return ratings;
 }

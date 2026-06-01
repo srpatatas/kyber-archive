@@ -1,6 +1,6 @@
 import { query, withTransaction } from "./db";
 import type { PoolClient } from "@neondatabase/serverless";
-import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings, computePureElo, computeEloWithPlacements, computeEloTrialWithPlacements, computeEloTrial } from "./elo";
+import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings, computePureElo, computeEloWithPlacements, computeEloTrialWithPlacements, computeEloTrial, computeEloTrialScaledPlacements } from "./elo";
 
 interface StoredTournament {
   id: number;
@@ -348,6 +348,7 @@ export async function forceRecalculate(): Promise<void> {
 }
 
 export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] })[]> {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const { rows } = await query(`
     SELECT r.*, p.melee_id, p.name, p.username,
       (SELECT d1.leader || ' - ' || d1.base FROM decklists d1
@@ -367,9 +368,10 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
         LIMIT 1) as main_aspects
     FROM ratings r
     JOIN players p ON p.id = r.player_id
-    WHERE r.wins + r.losses + r.draws >= 3
+    WHERE r.tournament_count >= 3
+      AND r.last_active >= $1
     ORDER BY r.rating DESC
-  `);
+  `, [cutoff]);
 
   return rows.map((r: Record<string, unknown>, i: number) => ({
     id: r.player_id as string,
@@ -797,6 +799,8 @@ export interface EloComparisonEntry {
   eloTierRank: number;
   eloTierTrialRating: number;
   eloTierTrialRank: number;
+  eloTierTrialHalfRating: number;
+  eloTierTrialHalfRank: number;
 }
 
 export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
@@ -835,6 +839,7 @@ export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
   const eloRatings = computePureElo(matches);
   const eloTierRatings = computeEloWithPlacements(matches, placements);
   const eloTierTrialRatings = computeEloTrialWithPlacements(matches, placements);
+  const eloTierTrialHalfRatings = computeEloTrialScaledPlacements(matches, placements);
 
   const { rows: playerRows } = await query("SELECT id, melee_id, name, username FROM players");
   const playerInfo = new Map((playerRows as Record<string, unknown>[]).map((p) => [p.id as string, p]));
@@ -855,12 +860,15 @@ export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
 
   for (const id of allPlayerIds) {
     const elo = eloRatings.get(id)!;
-    const total = elo.wins + elo.losses + elo.draws;
-    if (total < 3) continue;
+    const tc = tournamentsByPlayer.get(id)?.size ?? 0;
+    if (tc < 3) continue;
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    if (elo.lastActive < cutoff) continue;
     const info = playerInfo.get(id);
     const mi = miMap.get(id);
     const eloTier = eloTierRatings.get(id);
     const eloTierTrial = eloTierTrialRatings.get(id);
+    const eloTierTrialHalf = eloTierTrialHalfRatings.get(id);
 
     entries.push({
       id,
@@ -878,6 +886,8 @@ export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
       eloTierRank: 0,
       eloTierTrialRating: eloTierTrial?.rating ?? elo.rating,
       eloTierTrialRank: 0,
+      eloTierTrialHalfRating: eloTierTrialHalf?.rating ?? elo.rating,
+      eloTierTrialHalfRank: 0,
     });
   }
 
@@ -890,5 +900,8 @@ export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
   const byEloTierTrial = [...entries].sort((a, b) => b.eloTierTrialRating - a.eloTierTrialRating);
   byEloTierTrial.forEach((e, i) => { e.eloTierTrialRank = i + 1; });
 
-  return byEloTier;
+  const byEloTierTrialHalf = [...entries].sort((a, b) => b.eloTierTrialHalfRating - a.eloTierTrialHalfRating);
+  byEloTierTrialHalf.forEach((e, i) => { e.eloTierTrialHalfRank = i + 1; });
+
+  return byEloTierTrial;
 }
