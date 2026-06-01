@@ -173,7 +173,6 @@ export async function reingestFromCache(tournamentId: number): Promise<boolean> 
     else {
       const l2 = mpr.slice(-2);
       if (l2.length === 2 && l2[0] === 2 && l2[1] === 1) topCutSize = 4;
-      else topCutSize = 4;
     }
   }
 

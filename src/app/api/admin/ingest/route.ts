@@ -119,8 +119,6 @@ export async function POST(request: NextRequest) {
         const last2 = matchesPerRound.slice(-2);
         if (last2.length === 2 && last2[0] === 2 && last2[1] === 1) {
           topCutSize = 4;
-        } else {
-          topCutSize = 4;
         }
       }
     }
