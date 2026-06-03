@@ -1060,14 +1060,18 @@ export interface Team {
   h2h: TeamH2H[];
 }
 
-export async function getTeams(): Promise<Team[]> {
-  const leaderboard = await getLeaderboard();
+export async function getTeams(startDate?: string, endDate?: string, minEvents = 3): Promise<Team[]> {
+  const leaderboard = startDate && endDate
+    ? await getSeasonLeaderboard(startDate, endDate, minEvents)
+    : await getLeaderboard();
 
+  const dateFilter = startDate && endDate ? " AND t.date >= $1 AND t.date < $2" : "";
+  const dateParams = startDate && endDate ? [startDate, endDate] : [];
   const { rows: titleRows } = await query(`
     SELECT p.player_id, t.event_tier FROM placements p
     JOIN tournaments t ON t.id = p.tournament_id
-    WHERE p.placement = 1 ORDER BY t.date
-  `);
+    WHERE p.placement = 1${dateFilter} ORDER BY t.date
+  `, dateParams);
   const titlesByPlayer = new Map<string, EventTier[]>();
   for (const r of titleRows as Record<string, unknown>[]) {
     const pid = r.player_id as string;
@@ -1106,10 +1110,11 @@ export async function getTeams(): Promise<Team[]> {
   }
 
   // Compute H2H from matches
+  const matchDateFilter = startDate && endDate ? " JOIN tournaments t ON t.id = matches.tournament_id WHERE t.date >= $1 AND t.date < $2" : "";
   const { rows: matchRows } = await query(`
     SELECT player1_id, player2_id, player1_wins, player2_wins
-    FROM matches
-  `);
+    FROM matches${matchDateFilter}
+  `, dateParams);
 
   const h2hMap = new Map<string, Map<string, { wins: number; losses: number; draws: number }>>();
 
