@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { KyberCrystal } from "@/components/kyber-crystal";
 import { getTierConfig } from "@/lib/tiers";
-import type { Team } from "@/lib/store";
+import type { Team, TeamH2H } from "@/lib/store";
 
 type Season = "year1" | "year0" | "allTime";
 
@@ -23,6 +23,55 @@ function TeamWinRate({ wins, losses, draws }: { wins: number; losses: number; dr
         <div className="h-full rounded-full bg-gold" style={{ width: `${wr}%` }} />
       </div>
       <span className="text-sm font-bold tabular-nums">{wr}%</span>
+    </div>
+  );
+}
+
+function H2HDetail({ teamTag, h2h }: { teamTag: string; h2h: TeamH2H }) {
+  const [open, setOpen] = useState(false);
+  const total = h2h.wins + h2h.losses + h2h.draws;
+  const wr = Math.round((h2h.wins / total) * 100);
+  const borderColor = h2h.wins > h2h.losses ? "border-emerald-500/20" : h2h.wins < h2h.losses ? "border-red-500/20" : "border-border";
+  const bgColor = h2h.wins > h2h.losses ? "bg-emerald-500/5" : h2h.wins < h2h.losses ? "bg-red-500/5" : "bg-background";
+  const textColor = h2h.wins > h2h.losses ? "text-emerald-400" : h2h.wins < h2h.losses ? "text-red-400" : "text-foreground";
+
+  return (
+    <div className={`rounded-lg border ${borderColor} ${bgColor} overflow-hidden`}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-surface-light/30 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted">vs {h2h.opponentTag}</span>
+          <span className={`text-sm font-bold tabular-nums ${textColor}`}>
+            {h2h.wins}W-{h2h.losses}L{h2h.draws > 0 ? `-${h2h.draws}D` : ""} ({wr}%)
+          </span>
+        </div>
+        <span className={`text-xs text-muted transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+      {open && (
+        <div className="border-t border-border/30 px-3 py-2">
+          <table className="w-full">
+            <tbody className="divide-y divide-border/20">
+              {h2h.matches.map((m, i) => {
+                const won = m.playerWins > m.opponentWins;
+                const lost = m.opponentWins > m.playerWins;
+                const resultColor = won ? "text-emerald-400" : lost ? "text-red-400" : "text-muted";
+                const resultLabel = won ? "W" : lost ? "L" : "D";
+                return (
+                  <tr key={i}>
+                    <td className={`py-1 pr-2 text-xs font-bold ${resultColor}`}>{resultLabel}</td>
+                    <td className="py-1 pr-2 text-xs text-foreground">{m.player.split("_").slice(1).join("_")}</td>
+                    <td className="py-1 pr-2 text-xs tabular-nums text-muted">{m.playerWins}-{m.opponentWins}</td>
+                    <td className="py-1 pr-2 text-xs text-foreground">{m.opponent.split("_").slice(1).join("_")}</td>
+                    <td className="py-1 text-xs text-muted truncate max-w-[150px]">{m.tournament} · {m.round}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -183,21 +232,10 @@ function TeamsContent({ teams }: { teams: Team[] }) {
           </div>
 
           {team.h2h.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-3">
-              {team.h2h.map((h) => {
-                const total = h.wins + h.losses + h.draws;
-                const wr = Math.round((h.wins / total) * 100);
-                const color = h.wins > h.losses ? "border-emerald-500/20 bg-emerald-500/5" : h.wins < h.losses ? "border-red-500/20 bg-red-500/5" : "border-border bg-background";
-                const textColor = h.wins > h.losses ? "text-emerald-400" : h.wins < h.losses ? "text-red-400" : "text-foreground";
-                return (
-                  <div key={h.opponentTag} className={`rounded-lg border p-3 ${color}`}>
-                    <p className="text-xs text-muted">vs {h.opponentTag}</p>
-                    <p className={`text-sm font-bold tabular-nums ${textColor}`}>
-                      {h.wins}W-{h.losses}L{h.draws > 0 ? `-${h.draws}D` : ""} ({wr}%)
-                    </p>
-                  </div>
-                );
-              })}
+            <div className="mt-4 space-y-2">
+              {team.h2h.map((h) => (
+                <H2HDetail key={h.opponentTag} teamTag={team.tag} h2h={h} />
+              ))}
             </div>
           )}
         </div>

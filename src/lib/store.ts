@@ -1042,11 +1042,21 @@ export interface TeamMember {
   titleTiers: EventTier[];
 }
 
+export interface TeamMatchDetail {
+  player: string;
+  opponent: string;
+  playerWins: number;
+  opponentWins: number;
+  tournament: string;
+  round: string;
+}
+
 export interface TeamH2H {
   opponentTag: string;
   wins: number;
   losses: number;
   draws: number;
+  matches: TeamMatchDetail[];
 }
 
 export interface Team {
@@ -1110,13 +1120,16 @@ export async function getTeams(startDate?: string, endDate?: string, minEvents =
   }
 
   // Compute H2H from matches
-  const matchDateFilter = startDate && endDate ? " JOIN tournaments t ON t.id = matches.tournament_id WHERE t.date >= $1 AND t.date < $2" : "";
+  const matchDateFilter = startDate && endDate
+    ? " JOIN tournaments t ON t.id = matches.tournament_id WHERE t.date >= $1 AND t.date < $2"
+    : " JOIN tournaments t ON t.id = matches.tournament_id";
   const { rows: matchRows } = await query(`
-    SELECT player1_id, player2_id, player1_wins, player2_wins
+    SELECT player1_id, player2_id, player1_wins, player2_wins, t.name as tournament, matches.round_name
     FROM matches${matchDateFilter}
+    ORDER BY matches.date, matches.id
   `, dateParams);
 
-  const h2hMap = new Map<string, Map<string, { wins: number; losses: number; draws: number }>>();
+  const h2hMap = new Map<string, Map<string, { wins: number; losses: number; draws: number; matches: TeamMatchDetail[] }>>();
 
   for (const m of matchRows as Record<string, unknown>[]) {
     const p1 = m.player1_id as string;
@@ -1127,19 +1140,27 @@ export async function getTeams(startDate?: string, endDate?: string, minEvents =
 
     if (!h2hMap.has(t1)) h2hMap.set(t1, new Map());
     if (!h2hMap.has(t2)) h2hMap.set(t2, new Map());
-    if (!h2hMap.get(t1)!.has(t2)) h2hMap.get(t1)!.set(t2, { wins: 0, losses: 0, draws: 0 });
-    if (!h2hMap.get(t2)!.has(t1)) h2hMap.get(t2)!.set(t1, { wins: 0, losses: 0, draws: 0 });
+    if (!h2hMap.get(t1)!.has(t2)) h2hMap.get(t1)!.set(t2, { wins: 0, losses: 0, draws: 0, matches: [] });
+    if (!h2hMap.get(t2)!.has(t1)) h2hMap.get(t2)!.set(t1, { wins: 0, losses: 0, draws: 0, matches: [] });
 
     const r1 = h2hMap.get(t1)!.get(t2)!;
     const r2 = h2hMap.get(t2)!.get(t1)!;
 
-    if ((m.player1_wins as number) > (m.player2_wins as number)) {
+    const p1w = m.player1_wins as number;
+    const p2w = m.player2_wins as number;
+    const tournament = m.tournament as string;
+    const round = m.round_name as string;
+
+    if (p1w > p2w) {
       r1.wins++; r2.losses++;
-    } else if ((m.player2_wins as number) > (m.player1_wins as number)) {
+    } else if (p2w > p1w) {
       r1.losses++; r2.wins++;
     } else {
       r1.draws++; r2.draws++;
     }
+
+    r1.matches.push({ player: p1, opponent: p2, playerWins: p1w, opponentWins: p2w, tournament, round });
+    r2.matches.push({ player: p2, opponent: p1, playerWins: p2w, opponentWins: p1w, tournament, round });
   }
 
   const teams: Team[] = [];
