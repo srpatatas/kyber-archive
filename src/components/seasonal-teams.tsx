@@ -61,9 +61,9 @@ function H2HDetail({ teamTag, h2h }: { teamTag: string; h2h: TeamH2H }) {
                 return (
                   <tr key={i}>
                     <td className={`py-1 pr-2 text-xs font-bold ${resultColor}`}>{resultLabel}</td>
-                    <td className="py-1 pr-2 text-xs text-foreground">{m.player.split("_").slice(1).join("_")}</td>
+                    <td className="py-1 pr-2 text-xs text-foreground">{m.player.includes("_") ? m.player.split("_").slice(1).join("_") : m.player}</td>
                     <td className="py-1 pr-2 text-xs tabular-nums text-muted">{m.playerWins}-{m.opponentWins}</td>
-                    <td className="py-1 pr-2 text-xs text-foreground">{m.opponent.split("_").slice(1).join("_")}</td>
+                    <td className="py-1 pr-2 text-xs text-foreground">{m.opponent.includes("_") ? m.opponent.split("_").slice(1).join("_") : m.opponent}</td>
                     <td className="py-1 text-xs text-muted truncate max-w-[150px]">{m.tournament} · {m.round}</td>
                   </tr>
                 );
