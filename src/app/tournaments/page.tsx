@@ -51,8 +51,36 @@ export default async function TournamentsPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {Array.from(grouped.entries()).map(([month, events]) => (
+            {Array.from(grouped.entries()).map(([month, events], groupIdx, allGroups) => {
+              const prevGroup = groupIdx > 0 ? allGroups[groupIdx - 1] : null;
+              const prevEvents = prevGroup ? grouped.get(prevGroup[0]) : null;
+              const prevInYear1 = prevEvents ? prevEvents[0].date >= "2025-07-28" : false;
+              const currentInYear0 = events[0].date < "2025-07-28";
+              const showSeparator = prevInYear1 && currentInYear0;
+
+              return (
               <div key={month}>
+                {showSeparator && (
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-sky-400/40 to-sky-400" />
+                    <svg viewBox="0 0 120 12" className="h-3 w-20 shrink-0">
+                      <line x1="0" y1="6" x2="52" y2="6" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
+                      <circle cx="56" cy="6" r="3" fill="#38bdf8" opacity="0.8" />
+                      <line x1="60" y1="6" x2="120" y2="6" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-sky-400">Year 1</span>
+                      <span className="text-xs text-muted">/</span>
+                      <span className="text-xs font-bold text-red-400">Year 0</span>
+                    </div>
+                    <svg viewBox="0 0 120 12" className="h-3 w-20 shrink-0">
+                      <line x1="0" y1="6" x2="52" y2="6" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
+                      <circle cx="56" cy="6" r="3" fill="#f87171" opacity="0.8" />
+                      <line x1="60" y1="6" x2="120" y2="6" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    <div className="h-px flex-1 bg-gradient-to-l from-transparent via-sky-400/40 to-sky-400" />
+                  </div>
+                )}
                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">
                   {month}
                 </h3>
@@ -110,7 +138,8 @@ export default async function TournamentsPage() {
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
