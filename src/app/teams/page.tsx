@@ -5,7 +5,7 @@ import { SeasonalTeams } from "@/components/seasonal-teams";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Teams | The Midichlorian Index",
+  title: "Teams | The Kyber Archive",
 };
 
 const YEAR_1_START = "2025-07-28";

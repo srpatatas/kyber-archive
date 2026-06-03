@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About | The Midichlorian Index",
+  title: "About | The Kyber Archive",
 };
 
 const factionTiers = [
@@ -47,33 +47,31 @@ export default function AboutPage() {
     <main className="flex-1">
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          About The Midichlorian Index
+          About The Kyber Archive
         </h1>
 
         <div className="mt-8 space-y-6 text-sm leading-relaxed text-sand-light">
           <p>
-            The Midichlorian Index is a competitive ranking system for{" "}
+            The Kyber Archive is a competitive ranking system for{" "}
             <strong className="text-foreground">Star Wars: Unlimited</strong>{" "}
-            TCG players. Just as midichlorians indicate a being&apos;s
-            connection to the Force, our rating system measures a player&apos;s
-            competitive strength across sanctioned tournaments.
+            TCG players. Like a Jedi library preserving the records of every
+            lightsaber duel and every trial overcome, the Archive catalogs
+            competitive performance across sanctioned tournaments.
           </p>
 
           <p>
-            Your Midichlorian Index is calibrated from your competitive
-            performance, not a blood test. In the lore, a normal human has
-            roughly 2,500 midichlorians per cell while Anakin Skywalker — the
-            Chosen One — measured over 20,000. Our scale compresses that range
-            into a competitive Elo rating: new players start at{" "}
+            In the lore, kyber crystals attune to their wielder and grow
+            stronger through the bond — they cannot be forced, only earned.
+            Your rating works the same way: new players start at{" "}
             <span className="font-medium text-gold">1,500</span> and their
             rating rises or falls as they prove themselves in tournament play.
-            The numbers are smaller, but the Force is just as strong.
+            Every victory strengthens the bond. Every defeat tempers it.
           </p>
 
           <div className="rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">How Scoring Works</h2>
             <p className="mt-2">
-              The Midichlorian Index uses an{" "}
+              The Kyber Archive uses an{" "}
               <strong className="text-foreground">ELO rating system</strong>{" "}
               enhanced with tournament tier bonuses and a Trial of Skill
               mechanic. Unlike progressive systems where scores only go up,
@@ -266,7 +264,7 @@ export default function AboutPage() {
             <h2 className="text-lg font-bold text-foreground">Factions &amp; Tiers</h2>
             <p className="mt-2">
               Choose your allegiance. Each faction has its own rank progression
-              based on your Midichlorian Index rating:
+              based on your Kyber Archive rating:
             </p>
 
             <div className="mt-4 overflow-x-auto">
@@ -360,7 +358,7 @@ export default function AboutPage() {
           </div>
 
           <p className="text-xs text-muted">
-            The Midichlorian Index is a fan-made project and is not affiliated
+            The Kyber Archive is a fan-made project and is not affiliated
             with Fantasy Flight Games, Lucasfilm Ltd., or The Walt Disney
             Company. Star Wars: Unlimited and all related marks are trademarks of
             Lucasfilm Ltd.

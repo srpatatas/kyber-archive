@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Rating Comparison | The Midichlorian Index",
+  title: "Rating Comparison | The Kyber Archive",
 };
 
 export default async function EloPage() {
@@ -23,7 +23,7 @@ export default async function EloPage() {
             Rating System Comparison
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            Sorted by <strong className="text-emerald-400">MI</strong> (current system: ELO + Trial of Skill + 50% tier bonuses).
+            Sorted by <strong className="text-emerald-400">KA</strong> (current system: ELO + Trial of Skill + 50% tier bonuses).
             Compare with <strong className="text-sky-400">ELO</strong> (pure),{" "}
             <strong className="text-gold">ELO+Tier</strong> (full tier bonuses, no Trial of Skill),{" "}
             <strong className="text-purple-400">ELO+T+ToS 100%</strong> (full tier bonuses),
@@ -31,7 +31,7 @@ export default async function EloPage() {
           </p>
           <div className="mt-4">
             <Link href="/" className="text-sm text-gold hover:underline">
-              &larr; Back to Midichlorian Index
+              &larr; Back to The Kyber Archive
             </Link>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default async function EloPage() {
                 <th className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted">W-L-D</th>
                 <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted">Win%</th>
                 <th className="px-3 py-3 text-center border-l border-border/50">
-                  <span className="text-xs font-medium uppercase tracking-wider text-emerald-400">MI</span>
+                  <span className="text-xs font-medium uppercase tracking-wider text-emerald-400">KA</span>
                 </th>
                 <th className="px-3 py-3 text-center border-l border-border/50">
                   <span className="text-xs font-medium uppercase tracking-wider text-sky-400">ELO</span>

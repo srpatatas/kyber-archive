@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Season Split Comparison | The Midichlorian Index",
+  title: "Season Split Comparison | The Kyber Archive",
 };
 
 const GC_Y0_END = "2025-07-28";
@@ -65,7 +65,7 @@ export default async function SeasonsPage() {
           </p>
           <div className="mt-4">
             <Link href="/" className="text-sm text-gold hover:underline">
-              &larr; Back to Midichlorian Index
+              &larr; Back to The Kyber Archive
             </Link>
           </div>
         </div>

@@ -61,7 +61,7 @@ export function SeasonalLeaderboard({
             Competitive Rankings
           </h2>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            The Midichlorian Index measures player strength across sanctioned
+            The Kyber Archive measures player strength across sanctioned
             Star Wars: Unlimited tournaments. Higher ratings indicate stronger
             Force sensitivity.
           </p>

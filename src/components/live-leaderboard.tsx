@@ -117,7 +117,7 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                 <span className="text-xs font-medium uppercase tracking-wider text-muted">Player</span>
               </th>
               <th className="px-4 py-3 text-right">
-                <SortHeader label="MI Rating" sortKeyName="rating" />
+                <SortHeader label="KA Rating" sortKeyName="rating" />
               </th>
               <th className="px-4 py-3 text-right">
                 <SortHeader label="Win Rate %" sortKeyName="winRate" />

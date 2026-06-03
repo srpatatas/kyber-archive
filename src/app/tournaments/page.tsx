@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 
 
 export const metadata: Metadata = {
-  title: "Tournaments | The Midichlorian Index",
+  title: "Tournaments | The Kyber Archive",
 };
 
 export default async function TournamentsPage() {
@@ -34,7 +34,7 @@ export default async function TournamentsPage() {
           </h2>
           <p className="mt-2 max-w-lg text-sm text-muted">
             {tournaments.length} sanctioned Star Wars: Unlimited events tracked
-            by The Midichlorian Index.
+            by The Kyber Archive.
           </p>
         </div>
       </section>

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Midichlorian Index | Star Wars Unlimited Rankings",
+  title: "The Kyber Archive | Star Wars Unlimited Rankings",
   description:
     "The definitive competitive ranking system for Star Wars: Unlimited TCG players. Track ratings, win streaks, and tournament results.",
 };

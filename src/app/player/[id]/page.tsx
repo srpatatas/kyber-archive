@@ -84,7 +84,7 @@ export default async function PlayerPage({
 
               <div className="text-right">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                  Midichlorian Index
+                  Kyber Archive
                 </p>
                 <p className="text-4xl font-bold text-gold tabular-nums">
                   {player.rating.toLocaleString()}

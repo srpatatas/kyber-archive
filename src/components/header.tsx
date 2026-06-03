@@ -36,7 +36,7 @@ export function Header() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-foreground group-hover:text-gold transition-colors">
-              The Midichlorian Index
+              The Kyber Archive
             </h1>
             <p className="hidden text-[10px] font-medium uppercase tracking-[0.2em] text-muted sm:block">
               Star Wars Unlimited Rankings
