@@ -1028,3 +1028,132 @@ export async function getEloLeaderboard(): Promise<EloComparisonEntry[]> {
 
   return byEloTierTrialHalf;
 }
+
+export interface TeamMember {
+  id: string;
+  username: string;
+  rating: number;
+  rank: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  tournamentCount: number;
+  tournamentWins: number;
+}
+
+export interface TeamH2H {
+  opponentTag: string;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+export interface Team {
+  tag: string;
+  members: TeamMember[];
+  avgRating: number;
+  totalWins: number;
+  totalLosses: number;
+  totalDraws: number;
+  totalTournamentWins: number;
+  h2h: TeamH2H[];
+}
+
+export async function getTeams(): Promise<Team[]> {
+  const leaderboard = await getLeaderboard();
+
+  const teamMap = new Map<string, TeamMember[]>();
+  const playerTeam = new Map<string, string>();
+
+  for (const p of leaderboard) {
+    if (!p.username.includes("_")) continue;
+    const tag = p.username.split("_")[0];
+    if (!teamMap.has(tag)) teamMap.set(tag, []);
+    teamMap.get(tag)!.push({
+      id: p.id,
+      username: p.username,
+      rating: p.rating,
+      rank: p.rank,
+      wins: p.wins,
+      losses: p.losses,
+      draws: p.draws,
+      tournamentCount: p.tournamentCount,
+      tournamentWins: p.tournamentWins,
+    });
+    playerTeam.set(p.id, tag);
+  }
+
+  // Only keep teams with 2+ members
+  for (const [tag, members] of teamMap) {
+    if (members.length < 2) {
+      for (const m of members) playerTeam.delete(m.id);
+      teamMap.delete(tag);
+    }
+  }
+
+  // Compute H2H from matches
+  const { rows: matchRows } = await query(`
+    SELECT player1_id, player2_id, player1_wins, player2_wins
+    FROM matches
+  `);
+
+  const h2hMap = new Map<string, Map<string, { wins: number; losses: number; draws: number }>>();
+
+  for (const m of matchRows as Record<string, unknown>[]) {
+    const p1 = m.player1_id as string;
+    const p2 = m.player2_id as string;
+    const t1 = playerTeam.get(p1);
+    const t2 = playerTeam.get(p2);
+    if (!t1 || !t2 || t1 === t2) continue;
+
+    if (!h2hMap.has(t1)) h2hMap.set(t1, new Map());
+    if (!h2hMap.has(t2)) h2hMap.set(t2, new Map());
+    if (!h2hMap.get(t1)!.has(t2)) h2hMap.get(t1)!.set(t2, { wins: 0, losses: 0, draws: 0 });
+    if (!h2hMap.get(t2)!.has(t1)) h2hMap.get(t2)!.set(t1, { wins: 0, losses: 0, draws: 0 });
+
+    const r1 = h2hMap.get(t1)!.get(t2)!;
+    const r2 = h2hMap.get(t2)!.get(t1)!;
+
+    if ((m.player1_wins as number) > (m.player2_wins as number)) {
+      r1.wins++; r2.losses++;
+    } else if ((m.player2_wins as number) > (m.player1_wins as number)) {
+      r1.losses++; r2.wins++;
+    } else {
+      r1.draws++; r2.draws++;
+    }
+  }
+
+  const teams: Team[] = [];
+  for (const [tag, members] of teamMap) {
+    const totalWins = members.reduce((s, m) => s + m.wins, 0);
+    const totalLosses = members.reduce((s, m) => s + m.losses, 0);
+    const totalDraws = members.reduce((s, m) => s + m.draws, 0);
+    const totalTournamentWins = leaderboard
+      .filter((p) => playerTeam.get(p.id) === tag)
+      .reduce((s, p) => s + p.tournamentWins, 0);
+    const avgRating = Math.round(members.reduce((s, m) => s + m.rating, 0) / members.length);
+
+    const h2h: TeamH2H[] = [];
+    const teamH2H = h2hMap.get(tag);
+    if (teamH2H) {
+      for (const [opp, record] of teamH2H) {
+        h2h.push({ opponentTag: opp, ...record });
+      }
+      h2h.sort((a, b) => (b.wins + b.losses + b.draws) - (a.wins + a.losses + a.draws));
+    }
+
+    teams.push({
+      tag,
+      members: members.sort((a, b) => a.rank - b.rank),
+      avgRating,
+      totalWins,
+      totalLosses,
+      totalDraws,
+      totalTournamentWins,
+      h2h,
+    });
+  }
+
+  teams.sort((a, b) => b.avgRating - a.avgRating);
+  return teams;
+}
