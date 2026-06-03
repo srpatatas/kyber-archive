@@ -61,24 +61,22 @@ export default async function TournamentsPage() {
               return (
               <div key={month}>
                 {showSeparator && (
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-sky-400/40 to-sky-400" />
-                    <svg viewBox="0 0 120 12" className="h-3 w-20 shrink-0">
-                      <line x1="0" y1="6" x2="52" y2="6" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
-                      <circle cx="56" cy="6" r="3" fill="#38bdf8" opacity="0.8" />
-                      <line x1="60" y1="6" x2="120" y2="6" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-sky-400">Year 1</span>
-                      <span className="text-xs text-muted">/</span>
-                      <span className="text-xs font-bold text-red-400">Year 0</span>
+                  <div className="mb-8 rounded-lg border border-gold/20 bg-gold/5 px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">▲</span>
+                        <span className="text-xs font-bold text-gold">Year 1</span>
+                        <span className="text-[10px] text-muted">Current Season · Jul 28, 2025 onwards</span>
+                      </div>
                     </div>
-                    <svg viewBox="0 0 120 12" className="h-3 w-20 shrink-0">
-                      <line x1="0" y1="6" x2="52" y2="6" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
-                      <circle cx="56" cy="6" r="3" fill="#f87171" opacity="0.8" />
-                      <line x1="60" y1="6" x2="120" y2="6" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    <div className="h-px flex-1 bg-gradient-to-l from-transparent via-sky-400/40 to-sky-400" />
+                    <div className="my-2 h-px bg-gold/20" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">▼</span>
+                        <span className="text-xs font-bold text-muted">Year 0</span>
+                        <span className="text-[10px] text-muted">Pre-season · Before Jul 28, 2025</span>
+                      </div>
+                    </div>
                   </div>
                 )}
                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">
