@@ -1039,6 +1039,7 @@ export interface TeamMember {
   draws: number;
   tournamentCount: number;
   tournamentWins: number;
+  titleTiers: EventTier[];
 }
 
 export interface TeamH2H {
@@ -1062,6 +1063,18 @@ export interface Team {
 export async function getTeams(): Promise<Team[]> {
   const leaderboard = await getLeaderboard();
 
+  const { rows: titleRows } = await query(`
+    SELECT p.player_id, t.event_tier FROM placements p
+    JOIN tournaments t ON t.id = p.tournament_id
+    WHERE p.placement = 1 ORDER BY t.date
+  `);
+  const titlesByPlayer = new Map<string, EventTier[]>();
+  for (const r of titleRows as Record<string, unknown>[]) {
+    const pid = r.player_id as string;
+    if (!titlesByPlayer.has(pid)) titlesByPlayer.set(pid, []);
+    titlesByPlayer.get(pid)!.push(r.event_tier as EventTier);
+  }
+
   const teamMap = new Map<string, TeamMember[]>();
   const playerTeam = new Map<string, string>();
 
@@ -1079,6 +1092,7 @@ export async function getTeams(): Promise<Team[]> {
       draws: p.draws,
       tournamentCount: p.tournamentCount,
       tournamentWins: p.tournamentWins,
+      titleTiers: titlesByPlayer.get(p.id) ?? [],
     });
     playerTeam.set(p.id, tag);
   }

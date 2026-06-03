@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { getTeams } from "@/lib/store";
+import { KyberCrystal } from "@/components/kyber-crystal";
+import { getTierConfig } from "@/lib/tiers";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -146,9 +148,12 @@ export default async function TeamsPage() {
                 <p className="text-xs text-muted">{team.members.length} members · Avg rating {team.avgRating}</p>
               </div>
               {team.totalTournamentWins > 0 && (
-                <div className="text-right">
-                  <span className="text-2xl font-bold text-gold tabular-nums">{team.totalTournamentWins}</span>
-                  <p className="text-[10px] text-muted">kyber{team.totalTournamentWins === 1 ? "" : "s"}</p>
+                <div className="flex items-center gap-1">
+                  {team.members.flatMap((m) =>
+                    m.titleTiers.map((tier, i) => (
+                      <KyberCrystal key={`${m.id}-${i}`} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
+                    ))
+                  )}
                 </div>
               )}
             </div>
