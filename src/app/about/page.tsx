@@ -54,9 +54,10 @@ export default function AboutPage() {
           <p>
             The Kyber Archive is a competitive ranking system for{" "}
             <strong className="text-foreground">Star Wars: Unlimited</strong>{" "}
-            TCG players. Like a Jedi library preserving the records of every
-            lightsaber duel and every trial overcome, the Archive catalogs
-            competitive performance across sanctioned tournaments.
+            TCG players in Argentina. Like a Jedi library preserving the
+            records of every lightsaber duel and every trial overcome, the
+            Archive catalogs competitive performance across sanctioned
+            tournaments played in the country.
           </p>
 
           <p>

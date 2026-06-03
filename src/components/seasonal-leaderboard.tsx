@@ -62,8 +62,8 @@ export function SeasonalLeaderboard({
           </h2>
           <p className="mt-2 max-w-lg text-sm text-muted">
             The Kyber Archive measures player strength across sanctioned
-            Star Wars: Unlimited tournaments. Higher ratings indicate stronger
-            Force sensitivity.
+            Star Wars: Unlimited tournaments in Argentina. Higher ratings
+            indicate stronger Force sensitivity.
           </p>
 
           {players.length > 0 && (
