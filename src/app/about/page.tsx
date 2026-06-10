@@ -319,10 +319,9 @@ export default function AboutPage() {
           </div>
 
           <p className="text-xs text-muted">
-            The Kyber Archive is a fan-made project and is not affiliated
-            with Fantasy Flight Games, Lucasfilm Ltd., or The Walt Disney
-            Company. Star Wars: Unlimited and all related marks are trademarks of
-            Lucasfilm Ltd.
+            The Kyber Archive is in no way affiliated with Disney or Fantasy
+            Flight Games. Star Wars characters, cards, logos, and art are
+            property of Disney and/or Fantasy Flight Games.
           </p>
         </div>
       </div>
