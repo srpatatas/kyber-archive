@@ -10,7 +10,7 @@ type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; a
 type Season = "year1" | "year0" | "allTime";
 
 const TABS: { key: Season; label: string; sublabel: string }[] = [
-  { key: "year1", label: "Year 1", sublabel: "Current Season" },
+  { key: "year1", label: "Year 1", sublabel: "Jul 2025 – Jul 2026" },
   { key: "year0", label: "Year 0", sublabel: "Jun 2025 – Jul 2025" },
   { key: "allTime", label: "All-Time", sublabel: "All Tournaments" },
 ];

@@ -10,15 +10,6 @@ import { PlayerEvents } from "@/components/player-events";
 import { KyberCrystal } from "@/components/kyber-crystal";
 
 
-function getTierLabel(rating: number, rank: number): { name: string; color: string } {
-  if (rank === 1) return { name: "The Chosen One", color: "text-gold" };
-  if (rating >= 3200) return { name: "Grand Master", color: "text-sky-400" };
-  if (rating >= 2700) return { name: "Jedi Master", color: "text-sky-400" };
-  if (rating >= 1900) return { name: "Jedi Knight", color: "text-sky-400" };
-  if (rating >= 1650) return { name: "Padawan", color: "text-sky-400" };
-  return { name: "Youngling", color: "text-sky-400" };
-}
-
 export default async function PlayerPage({
   params,
 }: {
@@ -34,7 +25,6 @@ export default async function PlayerPage({
     totalGames > 0
       ? Math.round((player.wins / totalGames) * 1000) / 10
       : 0;
-  const tier = getTierLabel(player.rating, player.rank);
   const rivalries = await getPlayerRivalries(id);
   const leaders = await getPlayerLeaders(id);
   const tournaments = await getPlayerTournaments(id);
@@ -70,10 +60,6 @@ export default async function PlayerPage({
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <span className="text-sm text-muted">
                     Rank #{player.rank}
-                  </span>
-                  <span className="text-muted">·</span>
-                  <span className={`text-sm font-medium ${tier.color}`}>
-                    {tier.name}
                   </span>
                   <span className="text-muted">·</span>
                   <span className="text-sm text-muted">

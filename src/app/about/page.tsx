@@ -4,44 +4,6 @@ export const metadata: Metadata = {
   title: "About | The Kyber Archive",
 };
 
-const factionTiers = [
-  {
-    rating: "3,200+",
-    jedi: "Grand Master",
-    rebels: "General",
-    sith: "Sith Lord",
-    empire: "Grand Admiral",
-  },
-  {
-    rating: "2,700–3,199",
-    jedi: "Jedi Master",
-    rebels: "Commander",
-    sith: "Darth",
-    empire: "Grand Moff",
-  },
-  {
-    rating: "1,900–2,699",
-    jedi: "Jedi Knight",
-    rebels: "Lieutenant",
-    sith: "Sith Warrior",
-    empire: "Captain",
-  },
-  {
-    rating: "1,650–1,899",
-    jedi: "Padawan",
-    rebels: "Operative",
-    sith: "Apprentice",
-    empire: "Trooper",
-  },
-  {
-    rating: "< 1,650",
-    jedi: "Youngling",
-    rebels: "Recruit",
-    sith: "Acolyte",
-    empire: "Cadet",
-  },
-];
-
 export default function AboutPage() {
   return (
     <main className="flex-1">
@@ -251,74 +213,55 @@ export default function AboutPage() {
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-6">
-            <h2 className="text-lg font-bold text-foreground">The Chosen One</h2>
+            <h2 className="text-lg font-bold text-foreground">Seasons</h2>
             <p className="mt-2">
-              The <span className="font-bold text-gold">Chosen One</span> is a
-              special title reserved for the <strong className="text-foreground">#1
-              ranked player</strong>{" "}regardless of faction. There can only be one
-              Chosen One at any time &mdash; just as the prophecy foretold. Lose
-              the top spot, and the title passes to whoever claims it.
+              The Kyber Archive splits tournament history into seasons based on
+              the Star Wars: Unlimited{" "}
+              <strong className="text-foreground">Galactic Championship</strong>.
+              Each season runs until the next Galactic Championship, when all
+              ratings reset and a new season begins.
             </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-surface p-6">
-            <h2 className="text-lg font-bold text-foreground">Factions &amp; Tiers</h2>
-            <p className="mt-2">
-              Choose your allegiance. Each faction has its own rank progression
-              based on your Kyber Archive rating:
-            </p>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="pb-2 pr-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Rating</th>
-                    <th className="pb-2 px-3">
-                      <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-2 text-center">
-                        <p className="text-xs font-medium uppercase tracking-wider text-sky-400">Jedi Order</p>
-                        <p className="mt-0.5 text-[10px] text-muted">Light · Force</p>
-                      </div>
-                    </th>
-                    <th className="pb-2 px-3">
-                      <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-2 text-center">
-                        <p className="text-xs font-medium uppercase tracking-wider text-orange-400">Rebel Alliance</p>
-                        <p className="mt-0.5 text-[10px] text-muted">Light · Military</p>
-                      </div>
-                    </th>
-                    <th className="pb-2 px-3">
-                      <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-2 text-center">
-                        <p className="text-xs font-medium uppercase tracking-wider text-red-400">Sith Order</p>
-                        <p className="mt-0.5 text-[10px] text-muted">Dark · Force</p>
-                      </div>
-                    </th>
-                    <th className="pb-2 pl-3">
-                      <div className="rounded-lg border border-slate-400/20 bg-slate-400/5 p-2 text-center">
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-300">Galactic Empire</p>
-                        <p className="mt-0.5 text-[10px] text-muted">Dark · Military</p>
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/30">
-                  {factionTiers.map((row) => (
-                    <tr key={row.rating}>
-                      <td className="py-2 pr-3 font-medium text-gold tabular-nums">{row.rating}</td>
-                      <td className="py-2 px-3 text-center text-sky-400">{row.jedi}</td>
-                      <td className="py-2 px-3 text-center text-orange-400">{row.rebels}</td>
-                      <td className="py-2 px-3 text-center text-red-400">{row.sith}</td>
-                      <td className="py-2 pl-3 text-center text-slate-300">{row.empire}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg border border-border/50 bg-background p-4">
+                <p className="text-sm font-bold text-gold">Year 1 (Current Season)</p>
+                <p className="mt-1 text-xs text-muted">
+                  July 28, 2025 &ndash; July 26, 2026
+                </p>
+                <p className="mt-1 text-xs text-sand-light">
+                  Ends with the SWU Galactic Championship on July 26, 2026. Players
+                  need a minimum of 3 events to appear on the leaderboard.
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-background p-4">
+                <p className="text-sm font-bold text-muted">Year 0 (Pre-Season)</p>
+                <p className="mt-1 text-xs text-muted">
+                  All tournaments before July 28, 2025
+                </p>
+                <p className="mt-1 text-xs text-sand-light">
+                  The inaugural season before the competitive calendar was
+                  established. No minimum event requirement.
+                </p>
+              </div>
             </div>
+            <p className="mt-3 text-xs text-muted">
+              The <strong className="text-foreground">All-Time</strong> tab
+              shows cumulative ratings across all seasons. Each season starts
+              fresh at 1,500 ELO &mdash; your all-time rating is computed from
+              every tournament you&apos;ve ever played.
+            </p>
           </div>
 
           <div className="rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">Aspects</h2>
             <p className="mt-2">
-              Each player&apos;s preferred Aspect reflects their dominant playstyle
-              in Star Wars: Unlimited:
+              Each player&apos;s Aspects are determined by their{" "}
+              <strong className="text-foreground">most-played leader + base combination</strong>{" "}
+              across tournaments (minimum 2 events with the same deck). The
+              Aspects shown are the ones belonging to that signature deck. If a
+              player hasn&apos;t repeated any deck yet, no Aspects are displayed.
+            </p>
+            <p className="mt-2">
+              The six Aspects in Star Wars: Unlimited are:
             </p>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[

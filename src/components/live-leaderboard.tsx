@@ -16,15 +16,6 @@ function getWinRate(p: RankedPlayer): number {
   return Math.round((p.wins / total) * 1000) / 10;
 }
 
-function getTierLabel(rating: number, rank: number): { name: string; color: string } {
-  if (rank === 1) return { name: "The Chosen One", color: "text-gold" };
-  if (rating >= 3200) return { name: "Grand Master", color: "text-sky-400" };
-  if (rating >= 2700) return { name: "Jedi Master", color: "text-sky-400" };
-  if (rating >= 1900) return { name: "Jedi Knight", color: "text-sky-400" };
-  if (rating >= 1650) return { name: "Padawan", color: "text-sky-400" };
-  return { name: "Youngling", color: "text-sky-400" };
-}
-
 export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortAsc, setSortAsc] = useState(false);
@@ -134,7 +125,6 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
             {sorted.map((player, i) => {
               const winRate = getWinRate(player);
               const totalGames = player.wins + player.losses + player.draws;
-              const tier = getTierLabel(player.rating, player.rank);
               return (
                 <tr
                   key={player.id}
@@ -154,9 +144,6 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-xs text-muted">{totalGames} games</p>
-                        <span className={`text-[10px] font-medium ${tier.color}`}>
-                          {tier.name}
-                        </span>
                         {player.mainLeader && (
                           <span className="contents">
                             <span className="text-muted">·</span>
