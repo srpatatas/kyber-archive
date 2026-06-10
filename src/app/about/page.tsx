@@ -358,6 +358,23 @@ export default function AboutPage() {
             </div>
           </div>
 
+          <div className="rounded-xl border border-border bg-surface p-6">
+            <h2 className="text-lg font-bold text-foreground">About the Creator</h2>
+            <p className="mt-2">
+              The Kyber Archive is created and maintained by{" "}
+              <a href="/player/NT_srpatatas" className="font-bold text-gold hover:underline">
+                NT_srpatatas
+              </a>.
+              All tournament data is sourced from{" "}
+              <a href="https://melee.gg" target="_blank" rel="noopener noreferrer" className="text-foreground hover:underline">melee.gg</a> and processed
+              through the rating system described above.
+            </p>
+            <p className="mt-2">
+              Have questions, corrections, or feedback? Reach out via the SWU
+              Argentina community.
+            </p>
+          </div>
+
           <p className="text-xs text-muted">
             The Kyber Archive is a fan-made project and is not affiliated
             with Fantasy Flight Games, Lucasfilm Ltd., or The Walt Disney
