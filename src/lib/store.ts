@@ -1,6 +1,7 @@
 import { query, withTransaction } from "./db";
 import type { PoolClient } from "@neondatabase/serverless";
 import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings, computePureElo, computeEloWithPlacements, computeEloTrialWithPlacements, computeEloTrial, computeEloTrialScaledPlacements, computeEloTrialSizePlacements } from "./elo";
+import { normalizeBase } from "./base-normalization";
 
 interface StoredTournament {
   id: number;
@@ -327,17 +328,33 @@ export async function setCachedAspects(deckKey: string, aspects: string[]): Prom
 
 export async function getPlayerAspects(playerId: string): Promise<string[]> {
   const { rows } = await query(`
-    SELECT ac.aspects
+    SELECT d.leader, d.base, ac.aspects
     FROM decklists d
     JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
     JOIN tournaments t ON t.id = d.tournament_id
     WHERE d.player_id = $1
-    GROUP BY d.leader, d.base, ac.aspects
-    HAVING COUNT(*) >= 2
-    ORDER BY COUNT(*) DESC, MAX(t.date) DESC
-    LIMIT 1
   `, [playerId]);
-  return rows.length > 0 ? JSON.parse(rows[0].aspects) : [];
+
+  const grouped = new Map<string, { aspects: string; count: number }>();
+  for (const r of rows as Record<string, unknown>[]) {
+    const normalized = normalizeBase(r.base as string);
+    const key = `${r.leader}||${normalized.key}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.count++;
+      const newAspects = JSON.parse(r.aspects as string) as string[];
+      const oldAspects = JSON.parse(existing.aspects) as string[];
+      if (newAspects.length > oldAspects.length) existing.aspects = r.aspects as string;
+    } else {
+      grouped.set(key, { aspects: r.aspects as string, count: 1 });
+    }
+  }
+
+  const top = Array.from(grouped.values())
+    .filter(d => d.count >= 2)
+    .sort((a, b) => b.count - a.count)[0];
+
+  return top ? JSON.parse(top.aspects) : [];
 }
 
 export async function forceRecalculate(): Promise<void> {
@@ -348,47 +365,79 @@ export async function forceRecalculate(): Promise<void> {
 
 export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] })[]> {
   const { rows } = await query(`
-    SELECT r.*, p.melee_id, p.name, p.username,
-      (SELECT d1.leader || ' - ' || d1.base FROM decklists d1
-        JOIN tournaments t1 ON t1.id = d1.tournament_id
-        WHERE d1.player_id = r.player_id
-        GROUP BY d1.leader, d1.base
-        HAVING COUNT(*) >= 2
-        ORDER BY COUNT(*) DESC, MAX(t1.date) DESC
-        LIMIT 1) as main_leader,
-      (SELECT ac.aspects FROM decklists d2
-        JOIN aspect_cache ac ON ac.deck_key = d2.leader || '||' || d2.base
-        JOIN tournaments t2 ON t2.id = d2.tournament_id
-        WHERE d2.player_id = r.player_id
-        GROUP BY d2.leader, d2.base, ac.aspects
-        HAVING COUNT(*) >= 2
-        ORDER BY COUNT(*) DESC, MAX(t2.date) DESC
-        LIMIT 1) as main_aspects
+    SELECT r.*, p.melee_id, p.name, p.username
     FROM ratings r
     JOIN players p ON p.id = r.player_id
     WHERE r.tournament_count >= 3
     ORDER BY r.rating DESC
   `);
 
-  return rows.map((r: Record<string, unknown>, i: number) => ({
-    id: r.player_id as string,
-    meleeId: r.melee_id as number,
-    name: r.name as string,
-    username: r.username as string,
-    rating: r.rating as number,
-    peakRating: r.peak_rating as number,
-    wins: r.wins as number,
-    losses: r.losses as number,
-    draws: r.draws as number,
-    streak: r.streak as number,
-    tournamentCount: r.tournament_count as number,
-    tournamentWins: r.tournament_wins as number,
-    top8s: r.top8s as number,
-    lastActive: r.last_active as string,
-    mainLeader: r.main_leader as string | null,
-    aspects: r.main_aspects ? JSON.parse(r.main_aspects as string) : [],
-    rank: i + 1,
-  }));
+  const { rows: deckRows } = await query(`
+    SELECT d.player_id, d.leader, d.base, ac.aspects, t.date
+    FROM decklists d
+    JOIN tournaments t ON t.id = d.tournament_id
+    LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
+  `);
+
+  const decksByPlayer = new Map<string, Map<string, { display: string; aspects: string | null; count: number; maxDate: string }>>();
+  for (const d of deckRows as Record<string, unknown>[]) {
+    const pid = d.player_id as string;
+    if (!decksByPlayer.has(pid)) decksByPlayer.set(pid, new Map());
+    const normalized = normalizeBase(d.base as string);
+    const key = `${d.leader}||${normalized.key}`;
+    const existing = decksByPlayer.get(pid)!.get(key);
+    const date = d.date as string;
+    if (existing) {
+      existing.count++;
+      if (date > existing.maxDate) existing.maxDate = date;
+      if (d.aspects) {
+        const newAspects = JSON.parse(d.aspects as string) as string[];
+        const oldAspects = existing.aspects ? JSON.parse(existing.aspects) as string[] : [];
+        if (newAspects.length > oldAspects.length) existing.aspects = d.aspects as string;
+      }
+    } else {
+      decksByPlayer.get(pid)!.set(key, {
+        display: `${d.leader} - ${normalized.display}`,
+        aspects: d.aspects as string | null,
+        count: 1,
+        maxDate: date,
+      });
+    }
+  }
+
+  return rows.map((r: Record<string, unknown>, i: number) => {
+    const decks = decksByPlayer.get(r.player_id as string);
+    let mainLeader: string | null = null;
+    let aspects: string[] = [];
+    if (decks) {
+      const top = Array.from(decks.values())
+        .filter(d => d.count >= 2)
+        .sort((a, b) => b.count - a.count || b.maxDate.localeCompare(a.maxDate))[0];
+      if (top) {
+        mainLeader = top.display;
+        aspects = top.aspects ? JSON.parse(top.aspects) : [];
+      }
+    }
+    return {
+      id: r.player_id as string,
+      meleeId: r.melee_id as number,
+      name: r.name as string,
+      username: r.username as string,
+      rating: r.rating as number,
+      peakRating: r.peak_rating as number,
+      wins: r.wins as number,
+      losses: r.losses as number,
+      draws: r.draws as number,
+      streak: r.streak as number,
+      tournamentCount: r.tournament_count as number,
+      tournamentWins: r.tournament_wins as number,
+      top8s: r.top8s as number,
+      lastActive: r.last_active as string,
+      mainLeader,
+      aspects,
+      rank: i + 1,
+    };
+  });
 }
 
 export type SeasonPlayer = PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] };
@@ -462,27 +511,35 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     .sort((a, b) => b.rating - a.rating);
 
   const { rows: deckRows } = await query(`
-    SELECT d.player_id, d.leader, d.base, ac.aspects
+    SELECT d.player_id, d.leader, d.base, ac.aspects, t.date
     FROM decklists d
     JOIN tournaments t ON t.id = d.tournament_id
     LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
     WHERE t.date >= $1 AND t.date < $2
   `, [startDate, endDate]);
 
-  const decksByPlayer = new Map<string, Map<string, { leader: string; base: string; aspects: string | null; count: number }>>();
+  const decksByPlayer = new Map<string, Map<string, { display: string; aspects: string | null; count: number; maxDate: string }>>();
   for (const d of deckRows as Record<string, unknown>[]) {
     const pid = d.player_id as string;
     if (!decksByPlayer.has(pid)) decksByPlayer.set(pid, new Map());
-    const key = `${d.leader}||${d.base}`;
+    const normalized = normalizeBase(d.base as string);
+    const key = `${d.leader}||${normalized.key}`;
     const existing = decksByPlayer.get(pid)!.get(key);
+    const date = d.date as string;
     if (existing) {
       existing.count++;
+      if (date > existing.maxDate) existing.maxDate = date;
+      if (d.aspects) {
+        const newAspects = JSON.parse(d.aspects as string) as string[];
+        const oldAspects = existing.aspects ? JSON.parse(existing.aspects) as string[] : [];
+        if (newAspects.length > oldAspects.length) existing.aspects = d.aspects as string;
+      }
     } else {
       decksByPlayer.get(pid)!.set(key, {
-        leader: d.leader as string,
-        base: d.base as string,
+        display: `${d.leader} - ${normalized.display}`,
         aspects: d.aspects as string | null,
         count: 1,
+        maxDate: date,
       });
     }
   }
@@ -494,9 +551,9 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     if (decks) {
       const top = Array.from(decks.values())
         .filter((d) => d.count >= 2)
-        .sort((a, b) => b.count - a.count)[0];
+        .sort((a, b) => b.count - a.count || b.maxDate.localeCompare(a.maxDate))[0];
       if (top) {
-        mainLeader = `${top.leader} - ${top.base}`;
+        mainLeader = top.display;
         aspects = top.aspects ? JSON.parse(top.aspects) : [];
       }
     }
@@ -709,14 +766,15 @@ export async function getPlayerLeaders(playerId: string): Promise<PlayerLeaderEn
 
   const grouped = new Map<string, PlayerLeaderEntry>();
   for (const r of rows as Record<string, unknown>[]) {
-    const key = `${r.leader}||${r.base}`;
+    const normalized = normalizeBase(r.base as string);
+    const key = `${r.leader}||${normalized.key}`;
     const existing = grouped.get(key);
     const event = { tournamentName: r.tournament_name as string, tournamentId: r.tournament_id as number, decklistGuid: r.decklist_guid as string | null };
     if (existing) {
       existing.count++;
       existing.events.push(event);
     } else {
-      grouped.set(key, { leader: r.leader as string, base: r.base as string, count: 1, events: [event] });
+      grouped.set(key, { leader: r.leader as string, base: normalized.display, count: 1, events: [event] });
     }
   }
   return Array.from(grouped.values()).sort((a, b) => b.count - a.count);
