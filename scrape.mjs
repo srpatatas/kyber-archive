@@ -161,6 +161,11 @@ const players = {};
 const eventTier = tierArg;
 const tournamentDate = latestStandings[0]?.DateCreated || new Date().toISOString();
 
+// Load player aliases
+const { rows: aliasRows } = await pool.query("SELECT alias, canonical_id FROM player_aliases");
+const aliasMap = new Map(aliasRows.map(r => [r.alias, r.canonical_id]));
+const resolve = (key) => aliasMap.get(key) ?? key;
+
 for (const [roundId, matches] of matchesByRound) {
   const roundName = roundButtonNames.get(roundId) || `Round ${roundId}`;
   for (const match of matches) {
@@ -172,8 +177,8 @@ for (const [roundId, matches] of matchesByRound) {
 
     const p1 = c1.Team.Players[0];
     const p2 = c2.Team.Players[0];
-    const p1Key = (p1.Username || p1.DisplayName).toLowerCase();
-    const p2Key = (p2.Username || p2.DisplayName).toLowerCase();
+    const p1Key = resolve((p1.Username || p1.DisplayName).toLowerCase());
+    const p2Key = resolve((p2.Username || p2.DisplayName).toLowerCase());
 
     players[p1Key] = { id: p1Key, meleeId: p1.ID, name: p1.Name || p1.DisplayName, username: p1.Username || p1.DisplayName };
     players[p2Key] = { id: p2Key, meleeId: p2.ID, name: p2.Name || p2.DisplayName, username: p2.Username || p2.DisplayName };
@@ -257,7 +262,7 @@ try {
   // Insert placements
   for (const s of latestStandings) {
     if (!s.Team?.Players?.length) continue;
-    const playerId = (s.Team.Players[0].Username || s.Team.Players[0].DisplayName).toLowerCase();
+    const playerId = resolve((s.Team.Players[0].Username || s.Team.Players[0].DisplayName).toLowerCase());
     if (s.Rank <= topCutSize) {
       await client.query(
         "INSERT INTO placements (tournament_id, player_id, placement, event_tier, date) VALUES ($1, $2, $3, $4, $5)",
@@ -269,7 +274,7 @@ try {
   // Insert decklists
   for (const s of latestStandings) {
     if (!s.Team?.Players?.length || !s.Decklists?.length) continue;
-    const playerId = (s.Team.Players[0].Username || s.Team.Players[0].DisplayName).toLowerCase();
+    const playerId = resolve((s.Team.Players[0].Username || s.Team.Players[0].DisplayName).toLowerCase());
     const deck = s.Decklists[0];
     const deckName = deck.DecklistName || "";
     if (deckName) {

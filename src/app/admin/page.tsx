@@ -57,6 +57,10 @@ export default function AdminPage() {
   const [lastRecalc, setLastRecalc] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
 
+  const [aliases, setAliases] = useState<{ alias: string; canonicalId: string }[]>([]);
+  const [newAlias, setNewAlias] = useState("");
+  const [newCanonicalId, setNewCanonicalId] = useState("");
+  const [aliasLoading, setAliasLoading] = useState(false);
   const [pinError, setPinError] = useState(false);
 
   function showToast(message: string, type: "success" | "error" = "success") {
@@ -85,9 +89,24 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchAliases = useCallback(async () => {
+    try {
+      const res = await adminFetch("/api/admin/aliases");
+      if (!res.ok) return;
+      const data = await res.json();
+      setAliases(data.aliases ?? []);
+    } catch {
+      // ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin]);
+
   useEffect(() => {
-    if (authenticated) fetchTournaments();
-  }, [authenticated, fetchTournaments]);
+    if (authenticated) {
+      fetchTournaments();
+      fetchAliases();
+    }
+  }, [authenticated, fetchTournaments, fetchAliases]);
 
   if (!authenticated) {
     return (
@@ -278,6 +297,46 @@ export default function AdminPage() {
       }
     } catch {
       showToast("Network error", "error");
+    }
+  }
+
+  async function handleAddAlias(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newAlias.trim() || !newCanonicalId.trim() || aliasLoading) return;
+    setAliasLoading(true);
+    try {
+      const res = await adminFetch("/api/admin/aliases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ alias: newAlias.trim(), canonicalId: newCanonicalId.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewAlias("");
+        setNewCanonicalId("");
+        showToast(`Alias added: ${newAlias.trim()} → ${newCanonicalId.trim()}`);
+        fetchAliases();
+        fetchTournaments();
+      } else {
+        showToast(data.error ?? "Failed to add alias", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    } finally {
+      setAliasLoading(false);
+    }
+  }
+
+  async function handleRemoveAlias(alias: string) {
+    try {
+      const res = await adminFetch(`/api/admin/aliases?alias=${encodeURIComponent(alias)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Alias removed: ${alias}`);
+        fetchAliases();
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -519,6 +578,68 @@ export default function AdminPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+        <div className="mt-8 rounded-xl border border-border">
+          <div className="border-b border-border bg-surface px-4 py-3">
+            <h2 className="text-sm font-medium text-foreground">
+              Player Aliases ({aliases.length})
+            </h2>
+            <p className="mt-0.5 text-[10px] text-muted">
+              Map old usernames to current ones. Adding an alias merges existing data and applies to future ingestions.
+            </p>
+          </div>
+          <div className="px-4 py-3 border-b border-border/50">
+            <form onSubmit={handleAddAlias} className="flex gap-2">
+              <input
+                type="text"
+                value={newAlias}
+                onChange={(e) => setNewAlias(e.target.value)}
+                placeholder="Old username"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+              />
+              <span className="self-center text-xs text-muted">→</span>
+              <input
+                type="text"
+                value={newCanonicalId}
+                onChange={(e) => setNewCanonicalId(e.target.value)}
+                placeholder="Current username"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+              />
+              <button
+                type="submit"
+                disabled={aliasLoading || !newAlias.trim() || !newCanonicalId.trim()}
+                className="rounded-lg bg-gold/10 border border-gold/20 px-4 py-1.5 text-xs font-medium text-gold hover:bg-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {aliasLoading ? "Adding..." : "Add"}
+              </button>
+            </form>
+          </div>
+          {aliases.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-muted">
+              No aliases configured.
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {aliases.map((a) => (
+                <div key={a.alias} className="flex items-center justify-between px-4 py-2">
+                  <div className="text-sm">
+                    <span className="text-muted">{a.alias}</span>
+                    <span className="mx-2 text-xs text-muted">→</span>
+                    <span className="text-foreground font-medium">{a.canonicalId}</span>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveAlias(a.alias)}
+                    className="rounded p-1 text-muted hover:text-red-400 transition-colors"
+                    title="Remove alias"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
