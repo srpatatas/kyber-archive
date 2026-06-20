@@ -113,6 +113,9 @@ export async function reingestFromCache(tournamentId: number): Promise<boolean> 
   const firstStanding = standings[0] as Record<string, unknown> | undefined;
   const tournamentDate = (firstStanding?.DateCreated as string) || row.scraped_at;
 
+  const aliasMap = await loadAliasMap();
+  const resolve = (key: string) => aliasMap.get(key) ?? key;
+
   const allMatches: MatchResult[] = [];
   const players: Record<string, { id: string; meleeId: number; name: string; username: string }> = {};
 
@@ -132,8 +135,8 @@ export async function reingestFromCache(tournamentId: number): Promise<boolean> 
       const p2 = (t2.Players as Record<string, unknown>[])[0];
       if (!p1 || !p2) continue;
 
-      const p1Key = ((p1.Username || p1.DisplayName) as string).toLowerCase();
-      const p2Key = ((p2.Username || p2.DisplayName) as string).toLowerCase();
+      const p1Key = resolve(((p1.Username || p1.DisplayName) as string).toLowerCase());
+      const p2Key = resolve(((p2.Username || p2.DisplayName) as string).toLowerCase());
 
       players[p1Key] = {
         id: p1Key,
@@ -190,7 +193,7 @@ export async function reingestFromCache(tournamentId: number): Promise<boolean> 
     if (!team?.Players) continue;
     const sp = (team.Players as Record<string, unknown>[])[0];
     if (!sp) continue;
-    const playerId = ((sp.Username || sp.DisplayName) as string).toLowerCase();
+    const playerId = resolve(((sp.Username || sp.DisplayName) as string).toLowerCase());
 
     if (topCutSize > 0 && (s.Rank as number) <= topCutSize) {
       placementResults.push({ playerId, tournamentId, placement: s.Rank as number, eventTier, date: tournamentDate });
@@ -359,6 +362,50 @@ export async function getPlayerAspects(playerId: string): Promise<string[]> {
 
 export async function forceRecalculate(): Promise<void> {
   await withTransaction(async (client) => {
+    await recomputeRatings(client);
+  });
+}
+
+export async function loadAliasMap(): Promise<Map<string, string>> {
+  const { rows } = await query("SELECT alias, canonical_id FROM player_aliases");
+  return new Map(rows.map((r: Record<string, unknown>) => [r.alias as string, r.canonical_id as string]));
+}
+
+export async function getAliases(): Promise<{ alias: string; canonicalId: string }[]> {
+  const { rows } = await query("SELECT alias, canonical_id FROM player_aliases ORDER BY canonical_id, alias");
+  return rows.map((r: Record<string, unknown>) => ({ alias: r.alias as string, canonicalId: r.canonical_id as string }));
+}
+
+export async function addAlias(alias: string, canonicalId: string): Promise<void> {
+  alias = alias.toLowerCase().trim();
+  canonicalId = canonicalId.toLowerCase().trim();
+  if (!alias || !canonicalId) throw new Error("Both alias and canonical ID are required");
+  if (alias === canonicalId) throw new Error("Alias cannot be the same as canonical ID");
+
+  const { rows: chainCheck } = await query("SELECT 1 FROM player_aliases WHERE alias = $1", [canonicalId]);
+  if (chainCheck.length > 0) throw new Error("Canonical ID is itself an alias — remove that alias first to avoid chains");
+
+  await query(
+    "INSERT INTO player_aliases (alias, canonical_id) VALUES ($1, $2) ON CONFLICT (alias) DO UPDATE SET canonical_id = EXCLUDED.canonical_id",
+    [alias, canonicalId]
+  );
+}
+
+export async function removeAlias(alias: string): Promise<boolean> {
+  const { rowCount } = await query("DELETE FROM player_aliases WHERE alias = $1", [alias.toLowerCase().trim()]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function mergePlayerAlias(alias: string, canonicalId: string): Promise<void> {
+  alias = alias.toLowerCase().trim();
+  canonicalId = canonicalId.toLowerCase().trim();
+  await withTransaction(async (client) => {
+    await client.query("UPDATE matches SET player1_id = $2 WHERE player1_id = $1", [alias, canonicalId]);
+    await client.query("UPDATE matches SET player2_id = $2 WHERE player2_id = $1", [alias, canonicalId]);
+    await client.query("UPDATE placements SET player_id = $2 WHERE player_id = $1", [alias, canonicalId]);
+    await client.query("UPDATE decklists SET player_id = $2 WHERE player_id = $1", [alias, canonicalId]);
+    await client.query("DELETE FROM ratings WHERE player_id = $1", [alias]);
+    await client.query("DELETE FROM players WHERE id = $1", [alias]);
     await recomputeRatings(client);
   });
 }

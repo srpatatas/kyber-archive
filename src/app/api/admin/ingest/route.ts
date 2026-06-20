@@ -6,7 +6,7 @@ import {
   getTournamentStandings,
   getDecklistAspects,
 } from "@/lib/melee-client";
-import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects } from "@/lib/store";
+import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects, loadAliasMap } from "@/lib/store";
 import { MatchResult, PlacementResult, EventTier, classifyEvent } from "@/lib/elo";
 import { requireAdminPin } from "@/lib/admin-auth";
 import { revalidateAllData } from "@/lib/revalidate";
@@ -49,6 +49,9 @@ export async function POST(request: NextRequest) {
       }))
     ).sort((a, b) => a.phaseSort - b.phaseSort || a.SortOrder - b.SortOrder);
 
+    const aliasMap = await loadAliasMap();
+    const resolve = (key: string) => aliasMap.get(key) ?? key;
+
     const allMatches: MatchResult[] = [];
     const pendingTier = "minor" as const;
     const players: Record<string, { id: string; meleeId: number; name: string; username: string }> = {};
@@ -67,8 +70,8 @@ export async function POST(request: NextRequest) {
         const p1 = c1.Team.Players[0];
         const p2 = c2.Team.Players[0];
 
-        const p1Key = (p1.Username || p1.DisplayName).toLowerCase();
-        const p2Key = (p2.Username || p2.DisplayName).toLowerCase();
+        const p1Key = resolve((p1.Username || p1.DisplayName).toLowerCase());
+        const p2Key = resolve((p2.Username || p2.DisplayName).toLowerCase());
 
         players[p1Key] = {
           id: p1Key,
@@ -135,7 +138,7 @@ export async function POST(request: NextRequest) {
     for (const standing of standings) {
       if (standing.Team.Players.length === 0) continue;
       const sp = standing.Team.Players[0];
-      const playerId = (sp.Username || sp.DisplayName).toLowerCase();
+      const playerId = resolve((sp.Username || sp.DisplayName).toLowerCase());
 
       if (topCutSize > 0 && standing.Rank <= topCutSize) {
         placements.push({
