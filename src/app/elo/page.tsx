@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { getEloLeaderboard } from "@/lib/store";
 import Link from "next/link";
 import type { Metadata } from "next";

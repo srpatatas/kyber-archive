@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { getSeasonLeaderboard, getLeaderboard, getIngestedTournaments } from "@/lib/store";
 import { SeasonalLeaderboard } from "@/components/seasonal-leaderboard";
 

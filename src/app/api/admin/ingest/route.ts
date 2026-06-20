@@ -9,6 +9,7 @@ import {
 import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects } from "@/lib/store";
 import { MatchResult, PlacementResult, EventTier, classifyEvent } from "@/lib/elo";
 import { requireAdminPin } from "@/lib/admin-auth";
+import { revalidateAllData } from "@/lib/revalidate";
 
 export async function POST(request: NextRequest) {
   const denied = requireAdminPin(request);
@@ -197,6 +198,8 @@ export async function POST(request: NextRequest) {
       players
     );
 
+    revalidateAllData();
+
     return NextResponse.json({
       success: true,
       tournament: tournament.Name,
@@ -229,6 +232,7 @@ export async function PATCH(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
     }
+    revalidateAllData();
     return NextResponse.json({ success: true, eventTier });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -246,6 +250,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Tournament ID required" }, { status: 400 });
     }
     const removed = await removeTournament(parseInt(id, 10));
+    revalidateAllData();
     return NextResponse.json({ success: true, removed });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
