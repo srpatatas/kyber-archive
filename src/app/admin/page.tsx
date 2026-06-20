@@ -61,6 +61,8 @@ export default function AdminPage() {
   const [newAlias, setNewAlias] = useState("");
   const [newCanonicalId, setNewCanonicalId] = useState("");
   const [aliasLoading, setAliasLoading] = useState(false);
+  const [pendingAliases, setPendingAliases] = useState<{ username: string; tournamentName: string; createdAt: string }[]>([]);
+  const [pendingAssignTargets, setPendingAssignTargets] = useState<Record<string, string>>({});
   const [pinError, setPinError] = useState(false);
 
   function showToast(message: string, type: "success" | "error" = "success") {
@@ -101,12 +103,25 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin]);
 
+  const fetchPendingAliases = useCallback(async () => {
+    try {
+      const res = await adminFetch("/api/admin/pending-aliases");
+      if (!res.ok) return;
+      const data = await res.json();
+      setPendingAliases(data.pending ?? []);
+    } catch {
+      // ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin]);
+
   useEffect(() => {
     if (authenticated) {
       fetchTournaments();
       fetchAliases();
+      fetchPendingAliases();
     }
-  }, [authenticated, fetchTournaments, fetchAliases]);
+  }, [authenticated, fetchTournaments, fetchAliases, fetchPendingAliases]);
 
   if (!authenticated) {
     return (
@@ -334,6 +349,46 @@ export default function AdminPage() {
       if (data.success) {
         showToast(`Alias removed: ${alias}`);
         fetchAliases();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleConfirmPending(username: string) {
+    const canonicalId = pendingAssignTargets[username]?.trim();
+    if (!canonicalId) {
+      showToast("Enter the current username to assign", "error");
+      return;
+    }
+    try {
+      const res = await adminFetch("/api/admin/pending-aliases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, canonicalId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Alias created: ${username} → ${canonicalId}`);
+        setPendingAssignTargets((prev) => { const next = { ...prev }; delete next[username]; return next; });
+        fetchPendingAliases();
+        fetchAliases();
+        fetchTournaments();
+      } else {
+        showToast(data.error ?? "Failed to confirm alias", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  }
+
+  async function handleDismissPending(username: string) {
+    try {
+      const res = await adminFetch(`/api/admin/pending-aliases?username=${encodeURIComponent(username)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Dismissed: ${username} (new player)`);
+        fetchPendingAliases();
       }
     } catch {
       // ignore
@@ -581,6 +636,53 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+        {pendingAliases.length > 0 && (
+          <div className="mt-8 rounded-xl border border-amber-500/30">
+            <div className="border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
+              <h2 className="text-sm font-medium text-amber-400">
+                Pending Review ({pendingAliases.length})
+              </h2>
+              <p className="mt-0.5 text-[10px] text-muted">
+                New usernames found during ingestion. Assign to an existing player or dismiss as new.
+              </p>
+            </div>
+            <div className="divide-y divide-border/50">
+              {pendingAliases.map((p) => (
+                <div key={p.username} className="px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{p.username}</span>
+                      <span className="ml-2 text-[10px] text-muted">from {p.tournamentName}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDismissPending(p.username)}
+                      className="rounded-lg border border-border px-3 py-1 text-[10px] font-medium text-muted hover:text-foreground hover:border-border/80 transition-colors"
+                    >
+                      New player
+                    </button>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={pendingAssignTargets[p.username] ?? ""}
+                      onChange={(e) => setPendingAssignTargets((prev) => ({ ...prev, [p.username]: e.target.value }))}
+                      placeholder="Assign to existing player..."
+                      className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+                    />
+                    <button
+                      onClick={() => handleConfirmPending(p.username)}
+                      disabled={!pendingAssignTargets[p.username]?.trim()}
+                      className="rounded-lg bg-gold/10 border border-gold/20 px-4 py-1.5 text-xs font-medium text-gold hover:bg-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Assign
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-8 rounded-xl border border-border">
           <div className="border-b border-border bg-surface px-4 py-3">
             <h2 className="text-sm font-medium text-foreground">

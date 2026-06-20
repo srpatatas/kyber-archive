@@ -228,6 +228,28 @@ try {
     CREATE TABLE IF NOT EXISTS player_aliases (alias TEXT PRIMARY KEY, canonical_id TEXT NOT NULL);
   `);
 
+  // Flag new players as potential renames
+  const playerIds = Object.keys(players);
+  if (playerIds.length > 0) {
+    const placeholders = playerIds.map((_, i) => `$${i + 1}`).join(", ");
+    const { rows: existingPlayers } = await client.query(
+      `SELECT id FROM players WHERE id IN (${placeholders})`, playerIds
+    );
+    const existingSet = new Set(existingPlayers.map(r => r.id));
+    const newIds = playerIds.filter(id => !existingSet.has(id));
+    const now = new Date().toISOString();
+    for (const id of newIds) {
+      await client.query(
+        `INSERT INTO pending_aliases (username, tournament_id, tournament_name, created_at)
+         VALUES ($1, $2, $3, $4) ON CONFLICT (username) DO NOTHING`,
+        [id, tournamentId, name, now]
+      );
+    }
+    if (newIds.length > 0) {
+      console.log(`Flagged ${newIds.length} new player(s) for review: ${newIds.join(", ")}`);
+    }
+  }
+
   // Clear existing data for this tournament
   await client.query("DELETE FROM matches WHERE tournament_id = $1", [tournamentId]);
   await client.query("DELETE FROM placements WHERE tournament_id = $1", [tournamentId]);
