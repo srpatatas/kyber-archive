@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reingestFromCache } from "@/lib/store";
 import { requireAdminPin } from "@/lib/admin-auth";
+import { revalidateAllData } from "@/lib/revalidate";
 
 export async function POST(request: NextRequest) {
   const denied = requireAdminPin(request);
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
     if (!success) {
       return NextResponse.json({ error: "No cached scrape data found for this tournament" }, { status: 404 });
     }
+    revalidateAllData();
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

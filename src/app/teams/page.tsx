@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { getTeams, Team } from "@/lib/store";
 import { SeasonalTeams } from "@/components/seasonal-teams";
 import type { Metadata } from "next";
