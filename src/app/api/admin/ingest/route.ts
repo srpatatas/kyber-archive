@@ -6,7 +6,7 @@ import {
   getTournamentStandings,
   getDecklistAspects,
 } from "@/lib/melee-client";
-import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects, loadAliasMap } from "@/lib/store";
+import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects, loadAliasMap, flagNewPlayers } from "@/lib/store";
 import { MatchResult, PlacementResult, EventTier, classifyEvent } from "@/lib/elo";
 import { requireAdminPin } from "@/lib/admin-auth";
 import { revalidateAllData } from "@/lib/revalidate";
@@ -183,6 +183,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const newPlayers = await flagNewPlayers(Object.keys(players), tournamentId, tournament.Name);
+
     await addTournament(
       {
         id: tournamentId,
@@ -208,6 +210,7 @@ export async function POST(request: NextRequest) {
       tournament: tournament.Name,
       matchesIngested: allMatches.length,
       playersFound: Object.keys(players).length,
+      newPlayers: newPlayers.length,
       eventTier,
       alreadyExisted: await isTournamentIngested(tournamentId),
     });

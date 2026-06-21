@@ -410,6 +410,53 @@ export async function mergePlayerAlias(alias: string, canonicalId: string): Prom
   });
 }
 
+export async function flagNewPlayers(
+  playerIds: string[],
+  tournamentId: number,
+  tournamentName: string
+): Promise<string[]> {
+  if (playerIds.length === 0) return [];
+  const placeholders = playerIds.map((_, i) => `$${i + 1}`).join(", ");
+  const { rows: existing } = await query(
+    `SELECT id FROM players WHERE id IN (${placeholders})`,
+    playerIds
+  );
+  const existingSet = new Set(existing.map((r: Record<string, unknown>) => r.id as string));
+  const newIds = playerIds.filter((id) => !existingSet.has(id));
+  const now = new Date().toISOString();
+  for (const id of newIds) {
+    await query(
+      `INSERT INTO pending_aliases (username, tournament_id, tournament_name, created_at)
+       VALUES ($1, $2, $3, $4) ON CONFLICT (username) DO NOTHING`,
+      [id, tournamentId, tournamentName, now]
+    );
+  }
+  return newIds;
+}
+
+export async function getPendingAliases(): Promise<{ username: string; tournamentId: number; tournamentName: string; createdAt: string }[]> {
+  const { rows } = await query("SELECT username, tournament_id, tournament_name, created_at FROM pending_aliases ORDER BY created_at DESC");
+  return rows.map((r: Record<string, unknown>) => ({
+    username: r.username as string,
+    tournamentId: r.tournament_id as number,
+    tournamentName: r.tournament_name as string,
+    createdAt: r.created_at as string,
+  }));
+}
+
+export async function dismissPendingAlias(username: string): Promise<boolean> {
+  const { rowCount } = await query("DELETE FROM pending_aliases WHERE username = $1", [username.toLowerCase().trim()]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function confirmPendingAlias(username: string, canonicalId: string): Promise<void> {
+  username = username.toLowerCase().trim();
+  canonicalId = canonicalId.toLowerCase().trim();
+  await addAlias(username, canonicalId);
+  await mergePlayerAlias(username, canonicalId);
+  await query("DELETE FROM pending_aliases WHERE username = $1", [username]);
+}
+
 export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] })[]> {
   const { rows } = await query(`
     SELECT r.*, p.melee_id, p.name, p.username

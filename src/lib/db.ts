@@ -95,6 +95,13 @@ export async function ensureMigrated(): Promise<void> {
       aspects TEXT NOT NULL DEFAULT '[]'
     );
 
+    CREATE TABLE IF NOT EXISTS pending_aliases (
+      username TEXT PRIMARY KEY,
+      tournament_id INTEGER NOT NULL,
+      tournament_name TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_decklists_tournament ON decklists(tournament_id);
     CREATE INDEX IF NOT EXISTS idx_decklists_player ON decklists(player_id);
     CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches(tournament_id);
