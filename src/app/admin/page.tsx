@@ -25,6 +25,7 @@ interface IngestedTournament {
   eventTier: EventTier;
   ingestedAt: string;
   hasCachedScrape?: boolean;
+  isNacional?: boolean;
 }
 
 interface IngestResult {
@@ -265,6 +266,25 @@ export default function AdminPage() {
         fetchTournaments();
       } else {
         showToast(data.error ?? "Failed to update tier", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  }
+
+  async function handleNacionalToggle(id: number, name: string, isNacional: boolean) {
+    try {
+      const res = await adminFetch("/api/admin/ingest", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, isNacional }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`${name} ${isNacional ? "marked as Nacional" : "unmarked as Nacional"}`);
+        fetchTournaments();
+      } else {
+        showToast(data.error ?? "Failed to update", "error");
       }
     } catch {
       showToast("Network error", "error");
@@ -592,6 +612,17 @@ export default function AdminPage() {
                         </span>
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleNacionalToggle(t.id, t.name, !t.isNacional)}
+                      className={`rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                        t.isNacional
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                          : "border-border bg-surface text-muted hover:text-foreground hover:border-border/80"
+                      }`}
+                      title={t.isNacional ? "Unmark as Nacional" : "Mark as Nacional"}
+                    >
+                      NAC
+                    </button>
                     <select
                       value={t.eventTier}
                       onChange={(e) => handleTierChange(t.id, t.name, e.target.value as EventTier)}
