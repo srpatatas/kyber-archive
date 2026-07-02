@@ -61,6 +61,9 @@ export function NacionalLeaderboard() {
 
   const { entries, sinceDate, sinceName, tournamentCount } = data;
   const qualifiedCount = entries.filter((e) => e.qualified).length;
+  const lastQualifiedRank = entries.reduce((max, e) => e.qualified ? Math.max(max, e.rank) : max, 0);
+  const preClasifMaxRank = lastQualifiedRank + 30;
+
   const filtered = search
     ? entries.filter(
         (e) =>
@@ -116,14 +119,14 @@ export function NacionalLeaderboard() {
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Total</th>
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted hidden sm:table-cell">Part. Jugadas</th>
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted hidden sm:table-cell">Partic.</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wider text-muted">Campeón</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wider text-muted">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {filtered.map((e) => (
                   <tr
                     key={e.playerId}
-                    className={`hover:bg-surface-light/50 transition-colors ${e.qualified ? "bg-emerald-500/5" : ""}`}
+                    className={`hover:bg-surface-light/50 transition-colors ${e.qualified ? "bg-emerald-500/5" : !e.qualified && e.rank > lastQualifiedRank && e.rank <= preClasifMaxRank ? "bg-amber-500/5" : ""}`}
                   >
                     <td className="px-3 py-2 tabular-nums text-muted">{e.rank}</td>
                     <td className="px-3 py-2">
@@ -154,6 +157,10 @@ export function NacionalLeaderboard() {
                               {e.qualifiedFrom}
                             </Link>
                           )}
+                        </span>
+                      ) : e.rank > lastQualifiedRank && e.rank <= preClasifMaxRank ? (
+                        <span className="inline-block rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                          Pre-Clasificado
                         </span>
                       ) : (
                         <span className="text-muted">—</span>
