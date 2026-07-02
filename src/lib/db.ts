@@ -102,6 +102,29 @@ export async function ensureMigrated(): Promise<void> {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS nacional_standings (
+      player_id TEXT PRIMARY KEY,
+      player_name TEXT NOT NULL,
+      player_username TEXT NOT NULL,
+      total_points INTEGER NOT NULL,
+      match_points INTEGER NOT NULL,
+      participation_points INTEGER NOT NULL,
+      champion_points INTEGER NOT NULL,
+      tournament_count INTEGER NOT NULL,
+      qualified BOOLEAN NOT NULL DEFAULT FALSE,
+      qualified_from TEXT,
+      qualified_from_id INTEGER,
+      rank INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_nacional BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS counts_for_nacional BOOLEAN NOT NULL DEFAULT FALSE;
+
     CREATE INDEX IF NOT EXISTS idx_decklists_tournament ON decklists(tournament_id);
     CREATE INDEX IF NOT EXISTS idx_decklists_player ON decklists(player_id);
     CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches(tournament_id);

@@ -6,7 +6,7 @@ import {
   getTournamentStandings,
   getDecklistAspects,
 } from "@/lib/melee-client";
-import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects, loadAliasMap, flagNewPlayers } from "@/lib/store";
+import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects, loadAliasMap, flagNewPlayers, setTournamentNacional, setTournamentCountsForNacional } from "@/lib/store";
 import { MatchResult, PlacementResult, EventTier, classifyEvent } from "@/lib/elo";
 import { requireAdminPin } from "@/lib/admin-auth";
 import { revalidateAllData } from "@/lib/revalidate";
@@ -227,7 +227,26 @@ export async function PATCH(request: NextRequest) {
   if (denied) return denied;
   try {
     const body = await request.json();
-    const { id, eventTier } = body;
+    const { id, eventTier, isNacional, countsForNacional } = body;
+
+    if (typeof isNacional === "boolean" && id) {
+      const updated = await setTournamentNacional(parseInt(id, 10), isNacional);
+      if (!updated) {
+        return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+      }
+      revalidateAllData();
+      return NextResponse.json({ success: true, isNacional });
+    }
+
+    if (typeof countsForNacional === "boolean" && id) {
+      const updated = await setTournamentCountsForNacional(parseInt(id, 10), countsForNacional);
+      if (!updated) {
+        return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+      }
+      revalidateAllData();
+      return NextResponse.json({ success: true, countsForNacional });
+    }
+
     if (!id || !eventTier) {
       return NextResponse.json({ error: "id and eventTier are required" }, { status: 400 });
     }

@@ -48,12 +48,13 @@ export async function addTournament(
     await client.query("DELETE FROM decklists WHERE tournament_id = $1", [tournament.id]);
     await client.query("DELETE FROM tournaments WHERE id = $1", [tournament.id]);
 
+    const countsForNacional = tournament.eventTier === "showdown" || tournament.eventTier === "planetary";
     await client.query(
-      `INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      `INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at, counts_for_nacional)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [tournament.id, tournament.name, tournament.organizationName, tournament.date,
        JSON.stringify(tournament.tags), tournament.playerCount, tournament.matchCount,
-       tournament.eventTier, tournament.ingestedAt]
+       tournament.eventTier, tournament.ingestedAt, countsForNacional]
     );
 
     for (const p of Object.values(players)) {
@@ -88,6 +89,8 @@ export async function addTournament(
 
     await recomputeRatings(client);
   });
+  await recomputeNacionalStandings();
+  await stampLastRecalculated();
 }
 
 export async function reingestFromCache(tournamentId: number): Promise<boolean> {
@@ -364,6 +367,21 @@ export async function forceRecalculate(): Promise<void> {
   await withTransaction(async (client) => {
     await recomputeRatings(client);
   });
+  await recomputeNacionalStandings();
+  await stampLastRecalculated();
+}
+
+async function stampLastRecalculated(): Promise<void> {
+  await query(
+    `INSERT INTO metadata (key, value) VALUES ('last_recalculated', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [new Date().toISOString()]
+  );
+}
+
+export async function getLastRecalculated(): Promise<string | null> {
+  const { rows } = await query("SELECT value FROM metadata WHERE key = 'last_recalculated'");
+  return rows.length > 0 ? (rows[0].value as string) : null;
 }
 
 export async function loadAliasMap(): Promise<Map<string, string>> {
@@ -663,6 +681,8 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
 export interface TournamentSummary extends StoredTournament {
   winnerUsername: string | null;
   hasCachedScrape: boolean;
+  isNacional: boolean;
+  countsForNacional: boolean;
 }
 
 export async function getIngestedTournaments(): Promise<TournamentSummary[]> {
@@ -671,7 +691,7 @@ export async function getIngestedTournaments(): Promise<TournamentSummary[]> {
       (SELECT p.username FROM placements pl JOIN players p ON p.id = pl.player_id
        WHERE pl.tournament_id = t.id AND pl.placement = 1 LIMIT 1) as winner_username,
       (CASE WHEN EXISTS (SELECT 1 FROM scraped_data sd WHERE sd.tournament_id = t.id) THEN true ELSE false END) as has_cached_scrape
-    FROM tournaments t ORDER BY t.date
+    FROM tournaments t ORDER BY t.date DESC
   `);
   return rows.map((r: Record<string, unknown>) => ({
     id: r.id as number,
@@ -685,6 +705,8 @@ export async function getIngestedTournaments(): Promise<TournamentSummary[]> {
     ingestedAt: r.ingested_at as string,
     winnerUsername: r.winner_username as string | null,
     hasCachedScrape: r.has_cached_scrape as boolean,
+    isNacional: r.is_nacional as boolean,
+    countsForNacional: r.counts_for_nacional as boolean,
   }));
 }
 
@@ -1348,4 +1370,192 @@ export async function getTeams(startDate?: string, endDate?: string, minEvents =
 
   teams.sort((a, b) => b.avgRating - a.avgRating);
   return teams;
+}
+
+// --- Nacional Qualification ---
+
+export interface NacionalEntry {
+  rank: number;
+  playerId: string;
+  playerName: string;
+  playerUsername: string;
+  totalPoints: number;
+  matchPoints: number;
+  participationPoints: number;
+  championPoints: number;
+  tournamentCount: number;
+  qualified: boolean;
+  qualifiedFrom: string | null;
+  qualifiedFromId: number | null;
+}
+
+export async function getNacionalExcludedPlayers(): Promise<string[]> {
+  const { rows } = await query("SELECT value FROM metadata WHERE key = 'nacional_excluded_players'");
+  if (rows.length === 0) return [];
+  try { return JSON.parse(rows[0].value as string); } catch { return []; }
+}
+
+export async function setNacionalExcludedPlayers(playerIds: string[]): Promise<void> {
+  await query(
+    `INSERT INTO metadata (key, value) VALUES ('nacional_excluded_players', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [JSON.stringify(playerIds.map((id) => id.toLowerCase().trim()))]
+  );
+}
+
+export async function recomputeNacionalStandings(): Promise<void> {
+  const excluded = new Set(await getNacionalExcludedPlayers());
+
+  const { rows: nacRows } = await query(
+    "SELECT date FROM tournaments WHERE is_nacional = TRUE ORDER BY date DESC LIMIT 1"
+  );
+  const sinceDate = nacRows.length > 0 ? (nacRows[0].date as string) : null;
+
+  const dateFilter = sinceDate
+    ? "WHERE t.date > $1 AND t.is_nacional = FALSE AND t.counts_for_nacional = TRUE"
+    : "WHERE t.is_nacional = FALSE AND t.counts_for_nacional = TRUE";
+  const dateParams = sinceDate ? [sinceDate] : [];
+
+  const { rows: statRows } = await query(`
+    SELECT sub.player_id, COUNT(*) as match_count, COUNT(DISTINCT sub.tournament_id) as tournament_count
+    FROM (
+      SELECT player1_id as player_id, m.tournament_id
+      FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter}
+      UNION ALL
+      SELECT player2_id as player_id, m.tournament_id
+      FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter}
+    ) sub
+    GROUP BY sub.player_id
+  `, dateParams);
+
+  const { rows: placementRows } = await query(`
+    SELECT p.tournament_id, p.player_id, p.placement, t.date, t.name as tournament_name
+    FROM placements p
+    JOIN tournaments t ON t.id = p.tournament_id
+    ${dateFilter}
+    ORDER BY t.date ASC, p.placement ASC
+  `, dateParams);
+
+  const { rows: playerRows } = await query("SELECT id, name, username FROM players");
+  const playerMap = new Map(playerRows.map((r: Record<string, unknown>) => [r.id as string, { name: r.name as string, username: r.username as string }]));
+
+  const stats = new Map<string, { matchPoints: number; participationPoints: number }>();
+  for (const r of statRows) {
+    const pid = r.player_id as string;
+    if (excluded.has(pid)) continue;
+    stats.set(pid, {
+      matchPoints: Number(r.match_count),
+      participationPoints: Number(r.tournament_count) * 2,
+    });
+  }
+
+  const championBonus = new Map<string, number>();
+  const qualifiedFrom = new Map<string, string>();
+  const qualifiedFromId = new Map<string, number>();
+  const tournamentPlacements = new Map<number, { playerId: string; placement: number; tournamentName: string }[]>();
+
+  for (const r of placementRows) {
+    const tid = r.tournament_id as number;
+    if (!tournamentPlacements.has(tid)) tournamentPlacements.set(tid, []);
+    tournamentPlacements.get(tid)!.push({
+      playerId: r.player_id as string,
+      placement: r.placement as number,
+      tournamentName: r.tournament_name as string,
+    });
+  }
+
+  const tournamentOrder = [...new Set(placementRows.map((r: Record<string, unknown>) => r.tournament_id as number))];
+
+  for (const tid of tournamentOrder) {
+    const placements = tournamentPlacements.get(tid);
+    if (!placements) continue;
+
+    for (const entry of placements) {
+      if (excluded.has(entry.playerId)) continue;
+      const s = stats.get(entry.playerId);
+      const currentTotal = (s?.matchPoints ?? 0) + (s?.participationPoints ?? 0) + (championBonus.get(entry.playerId) ?? 0);
+      if (currentTotal < 1000) {
+        championBonus.set(entry.playerId, (championBonus.get(entry.playerId) ?? 0) + 1000);
+        qualifiedFrom.set(entry.playerId, entry.tournamentName);
+        qualifiedFromId.set(entry.playerId, tid);
+        break;
+      }
+    }
+  }
+
+  const entries: NacionalEntry[] = [];
+  for (const [playerId, s] of stats) {
+    const p = playerMap.get(playerId);
+    if (!p) continue;
+    const cp = championBonus.get(playerId) ?? 0;
+    entries.push({
+      rank: 0,
+      playerId,
+      playerName: p.name,
+      playerUsername: p.username,
+      totalPoints: s.matchPoints + s.participationPoints + cp,
+      matchPoints: s.matchPoints,
+      participationPoints: s.participationPoints,
+      championPoints: cp,
+      tournamentCount: s.participationPoints / 2,
+      qualified: cp > 0,
+      qualifiedFrom: qualifiedFrom.get(playerId) ?? null,
+      qualifiedFromId: qualifiedFromId.get(playerId) ?? null,
+    });
+  }
+
+  entries.sort((a, b) => b.totalPoints - a.totalPoints || b.championPoints - a.championPoints || b.matchPoints - a.matchPoints);
+  entries.forEach((e, i) => { e.rank = i + 1; });
+
+  await query("DELETE FROM nacional_standings");
+  for (const e of entries) {
+    await query(
+      `INSERT INTO nacional_standings (player_id, player_name, player_username, total_points, match_points, participation_points, champion_points, tournament_count, qualified, qualified_from, qualified_from_id, rank)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [e.playerId, e.playerName, e.playerUsername, e.totalPoints, e.matchPoints, e.participationPoints, e.championPoints, e.tournamentCount, e.qualified, e.qualifiedFrom, e.qualifiedFromId, e.rank]
+    );
+  }
+}
+
+export async function getNacionalStandings(): Promise<{ entries: NacionalEntry[]; sinceDate: string | null; sinceName: string | null; tournamentCount: number }> {
+  const { rows: nacRows } = await query(
+    "SELECT date, name FROM tournaments WHERE is_nacional = TRUE ORDER BY date DESC LIMIT 1"
+  );
+  const sinceDate = nacRows.length > 0 ? (nacRows[0].date as string) : null;
+  const sinceName = nacRows.length > 0 ? (nacRows[0].name as string) : null;
+
+  const { rows } = await query("SELECT * FROM nacional_standings ORDER BY rank ASC");
+  const entries: NacionalEntry[] = rows.map((r: Record<string, unknown>) => ({
+    rank: r.rank as number,
+    playerId: r.player_id as string,
+    playerName: r.player_name as string,
+    playerUsername: r.player_username as string,
+    totalPoints: r.total_points as number,
+    matchPoints: r.match_points as number,
+    participationPoints: r.participation_points as number,
+    championPoints: r.champion_points as number,
+    tournamentCount: r.tournament_count as number,
+    qualified: r.qualified as boolean,
+    qualifiedFrom: r.qualified_from as string | null,
+    qualifiedFromId: r.qualified_from_id as number | null,
+  }));
+
+  const dateFilter = sinceDate ? "WHERE t.date > $1 AND t.is_nacional = FALSE" : "WHERE t.is_nacional = FALSE";
+  const { rows: tcRows } = await query(
+    `SELECT COUNT(*) as cnt FROM tournaments t ${dateFilter}`,
+    sinceDate ? [sinceDate] : []
+  );
+  const tournamentCount = Number(tcRows[0]?.cnt ?? 0);
+
+  return { entries, sinceDate, sinceName, tournamentCount };
+}
+
+export async function setTournamentCountsForNacional(id: number, counts: boolean): Promise<boolean> {
+  const { rowCount } = await query("UPDATE tournaments SET counts_for_nacional = $2 WHERE id = $1", [id, counts]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function setTournamentNacional(id: number, isNacional: boolean): Promise<boolean> {
+  const { rowCount } = await query("UPDATE tournaments SET is_nacional = $2 WHERE id = $1", [id, isNacional]);
+  return (rowCount ?? 0) > 0;
 }
