@@ -48,12 +48,13 @@ export async function addTournament(
     await client.query("DELETE FROM decklists WHERE tournament_id = $1", [tournament.id]);
     await client.query("DELETE FROM tournaments WHERE id = $1", [tournament.id]);
 
+    const countsForNacional = tournament.eventTier === "showdown" || tournament.eventTier === "planetary";
     await client.query(
-      `INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      `INSERT INTO tournaments (id, name, organization_name, date, tags, player_count, match_count, event_tier, ingested_at, counts_for_nacional)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [tournament.id, tournament.name, tournament.organizationName, tournament.date,
        JSON.stringify(tournament.tags), tournament.playerCount, tournament.matchCount,
-       tournament.eventTier, tournament.ingestedAt]
+       tournament.eventTier, tournament.ingestedAt, countsForNacional]
     );
 
     for (const p of Object.values(players)) {
@@ -89,6 +90,7 @@ export async function addTournament(
     await recomputeRatings(client);
   });
   await recomputeNacionalStandings();
+  await stampLastRecalculated();
 }
 
 export async function reingestFromCache(tournamentId: number): Promise<boolean> {
@@ -366,6 +368,20 @@ export async function forceRecalculate(): Promise<void> {
     await recomputeRatings(client);
   });
   await recomputeNacionalStandings();
+  await stampLastRecalculated();
+}
+
+async function stampLastRecalculated(): Promise<void> {
+  await query(
+    `INSERT INTO metadata (key, value) VALUES ('last_recalculated', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [new Date().toISOString()]
+  );
+}
+
+export async function getLastRecalculated(): Promise<string | null> {
+  const { rows } = await query("SELECT value FROM metadata WHERE key = 'last_recalculated'");
+  return rows.length > 0 ? (rows[0].value as string) : null;
 }
 
 export async function loadAliasMap(): Promise<Map<string, string>> {
@@ -666,6 +682,7 @@ export interface TournamentSummary extends StoredTournament {
   winnerUsername: string | null;
   hasCachedScrape: boolean;
   isNacional: boolean;
+  countsForNacional: boolean;
 }
 
 export async function getIngestedTournaments(): Promise<TournamentSummary[]> {
@@ -674,7 +691,7 @@ export async function getIngestedTournaments(): Promise<TournamentSummary[]> {
       (SELECT p.username FROM placements pl JOIN players p ON p.id = pl.player_id
        WHERE pl.tournament_id = t.id AND pl.placement = 1 LIMIT 1) as winner_username,
       (CASE WHEN EXISTS (SELECT 1 FROM scraped_data sd WHERE sd.tournament_id = t.id) THEN true ELSE false END) as has_cached_scrape
-    FROM tournaments t ORDER BY t.date
+    FROM tournaments t ORDER BY t.date DESC
   `);
   return rows.map((r: Record<string, unknown>) => ({
     id: r.id as number,
@@ -689,6 +706,7 @@ export async function getIngestedTournaments(): Promise<TournamentSummary[]> {
     winnerUsername: r.winner_username as string | null,
     hasCachedScrape: r.has_cached_scrape as boolean,
     isNacional: r.is_nacional as boolean,
+    countsForNacional: r.counts_for_nacional as boolean,
   }));
 }
 
@@ -1368,17 +1386,34 @@ export interface NacionalEntry {
   tournamentCount: number;
   qualified: boolean;
   qualifiedFrom: string | null;
+  qualifiedFromId: number | null;
+}
+
+export async function getNacionalExcludedPlayers(): Promise<string[]> {
+  const { rows } = await query("SELECT value FROM metadata WHERE key = 'nacional_excluded_players'");
+  if (rows.length === 0) return [];
+  try { return JSON.parse(rows[0].value as string); } catch { return []; }
+}
+
+export async function setNacionalExcludedPlayers(playerIds: string[]): Promise<void> {
+  await query(
+    `INSERT INTO metadata (key, value) VALUES ('nacional_excluded_players', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [JSON.stringify(playerIds.map((id) => id.toLowerCase().trim()))]
+  );
 }
 
 export async function recomputeNacionalStandings(): Promise<void> {
+  const excluded = new Set(await getNacionalExcludedPlayers());
+
   const { rows: nacRows } = await query(
     "SELECT date FROM tournaments WHERE is_nacional = TRUE ORDER BY date DESC LIMIT 1"
   );
   const sinceDate = nacRows.length > 0 ? (nacRows[0].date as string) : null;
 
   const dateFilter = sinceDate
-    ? "WHERE t.date > $1 AND t.is_nacional = FALSE"
-    : "WHERE t.is_nacional = FALSE";
+    ? "WHERE t.date > $1 AND t.is_nacional = FALSE AND t.counts_for_nacional = TRUE"
+    : "WHERE t.is_nacional = FALSE AND t.counts_for_nacional = TRUE";
   const dateParams = sinceDate ? [sinceDate] : [];
 
   const { rows: statRows } = await query(`
@@ -1391,7 +1426,7 @@ export async function recomputeNacionalStandings(): Promise<void> {
       FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter}
     ) sub
     GROUP BY sub.player_id
-  `, [...dateParams, ...dateParams]);
+  `, dateParams);
 
   const { rows: placementRows } = await query(`
     SELECT p.tournament_id, p.player_id, p.placement, t.date, t.name as tournament_name
@@ -1406,7 +1441,9 @@ export async function recomputeNacionalStandings(): Promise<void> {
 
   const stats = new Map<string, { matchPoints: number; participationPoints: number }>();
   for (const r of statRows) {
-    stats.set(r.player_id as string, {
+    const pid = r.player_id as string;
+    if (excluded.has(pid)) continue;
+    stats.set(pid, {
       matchPoints: Number(r.match_count),
       participationPoints: Number(r.tournament_count) * 2,
     });
@@ -1414,6 +1451,7 @@ export async function recomputeNacionalStandings(): Promise<void> {
 
   const championBonus = new Map<string, number>();
   const qualifiedFrom = new Map<string, string>();
+  const qualifiedFromId = new Map<string, number>();
   const tournamentPlacements = new Map<number, { playerId: string; placement: number; tournamentName: string }[]>();
 
   for (const r of placementRows) {
@@ -1433,11 +1471,13 @@ export async function recomputeNacionalStandings(): Promise<void> {
     if (!placements) continue;
 
     for (const entry of placements) {
+      if (excluded.has(entry.playerId)) continue;
       const s = stats.get(entry.playerId);
       const currentTotal = (s?.matchPoints ?? 0) + (s?.participationPoints ?? 0) + (championBonus.get(entry.playerId) ?? 0);
       if (currentTotal < 1000) {
         championBonus.set(entry.playerId, (championBonus.get(entry.playerId) ?? 0) + 1000);
         qualifiedFrom.set(entry.playerId, entry.tournamentName);
+        qualifiedFromId.set(entry.playerId, tid);
         break;
       }
     }
@@ -1460,6 +1500,7 @@ export async function recomputeNacionalStandings(): Promise<void> {
       tournamentCount: s.participationPoints / 2,
       qualified: cp > 0,
       qualifiedFrom: qualifiedFrom.get(playerId) ?? null,
+      qualifiedFromId: qualifiedFromId.get(playerId) ?? null,
     });
   }
 
@@ -1469,9 +1510,9 @@ export async function recomputeNacionalStandings(): Promise<void> {
   await query("DELETE FROM nacional_standings");
   for (const e of entries) {
     await query(
-      `INSERT INTO nacional_standings (player_id, player_name, player_username, total_points, match_points, participation_points, champion_points, tournament_count, qualified, qualified_from, rank)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [e.playerId, e.playerName, e.playerUsername, e.totalPoints, e.matchPoints, e.participationPoints, e.championPoints, e.tournamentCount, e.qualified, e.qualifiedFrom, e.rank]
+      `INSERT INTO nacional_standings (player_id, player_name, player_username, total_points, match_points, participation_points, champion_points, tournament_count, qualified, qualified_from, qualified_from_id, rank)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [e.playerId, e.playerName, e.playerUsername, e.totalPoints, e.matchPoints, e.participationPoints, e.championPoints, e.tournamentCount, e.qualified, e.qualifiedFrom, e.qualifiedFromId, e.rank]
     );
   }
 }
@@ -1496,6 +1537,7 @@ export async function getNacionalStandings(): Promise<{ entries: NacionalEntry[]
     tournamentCount: r.tournament_count as number,
     qualified: r.qualified as boolean,
     qualifiedFrom: r.qualified_from as string | null,
+    qualifiedFromId: r.qualified_from_id as number | null,
   }));
 
   const dateFilter = sinceDate ? "WHERE t.date > $1 AND t.is_nacional = FALSE" : "WHERE t.is_nacional = FALSE";
@@ -1508,11 +1550,12 @@ export async function getNacionalStandings(): Promise<{ entries: NacionalEntry[]
   return { entries, sinceDate, sinceName, tournamentCount };
 }
 
+export async function setTournamentCountsForNacional(id: number, counts: boolean): Promise<boolean> {
+  const { rowCount } = await query("UPDATE tournaments SET counts_for_nacional = $2 WHERE id = $1", [id, counts]);
+  return (rowCount ?? 0) > 0;
+}
+
 export async function setTournamentNacional(id: number, isNacional: boolean): Promise<boolean> {
   const { rowCount } = await query("UPDATE tournaments SET is_nacional = $2 WHERE id = $1", [id, isNacional]);
-  if ((rowCount ?? 0) > 0) {
-    await recomputeNacionalStandings();
-    return true;
-  }
-  return false;
+  return (rowCount ?? 0) > 0;
 }

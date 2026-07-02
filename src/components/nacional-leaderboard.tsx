@@ -16,6 +16,7 @@ interface NacionalEntry {
   tournamentCount: number;
   qualified: boolean;
   qualifiedFrom: string | null;
+  qualifiedFromId: number | null;
 }
 
 interface NacionalData {
@@ -113,10 +114,9 @@ export function NacionalLeaderboard() {
                   <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted w-10">#</th>
                   <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">Jugador</th>
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Total</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted hidden sm:table-cell">Rondas</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted hidden sm:table-cell">Part. Jugadas</th>
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted hidden sm:table-cell">Partic.</th>
                   <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wider text-muted">Campeón</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted hidden sm:table-cell">Torneos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -139,7 +139,7 @@ export function NacionalLeaderboard() {
                       {e.totalPoints.toLocaleString()}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted hidden sm:table-cell">{e.matchPoints}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted hidden sm:table-cell">{e.participationPoints}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted hidden sm:table-cell">{e.tournamentCount}</td>
                     <td className="px-3 py-2 text-center">
                       {e.qualified ? (
                         <span className="inline-flex flex-col items-center gap-0.5">
@@ -147,19 +147,23 @@ export function NacionalLeaderboard() {
                             Clasificado
                           </span>
                           {e.qualifiedFrom && (
-                            <span className="text-[9px] text-muted">{e.qualifiedFrom}</span>
+                            <Link
+                              href={`/tournament/${e.qualifiedFromId}`}
+                              className="text-[9px] text-muted hover:text-gold transition-colors"
+                            >
+                              {e.qualifiedFrom}
+                            </Link>
                           )}
                         </span>
                       ) : (
                         <span className="text-muted">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted hidden sm:table-cell">{e.tournamentCount}</td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-6 text-center text-sm text-muted">
+                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-muted">
                       {search ? "Sin resultados" : "No hay datos disponibles"}
                     </td>
                   </tr>

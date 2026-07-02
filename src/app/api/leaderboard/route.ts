@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
-import { getLeaderboard, getIngestedTournaments } from "@/lib/store";
+import { getLeaderboard, getIngestedTournaments, getLastRecalculated } from "@/lib/store";
 
 export async function GET() {
   try {
-    const leaderboard = await getLeaderboard();
-    const tournaments = await getIngestedTournaments();
+    const [leaderboard, tournaments, lastRecalculated] = await Promise.all([
+      getLeaderboard(),
+      getIngestedTournaments(),
+      getLastRecalculated(),
+    ]);
 
     return NextResponse.json({
       players: leaderboard,
       tournaments,
       totalTournaments: tournaments.length,
-      lastUpdated: tournaments.length > 0
-        ? tournaments[tournaments.length - 1].ingestedAt
-        : null,
+      lastUpdated: lastRecalculated,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

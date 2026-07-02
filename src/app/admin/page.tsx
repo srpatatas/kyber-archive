@@ -26,6 +26,7 @@ interface IngestedTournament {
   ingestedAt: string;
   hasCachedScrape?: boolean;
   isNacional?: boolean;
+  countsForNacional?: boolean;
 }
 
 interface IngestResult {
@@ -62,6 +63,7 @@ export default function AdminPage() {
   const [newAlias, setNewAlias] = useState("");
   const [newCanonicalId, setNewCanonicalId] = useState("");
   const [aliasLoading, setAliasLoading] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const [pendingAliases, setPendingAliases] = useState<{ username: string; tournamentName: string; createdAt: string }[]>([]);
   const [pendingAssignTargets, setPendingAssignTargets] = useState<Record<string, string>>({});
   const [pinError, setPinError] = useState(false);
@@ -291,18 +293,40 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCountsForNacionalToggle(id: number, counts: boolean) {
+    try {
+      const res = await adminFetch("/api/admin/ingest", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, countsForNacional: counts }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchTournaments();
+      } else {
+        showToast(data.error ?? "Failed to update", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  }
+
   async function handleRecalculate() {
+    setRecalculating(true);
     try {
       const res = await adminFetch("/api/admin/recalculate", { method: "POST" });
       const data = await res.json();
       if (data.success) {
         setLastRecalc(new Date().toISOString());
         showToast("All ratings recalculated");
+        fetchTournaments();
       } else {
         showToast(data.error ?? "Recalculation failed", "error");
       }
     } catch {
       showToast("Network error", "error");
+    } finally {
+      setRecalculating(false);
     }
   }
 
@@ -572,9 +596,10 @@ export default function AdminPage() {
               )}
               <button
                 onClick={handleRecalculate}
-                className="rounded-lg border border-border bg-surface px-3 py-1 text-xs font-medium text-muted hover:text-gold hover:border-gold/30 transition-colors"
+                disabled={recalculating}
+                className="rounded-lg border border-border bg-surface px-3 py-1 text-xs font-medium text-muted hover:text-gold hover:border-gold/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Recalculate
+                {recalculating ? "Recalculating..." : "Recalculate"}
               </button>
             </div>
           </div>
@@ -612,6 +637,17 @@ export default function AdminPage() {
                         </span>
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleCountsForNacionalToggle(t.id, !t.countsForNacional)}
+                      className={`rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                        t.countsForNacional
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                          : "border-border bg-surface text-muted hover:text-foreground hover:border-border/80"
+                      }`}
+                      title={t.countsForNacional ? "Exclude from Nacional qualification" : "Include in Nacional qualification"}
+                    >
+                      CLASIF
+                    </button>
                     <button
                       onClick={() => handleNacionalToggle(t.id, t.name, !t.isNacional)}
                       className={`rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
