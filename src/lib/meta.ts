@@ -34,32 +34,70 @@ export interface MetaStats {
   uniqueLeaders: number;
 }
 
-export async function recomputeMetaStats(): Promise<void> {
-  const stats = await computeMetaStats();
-  await query(
-    `INSERT INTO meta_cache (key, data) VALUES ('meta_stats', $1)
-     ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data`,
-    [JSON.stringify(stats)]
-  );
+export type MetaEra = "current" | "pre-rotation" | "all-time";
+
+export const META_ERAS: { key: MetaEra; label: string; sublabel: string }[] = [
+  { key: "current", label: "Post-Rotación", sublabel: "Mar 2026+" },
+  { key: "pre-rotation", label: "Pre-Rotación", sublabel: "Antes de Mar 2026" },
+  { key: "all-time", label: "All-Time", sublabel: "Todos los torneos" },
+];
+
+const ROTATION_DATE = "2026-03-13";
+
+function eraDateRange(era: MetaEra): { startDate: string | null; endDate: string | null } {
+  switch (era) {
+    case "current": return { startDate: ROTATION_DATE, endDate: null };
+    case "pre-rotation": return { startDate: null, endDate: ROTATION_DATE };
+    case "all-time": return { startDate: null, endDate: null };
+  }
 }
 
-export async function getMetaStats(): Promise<MetaStats> {
-  const { rows } = await query("SELECT data FROM meta_cache WHERE key = 'meta_stats'");
+export async function recomputeMetaStats(): Promise<void> {
+  const eras: MetaEra[] = ["current", "pre-rotation", "all-time"];
+  for (const era of eras) {
+    const { startDate, endDate } = eraDateRange(era);
+    const stats = await computeMetaStats(startDate, endDate);
+    await query(
+      `INSERT INTO meta_cache (key, data) VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data`,
+      [`meta_stats:${era}`, JSON.stringify(stats)]
+    );
+  }
+}
+
+export async function getMetaStats(era: MetaEra = "current"): Promise<MetaStats> {
+  const { rows } = await query("SELECT data FROM meta_cache WHERE key = $1", [`meta_stats:${era}`]);
   if (rows.length > 0) {
     return JSON.parse(rows[0].data as string);
   }
   return { decks: [], matchups: [], totalDecklists: 0, totalTournaments: 0, uniqueLeaders: 0 };
 }
 
-async function computeMetaStats(): Promise<MetaStats> {
+async function computeMetaStats(startDate: string | null, endDate: string | null): Promise<MetaStats> {
+  let dateCondition = "";
+  const dateParams: string[] = [];
+
+  if (startDate && endDate) {
+    dateCondition = `AND t.date >= $${dateParams.length + 1} AND t.date < $${dateParams.length + 2}`;
+    dateParams.push(startDate, endDate);
+  } else if (startDate) {
+    dateCondition = `AND t.date >= $${dateParams.length + 1}`;
+    dateParams.push(startDate);
+  } else if (endDate) {
+    dateCondition = `AND t.date < $${dateParams.length + 1}`;
+    dateParams.push(endDate);
+  }
+
   const [popularityRows, winRateRows, topCutRows, matchupRows, countRows] = await Promise.all([
     query(`
       SELECT d.leader, d.base, COUNT(*) as count, ac.aspects
       FROM decklists d
+      JOIN tournaments t ON t.id = d.tournament_id
       LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
+      WHERE 1=1 ${dateCondition}
       GROUP BY d.leader, d.base, ac.aspects
       ORDER BY count DESC
-    `).then(r => r.rows),
+    `, dateParams).then(r => r.rows),
 
     query(`
       SELECT d.leader, d.base, ac.aspects,
@@ -73,20 +111,24 @@ async function computeMetaStats(): Promise<MetaStats> {
           ELSE 0 END) as losses,
         SUM(CASE WHEN m.player1_wins = m.player2_wins THEN 1 ELSE 0 END) as draws
       FROM decklists d
+      JOIN tournaments t ON t.id = d.tournament_id
       JOIN matches m ON m.tournament_id = d.tournament_id
         AND (m.player1_id = d.player_id OR m.player2_id = d.player_id)
       LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
+      WHERE 1=1 ${dateCondition}
       GROUP BY d.leader, d.base, ac.aspects
-    `).then(r => r.rows),
+    `, dateParams).then(r => r.rows),
 
     query(`
       SELECT d.leader, d.base,
         COUNT(DISTINCT d.tournament_id || ':' || d.player_id) as total_entries,
         COUNT(DISTINCT CASE WHEN p.placement IS NOT NULL THEN d.tournament_id || ':' || d.player_id END) as top_cut_entries
       FROM decklists d
+      JOIN tournaments t ON t.id = d.tournament_id
       LEFT JOIN placements p ON p.tournament_id = d.tournament_id AND p.player_id = d.player_id
+      WHERE 1=1 ${dateCondition}
       GROUP BY d.leader, d.base
-    `).then(r => r.rows),
+    `, dateParams).then(r => r.rows),
 
     query(`
       SELECT d1.leader as leader1, d2.leader as leader2,
@@ -94,17 +136,19 @@ async function computeMetaStats(): Promise<MetaStats> {
         SUM(CASE WHEN m.player2_wins > m.player1_wins THEN 1 ELSE 0 END) as l2_wins,
         SUM(CASE WHEN m.player1_wins = m.player2_wins THEN 1 ELSE 0 END) as draws
       FROM matches m
+      JOIN tournaments t ON t.id = m.tournament_id
       JOIN decklists d1 ON d1.tournament_id = m.tournament_id AND d1.player_id = m.player1_id
       JOIN decklists d2 ON d2.tournament_id = m.tournament_id AND d2.player_id = m.player2_id
+      WHERE 1=1 ${dateCondition}
       GROUP BY d1.leader, d2.leader
-    `).then(r => r.rows),
+    `, dateParams).then(r => r.rows),
 
     query(`
       SELECT
-        (SELECT COUNT(*) FROM decklists) as total_decklists,
-        (SELECT COUNT(DISTINCT id) FROM tournaments) as total_tournaments,
-        (SELECT COUNT(DISTINCT leader) FROM decklists) as unique_leaders
-    `).then(r => r.rows),
+        (SELECT COUNT(*) FROM decklists d JOIN tournaments t ON t.id = d.tournament_id WHERE 1=1 ${dateCondition}) as total_decklists,
+        (SELECT COUNT(DISTINCT t.id) FROM tournaments t WHERE 1=1 ${dateCondition}) as total_tournaments,
+        (SELECT COUNT(DISTINCT d.leader) FROM decklists d JOIN tournaments t ON t.id = d.tournament_id WHERE 1=1 ${dateCondition}) as unique_leaders
+    `, dateParams).then(r => r.rows),
   ]);
 
   const totalDecklists = Number(countRows[0]?.total_decklists ?? 0);
