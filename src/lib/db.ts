@@ -122,6 +122,11 @@ export async function ensureMigrated(): Promise<void> {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS meta_cache (
+      key TEXT PRIMARY KEY,
+      data TEXT NOT NULL
+    );
+
     ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_nacional BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS counts_for_nacional BOOLEAN NOT NULL DEFAULT FALSE;
 
