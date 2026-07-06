@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ASPECT_COLORS } from "@/lib/aspects";
-import { getLeaderThumbnailUrl, getLeaderSetCode, getLeaderImageUrl, getLeaderCropPosition, getBaseAbbrev, getBaseAspectColor, getBaseAspectIcon, getLeaderAspects, isForceBase } from "@/lib/card-images";
+import { getLeaderThumbnailUrl, getLeaderSetCode, getLeaderImageUrl, getLeaderCropPosition, getBaseAbbrev, getBaseAspectColor, getBaseAspectIcon, getLeaderAspects, isForceBase, isSplashBase, getSplashGradient } from "@/lib/card-images";
 
 interface DeckStats {
   leader: string;
@@ -211,6 +211,22 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                                 >
                                   <img src="/images/force-icon.svg" alt="Force" className="w-[70%] h-[70%] brightness-0 invert" />
                                 </div>
+                              </div>
+                            ) : isSplashBase(d.baseDisplay) ? (
+                              <div
+                                className="absolute -bottom-1 -right-1 w-5.5 h-5.5 flex items-center justify-center drop-shadow-md"
+                                style={{
+                                  backgroundColor: "#000",
+                                  clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)",
+                                }}
+                              >
+                                <div
+                                  className="w-[80%] h-[80%]"
+                                  style={{
+                                    background: getSplashGradient(d.baseDisplay),
+                                    clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)",
+                                  }}
+                                />
                               </div>
                             ) : (
                               <div

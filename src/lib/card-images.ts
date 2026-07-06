@@ -702,3 +702,19 @@ export function getBaseAspectIcon(baseDisplay: string): string | null {
 export function isForceBase(baseDisplay: string): boolean {
   return baseDisplay.startsWith("Force ");
 }
+
+export function isSplashBase(baseDisplay: string): boolean {
+  return baseDisplay.startsWith("Splash ");
+}
+
+const ALL_COLOR_ASPECTS = ["aggression", "command", "cunning", "vigilance"];
+
+export function getSplashGradient(baseDisplay: string): string {
+  const baseAspect = Object.entries(DISPLAY_COLOR_TO_ASPECT)
+    .find(([name]) => baseDisplay.includes(name))?.[1];
+  const baseHex = baseAspect ? ASPECT_COLORS[baseAspect] : "#666";
+  const others = ALL_COLOR_ASPECTS
+    .filter((a) => a !== baseAspect)
+    .map((a) => ASPECT_COLORS[a]);
+  return `conic-gradient(from 180deg, ${baseHex} 0deg, ${baseHex} 180deg, ${others[0]} 180deg, ${others[0]} 240deg, ${others[1]} 240deg, ${others[1]} 300deg, ${others[2]} 300deg, ${others[2]} 360deg)`;
+}
