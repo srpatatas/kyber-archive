@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ASPECT_COLORS } from "@/lib/aspects";
-import { getLeaderImageUrl } from "@/lib/card-images";
+import { getLeaderThumbnailUrl, getLeaderSetCode, getLeaderImageUrl, getLeaderCropPosition, getBaseAbbrev, getBaseAspectColor, getBaseAspectIcon, getLeaderAspects, isForceBase } from "@/lib/card-images";
 
 interface DeckStats {
   leader: string;
   baseDisplay: string;
+  baseAspect: string | null;
   aspects: string[];
   count: number;
   playRate: number;
@@ -30,6 +32,7 @@ const TABS: { key: Tab; label: string }[] = [
 export function MetaOverview({ decks }: { decks: DeckStats[] }) {
   const [tab, setTab] = useState<Tab>("popularity");
   const [minGames, setMinGames] = useState(3);
+  const [hoverCard, setHoverCard] = useState<{ url: string; x: number; y: number } | null>(null);
 
   const sorted = [...decks];
   if (tab === "winrate") {
@@ -117,7 +120,10 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
               const totalGames = d.wins + d.losses + d.draws;
               const dimmed = tab === "winrate" && totalGames < minGames
                 || tab === "topcut" && d.totalEntries < minGames;
-              const imgUrl = getLeaderImageUrl(d.leader);
+              const imgUrl = getLeaderThumbnailUrl(d.leader);
+              const cardUrl = getLeaderImageUrl(d.leader);
+              const setCode = getLeaderSetCode(d.leader);
+              const cropPos = getLeaderCropPosition(d.leader);
 
               return (
                 <tr
@@ -126,34 +132,117 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                 >
                   <td className="px-3 py-2 tabular-nums text-muted">{i + 1}</td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-2.5">
-                      {imgUrl && (
-                        <img
-                          src={imgUrl}
-                          alt=""
-                          className="w-8 h-8 rounded-full object-cover object-[center_15%] border border-border/50 flex-shrink-0"
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {d.leader.split(",")[0]}
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted">{d.baseDisplay}</span>
-                          {d.aspects.length > 0 && (
-                            <span className="inline-flex gap-0.5">
-                              {d.aspects.map((a) => (
-                                <span
-                                  key={a}
-                                  className="w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: ASPECT_COLORS[a.toLowerCase()] ?? "#666" }}
-                                />
-                              ))}
-                            </span>
-                          )}
+                    {(() => {
+                      const baseAbbrev = getBaseAbbrev(d.baseDisplay);
+                      const baseColor = getBaseAspectColor(d.baseDisplay, d.baseAspect);
+                      const baseIcon = getBaseAspectIcon(d.baseDisplay);
+                      const baseAspectKey = d.baseAspect?.toLowerCase() ?? null;
+                      const visibleColor = (c: string | undefined) => c === "#040004" ? "#4a3060" : c;
+                      const knownLeaderAspects = getLeaderAspects(d.leader);
+                      const leaderColorAspects = knownLeaderAspects.length > 0
+                        ? knownLeaderAspects.filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy")
+                        : d.aspects.filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy" && a.toLowerCase() !== baseAspectKey);
+                      const leaderStops = leaderColorAspects
+                        .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
+                        .filter(Boolean) as string[];
+                      if (leaderStops.length === 0) {
+                        const fallback = knownLeaderAspects[0] ?? d.aspects[0];
+                        if (fallback) leaderStops.push(visibleColor(ASPECT_COLORS[fallback.toLowerCase()]) ?? "#666");
+                      }
+                      const baseStop = baseAspectKey
+                        ? visibleColor(ASPECT_COLORS[baseAspectKey]) ?? "#666"
+                        : "#666";
+                      const allStops = [...leaderStops, baseStop];
+                      const uniqueStops = allStops.filter((c, i) => i === 0 || c !== allStops[i - 1]);
+                      const leftColor = uniqueStops[0] ?? null;
+                      const rightColor = uniqueStops[uniqueStops.length - 1] ?? leftColor;
+                      const gradientStyle = uniqueStops.length >= 2
+                        ? { backgroundImage: `linear-gradient(to right, ${uniqueStops.join(", ")})`, WebkitBackgroundClip: "text" as const, WebkitTextFillColor: "transparent" }
+                        : uniqueStops.length === 1
+                        ? { color: uniqueStops[0] }
+                        : {};
+                      return (
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="relative flex-shrink-0 cursor-pointer"
+                            onMouseEnter={(e) => {
+                              if (!cardUrl) return;
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setHoverCard({ url: cardUrl, x: rect.right + 8, y: rect.top });
+                            }}
+                            onMouseLeave={() => setHoverCard(null)}
+                          >
+                            <div
+                              className="w-12 h-12 rounded-xl p-[2px] shadow-sm"
+                              style={{
+                                background: uniqueStops.length >= 2
+                                  ? `linear-gradient(to bottom, ${uniqueStops.join(", ")})`
+                                  : uniqueStops[0] ?? "var(--color-border)",
+                              }}
+                            >
+                              <div className="w-full h-full rounded-[10px] overflow-hidden">
+                                {imgUrl ? (
+                                  <img src={imgUrl} alt="" className="w-full h-full object-cover" style={{ objectPosition: cropPos }} />
+                                ) : (
+                                  <div className="w-full h-full bg-surface" />
+                                )}
+                              </div>
+                            </div>
+                            {baseIcon ? (
+                              <img
+                                src={baseIcon}
+                                alt={d.baseDisplay}
+                                className="absolute -bottom-1 -right-1 w-5.5 h-5.5 drop-shadow-md"
+                              />
+                            ) : isForceBase(d.baseDisplay) ? (
+                              <div
+                                className="absolute -bottom-1 -right-1 w-5.5 h-5.5 flex items-center justify-center drop-shadow-md"
+                                style={{
+                                  backgroundColor: "#000",
+                                  clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)",
+                                }}
+                              >
+                                <div
+                                  className="w-[80%] h-[80%] flex items-center justify-center"
+                                  style={{
+                                    backgroundColor: baseColor ?? "#666",
+                                    clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)",
+                                  }}
+                                >
+                                  <img src="/images/force-icon.svg" alt="Force" className="w-[70%] h-[70%] brightness-0 invert" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                className="absolute -bottom-1 -right-1 w-5.5 h-5.5 flex items-center justify-center drop-shadow-md"
+                                style={{
+                                  backgroundColor: baseColor ?? "#666",
+                                  clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)",
+                                }}
+                              >
+                                <div
+                                  className="w-[80%] h-[80%] flex items-center justify-center text-[7px] font-bold text-white"
+                                  style={{
+                                    backgroundColor: "#000",
+                                    clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)",
+                                  }}
+                                >
+                                  {baseAbbrev}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate" style={gradientStyle}>
+                              {d.leader.split(",")[0]} / {d.baseDisplay}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {setCode && <span className="text-[10px] text-muted">({setCode})</span>}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </td>
                   {tab === "popularity" && (
                     <>
@@ -198,6 +287,20 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
           </tbody>
         </table>
       </div>
+
+      {hoverCard && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed z-[100] pointer-events-none"
+          style={{ left: hoverCard.x, top: hoverCard.y }}
+        >
+          <img
+            src={hoverCard.url}
+            alt=""
+            className="w-72 rounded-lg shadow-2xl border border-border"
+          />
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

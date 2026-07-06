@@ -17,6 +17,7 @@ interface MetaStats {
   decks: {
     leader: string;
     baseDisplay: string;
+    baseAspect: string | null;
     aspects: string[];
     count: number;
     playRate: number;
@@ -30,7 +31,9 @@ interface MetaStats {
   }[];
   matchups: {
     leader1: string;
+    base1: string;
     leader2: string;
+    base2: string;
     leader1Wins: number;
     leader2Wins: number;
     draws: number;

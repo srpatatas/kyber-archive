@@ -64,6 +64,7 @@ export default function AdminPage() {
   const [newCanonicalId, setNewCanonicalId] = useState("");
   const [aliasLoading, setAliasLoading] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+  const [recalcStep, setRecalcStep] = useState("");
   const [pendingAliases, setPendingAliases] = useState<{ username: string; tournamentName: string; createdAt: string }[]>([]);
   const [pendingAssignTargets, setPendingAssignTargets] = useState<Record<string, string>>({});
   const [pinError, setPinError] = useState(false);
@@ -313,20 +314,29 @@ export default function AdminPage() {
 
   async function handleRecalculate() {
     setRecalculating(true);
+    const steps = [
+      { key: "elo", label: "Recalculando ELO..." },
+      { key: "nacional", label: "Recalculando Nacional..." },
+      { key: "meta", label: "Recalculando Metagame..." },
+    ];
     try {
-      const res = await adminFetch("/api/admin/recalculate", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setLastRecalc(new Date().toISOString());
-        showToast("All ratings recalculated");
-        fetchTournaments();
-      } else {
-        showToast(data.error ?? "Recalculation failed", "error");
+      for (const step of steps) {
+        setRecalcStep(step.label);
+        const res = await adminFetch(`/api/admin/recalculate?step=${step.key}`, { method: "POST" });
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.error ?? `${step.key} failed`, "error");
+          return;
+        }
       }
+      setLastRecalc(new Date().toISOString());
+      showToast("All ratings recalculated");
+      fetchTournaments();
     } catch {
       showToast("Network error", "error");
     } finally {
       setRecalculating(false);
+      setRecalcStep("");
     }
   }
 
@@ -599,7 +609,7 @@ export default function AdminPage() {
                 disabled={recalculating}
                 className="rounded-lg border border-border bg-surface px-3 py-1 text-xs font-medium text-muted hover:text-gold hover:border-gold/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {recalculating ? "Recalculating..." : "Recalculate"}
+                {recalculating ? recalcStep || "Recalculating..." : "Recalculate"}
               </button>
             </div>
           </div>

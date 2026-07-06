@@ -366,12 +366,16 @@ export async function getPlayerAspects(playerId: string): Promise<string[]> {
 }
 
 export async function forceRecalculate(): Promise<void> {
-  await withTransaction(async (client) => {
-    await recomputeRatings(client);
-  });
+  await recalculateElo();
   await recomputeNacionalStandings();
   await recomputeMetaStats();
   await stampLastRecalculated();
+}
+
+export async function recalculateElo(): Promise<void> {
+  await withTransaction(async (client) => {
+    await recomputeRatings(client);
+  });
 }
 
 async function stampLastRecalculated(): Promise<void> {

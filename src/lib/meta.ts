@@ -4,6 +4,7 @@ import { normalizeBase } from "./base-normalization";
 export interface DeckStats {
   leader: string;
   baseDisplay: string;
+  baseAspect: string | null;
   aspects: string[];
   count: number;
   playRate: number;
@@ -18,7 +19,9 @@ export interface DeckStats {
 
 export interface LeaderMatchup {
   leader1: string;
+  base1: string;
   leader2: string;
+  base2: string;
   leader1Wins: number;
   leader2Wins: number;
   draws: number;
@@ -88,13 +91,15 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     dateParams.push(endDate);
   }
 
+  const deckFilter = "AND d.leader != '' AND d.leader != 'Decklist' AND d.base != ''";
+
   const [popularityRows, winRateRows, topCutRows, matchupRows, countRows] = await Promise.all([
     query(`
       SELECT d.leader, d.base, COUNT(*) as count, ac.aspects
       FROM decklists d
       JOIN tournaments t ON t.id = d.tournament_id
       LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
-      WHERE 1=1 ${dateCondition}
+      WHERE 1=1 ${dateCondition} ${deckFilter}
       GROUP BY d.leader, d.base, ac.aspects
       ORDER BY count DESC
     `, dateParams).then(r => r.rows),
@@ -115,7 +120,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
       JOIN matches m ON m.tournament_id = d.tournament_id
         AND (m.player1_id = d.player_id OR m.player2_id = d.player_id)
       LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
-      WHERE 1=1 ${dateCondition}
+      WHERE 1=1 ${dateCondition} ${deckFilter}
       GROUP BY d.leader, d.base, ac.aspects
     `, dateParams).then(r => r.rows),
 
@@ -126,12 +131,12 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
       FROM decklists d
       JOIN tournaments t ON t.id = d.tournament_id
       LEFT JOIN placements p ON p.tournament_id = d.tournament_id AND p.player_id = d.player_id
-      WHERE 1=1 ${dateCondition}
+      WHERE 1=1 ${dateCondition} ${deckFilter}
       GROUP BY d.leader, d.base
     `, dateParams).then(r => r.rows),
 
     query(`
-      SELECT d1.leader as leader1, d2.leader as leader2,
+      SELECT d1.leader as leader1, d1.base as base1, d2.leader as leader2, d2.base as base2,
         SUM(CASE WHEN m.player1_wins > m.player2_wins THEN 1 ELSE 0 END) as l1_wins,
         SUM(CASE WHEN m.player2_wins > m.player1_wins THEN 1 ELSE 0 END) as l2_wins,
         SUM(CASE WHEN m.player1_wins = m.player2_wins THEN 1 ELSE 0 END) as draws
@@ -139,15 +144,15 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
       JOIN tournaments t ON t.id = m.tournament_id
       JOIN decklists d1 ON d1.tournament_id = m.tournament_id AND d1.player_id = m.player1_id
       JOIN decklists d2 ON d2.tournament_id = m.tournament_id AND d2.player_id = m.player2_id
-      WHERE 1=1 ${dateCondition}
-      GROUP BY d1.leader, d2.leader
+      WHERE 1=1 ${dateCondition} AND d1.leader != '' AND d1.leader != 'Decklist' AND d1.base != '' AND d2.leader != '' AND d2.leader != 'Decklist' AND d2.base != ''
+      GROUP BY d1.leader, d1.base, d2.leader, d2.base
     `, dateParams).then(r => r.rows),
 
     query(`
       SELECT
-        (SELECT COUNT(*) FROM decklists d JOIN tournaments t ON t.id = d.tournament_id WHERE 1=1 ${dateCondition}) as total_decklists,
+        (SELECT COUNT(*) FROM decklists d JOIN tournaments t ON t.id = d.tournament_id WHERE 1=1 ${dateCondition} ${deckFilter}) as total_decklists,
         (SELECT COUNT(DISTINCT t.id) FROM tournaments t WHERE 1=1 ${dateCondition}) as total_tournaments,
-        (SELECT COUNT(DISTINCT d.leader) FROM decklists d JOIN tournaments t ON t.id = d.tournament_id WHERE 1=1 ${dateCondition}) as unique_leaders
+        (SELECT COUNT(DISTINCT d.leader) FROM decklists d JOIN tournaments t ON t.id = d.tournament_id WHERE 1=1 ${dateCondition} ${deckFilter}) as unique_leaders
     `, dateParams).then(r => r.rows),
   ]);
 
@@ -170,6 +175,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
       deckMap.set(key, {
         leader,
         baseDisplay: norm.display,
+        baseAspect: norm.aspect,
         aspects,
         count: 0,
         playRate: 0,
@@ -219,38 +225,50 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
   }
   decks.sort((a, b) => b.count - a.count);
 
-  const matchups: LeaderMatchup[] = [];
-  const seen = new Set<string>();
+  const matchupAgg = new Map<string, { l1: string; b1: string; l2: string; b2: string; l1Wins: number; l2Wins: number; draws: number }>();
   for (const r of matchupRows) {
-    const l1 = r.leader1 as string;
-    const l2 = r.leader2 as string;
-    const pairKey = [l1, l2].sort().join("||");
-    if (seen.has(pairKey)) continue;
-    seen.add(pairKey);
+    const b1Norm = normalizeBase(r.base1 as string);
+    const b2Norm = normalizeBase(r.base2 as string);
+    const deck1 = `${r.leader1}||${b1Norm.key}`;
+    const deck2 = `${r.leader2}||${b2Norm.key}`;
+    const [sortedA, sortedB] = [deck1, deck2].sort();
+    const pairKey = `${sortedA}|||${sortedB}`;
+    const isForward = deck1 <= deck2;
 
-    let l1Wins = Number(r.l1_wins);
-    let l2Wins = Number(r.l2_wins);
-    let draws = Number(r.draws);
-
-    const reverseRow = matchupRows.find(
-      (rr: Record<string, unknown>) => rr.leader1 === l2 && rr.leader2 === l1
-    );
-    if (reverseRow && l1 !== l2) {
-      l1Wins += Number(reverseRow.l2_wins);
-      l2Wins += Number(reverseRow.l1_wins);
-      draws += Number(reverseRow.draws);
+    if (!matchupAgg.has(pairKey)) {
+      matchupAgg.set(pairKey, {
+        l1: isForward ? (r.leader1 as string) : (r.leader2 as string),
+        b1: isForward ? b1Norm.display : b2Norm.display,
+        l2: isForward ? (r.leader2 as string) : (r.leader1 as string),
+        b2: isForward ? b2Norm.display : b1Norm.display,
+        l1Wins: 0, l2Wins: 0, draws: 0,
+      });
     }
+    const agg = matchupAgg.get(pairKey)!;
+    if (isForward) {
+      agg.l1Wins += Number(r.l1_wins);
+      agg.l2Wins += Number(r.l2_wins);
+    } else {
+      agg.l1Wins += Number(r.l2_wins);
+      agg.l2Wins += Number(r.l1_wins);
+    }
+    agg.draws += Number(r.draws);
+  }
 
-    const total = l1Wins + l2Wins + draws;
-    const totalDecisive = l1Wins + l2Wins;
+  const matchups: LeaderMatchup[] = [];
+  for (const agg of matchupAgg.values()) {
+    const total = agg.l1Wins + agg.l2Wins + agg.draws;
+    const totalDecisive = agg.l1Wins + agg.l2Wins;
     matchups.push({
-      leader1: l1,
-      leader2: l2,
-      leader1Wins: l1Wins,
-      leader2Wins: l2Wins,
-      draws,
+      leader1: agg.l1,
+      base1: agg.b1,
+      leader2: agg.l2,
+      base2: agg.b2,
+      leader1Wins: agg.l1Wins,
+      leader2Wins: agg.l2Wins,
+      draws: agg.draws,
       total,
-      leader1WinRate: totalDecisive > 0 ? Math.round((l1Wins / totalDecisive) * 1000) / 10 : 50,
+      leader1WinRate: totalDecisive > 0 ? Math.round((agg.l1Wins / totalDecisive) * 1000) / 10 : 50,
     });
   }
   matchups.sort((a, b) => b.total - a.total);
