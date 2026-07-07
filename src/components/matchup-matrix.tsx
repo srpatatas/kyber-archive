@@ -78,7 +78,7 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
             Matchup Matrix
           </h2>
           <p className="text-[10px] text-muted text-left">
-            Win rate por líder vs líder ({filtered.length} matchups)
+            Win rate por líder vs líder · {filtered.length} matchups con 3+ partidas
           </p>
         </div>
         <svg
