@@ -6,10 +6,9 @@ import { MetaPieChart } from "@/components/meta-pie-chart";
 import { MatchupMatrix } from "@/components/matchup-matrix";
 import { MatchupPicker } from "@/components/matchup-picker";
 
-type MetaPeriod = "1m" | "3m" | "6m" | "pre";
+type MetaPeriod = "3m" | "6m" | "pre";
 
 const PERIODS: { key: MetaPeriod; label: string }[] = [
-  { key: "1m", label: "1 Mes" },
   { key: "3m", label: "3 Meses" },
   { key: "6m", label: "6 Meses" },
   { key: "pre", label: "Pre-Rotación" },
@@ -66,7 +65,7 @@ interface MetaStats {
 }
 
 export default function MetaPage() {
-  const [period, setPeriod] = useState<MetaPeriod>("6m");
+  const [period, setPeriod] = useState<MetaPeriod>("3m");
   const [stats, setStats] = useState<MetaStats | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMetaStats, MetaPeriod } from "@/lib/meta";
 
-const VALID_PERIODS: MetaPeriod[] = ["1m", "3m", "6m", "pre"];
+const VALID_PERIODS: MetaPeriod[] = ["3m", "6m", "pre"];
 
 export async function GET(request: NextRequest) {
   try {

@@ -48,7 +48,7 @@ export interface MetaStats {
   uniqueLeaders: number;
 }
 
-export type MetaPeriod = "1m" | "3m" | "6m" | "pre";
+export type MetaPeriod = "3m" | "6m" | "pre";
 
 const ROTATION_DATE = "2026-03-13";
 
@@ -62,7 +62,7 @@ function periodDateRange(period: MetaPeriod): { startDate: string | null; endDat
 }
 
 export async function recomputeMetaStats(): Promise<void> {
-  const periods: MetaPeriod[] = ["1m", "3m", "6m", "pre"];
+  const periods: MetaPeriod[] = ["3m", "6m", "pre"];
   for (const period of periods) {
     const { startDate, endDate } = periodDateRange(period);
     const stats = await computeMetaStats(startDate, endDate);
