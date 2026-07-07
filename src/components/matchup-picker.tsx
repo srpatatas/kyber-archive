@@ -20,6 +20,7 @@ interface DeckOption {
   leader: string;
   baseDisplay: string;
   key: string;
+  label: string;
 }
 
 function getDeckColor(leader: string): string {
@@ -30,7 +31,7 @@ function getDeckColor(leader: string): string {
   return known[0] ? visibleColor(ASPECT_COLORS[known[0].toLowerCase()]) ?? "#666" : "#666";
 }
 
-export function MatchupPicker({ matchups, decks }: { matchups: LeaderMatchup[]; decks: DeckOption[] }) {
+export function MatchupPicker({ matchups }: { matchups: LeaderMatchup[] }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -46,13 +47,22 @@ export function MatchupPicker({ matchups, decks }: { matchups: LeaderMatchup[]; 
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const deckOptions = decks
-    .filter((d) => d.leader && d.baseDisplay)
-    .map((d) => {
-      const setCode = getLeaderSetCode(d.leader);
-      const label = `${d.leader.split(",")[0]}${setCode ? ` (${setCode})` : ""} · ${d.baseDisplay}`;
-      return { ...d, key: `${d.leader}||${d.baseDisplay}`, label };
-    });
+  const deckMap = new Map<string, DeckOption>();
+  for (const m of matchups) {
+    for (const [leader, base] of [[m.leader1, m.base1], [m.leader2, m.base2]]) {
+      const key = `${leader}||${base}`;
+      if (!deckMap.has(key)) {
+        const setCode = getLeaderSetCode(leader);
+        deckMap.set(key, {
+          leader,
+          baseDisplay: base,
+          key,
+          label: `${leader.split(",")[0]}${setCode ? ` (${setCode})` : ""} · ${base}`,
+        });
+      }
+    }
+  }
+  const deckOptions = Array.from(deckMap.values()).sort((a, b) => a.label.localeCompare(b.label));
 
   const filtered = search
     ? deckOptions.filter((d) => d.label.toLowerCase().includes(search.toLowerCase()))
