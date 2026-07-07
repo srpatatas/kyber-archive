@@ -134,7 +134,7 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
               <table className="text-xs">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 bg-surface px-2 py-1.5 text-left font-medium text-muted min-w-[120px]">
+                    <th className="sticky left-0 z-10 bg-surface px-2 py-1.5 text-right align-bottom font-medium text-muted min-w-[120px]">
                       vs
                     </th>
                     {deckList.map((k) => {
