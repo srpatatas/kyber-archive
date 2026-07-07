@@ -92,6 +92,7 @@ function DeckBadge({ d, size = "sm", onHover, onLeave }: { d: DeckStats; size?: 
   const innerRadius = size === "lg" ? "rounded-[13px]" : "rounded-[10px]";
   const badgeDim = size === "lg" ? "w-7 h-7" : "w-5.5 h-5.5";
   const badgePos = size === "lg" ? "-bottom-1.5 -right-1.5" : "-bottom-1 -right-1";
+  const badgeFont = size === "lg" ? "text-[9px]" : "text-[7px]";
 
   return (
     <div
@@ -122,7 +123,7 @@ function DeckBadge({ d, size = "sm", onHover, onLeave }: { d: DeckStats; size?: 
         </div>
       ) : (
         <div className={`absolute ${badgePos} ${badgeDim} flex items-center justify-center drop-shadow-md`} style={{ backgroundColor: baseColor ?? "#666", clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)" }}>
-          <div className="w-[80%] h-[80%] flex items-center justify-center text-[7px] font-bold text-white" style={{ backgroundColor: "#000", clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)" }}>
+          <div className={`w-[80%] h-[80%] flex items-center justify-center ${badgeFont} font-bold text-white`} style={{ backgroundColor: "#000", clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)" }}>
             {baseAbbrev}
           </div>
         </div>
