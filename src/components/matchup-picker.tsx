@@ -102,7 +102,7 @@ export function MatchupPicker({ matchups, decks }: { matchups: LeaderMatchup[]; 
       </div>
 
       <div className="px-4 py-3 border-b border-border/50" ref={wrapperRef}>
-        <div className="relative">
+        <div className="relative max-w-md">
           <input
             type="text"
             value={search}
