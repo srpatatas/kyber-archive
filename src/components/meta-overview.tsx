@@ -122,7 +122,7 @@ function DeckBadge({ d, size = "sm", onHover, onLeave }: { d: DeckStats; size?: 
         </div>
       ) : (
         <div className={`absolute ${badgePos} ${badgeDim} flex items-center justify-center drop-shadow-md`} style={{ backgroundColor: baseColor ?? "#666", clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)" }}>
-          <div className={`w-[80%] h-[80%] flex items-center justify-center ${baseAbbrev.length > 2 ? "text-[5px]" : "text-[7px]"} font-bold text-white`} style={{ backgroundColor: "#000", clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)" }}>
+          <div className="w-[80%] h-[80%] flex items-center justify-center text-[7px] font-bold text-white" style={{ backgroundColor: "#000", clipPath: "polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%)" }}>
             {baseAbbrev}
           </div>
         </div>
