@@ -102,8 +102,8 @@ export function MatchupPicker({ matchups, decks }: { matchups: LeaderMatchup[]; 
   return (
     <div className="rounded-xl border border-border overflow-visible">
       <div className="px-4 py-3 bg-surface border-b border-border">
-        <h2 className="text-sm font-medium text-foreground">Matchups por Deck</h2>
-        <p className="text-[10px] text-muted mt-0.5">Seleccioná un deck para ver todos sus matchups</p>
+        <h2 className="text-base font-medium text-foreground">Matchups por Deck</h2>
+        <p className="text-xs text-muted mt-0.5">Seleccioná un deck para ver todos sus matchups</p>
       </div>
 
       <div className="px-4 py-3 border-b border-border/50" ref={wrapperRef}>
