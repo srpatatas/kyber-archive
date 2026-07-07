@@ -96,7 +96,7 @@ export default function MetaPage() {
             <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Meta Report</h1>
             {stats && (
               <p className="text-xs text-muted">
-                {stats.totalDecklists} decklists en {stats.totalTournaments} torneos
+                {stats.totalDecklists} decklists en {stats.totalTournaments} torneos · Decks con 5+ partidas
               </p>
             )}
           </div>
