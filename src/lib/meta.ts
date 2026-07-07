@@ -1,6 +1,14 @@
 import { query } from "./db";
 import { normalizeBase } from "./base-normalization";
 
+export interface DecklistEntry {
+  playerUsername: string;
+  tournamentName: string;
+  tournamentId: number;
+  decklistGuid: string | null;
+  base: string;
+}
+
 export interface DeckStats {
   leader: string;
   baseDisplay: string;
@@ -15,6 +23,7 @@ export interface DeckStats {
   totalEntries: number;
   topCutEntries: number;
   conversionRate: number;
+  decklists: DecklistEntry[];
 }
 
 export interface LeaderMatchup {
@@ -88,7 +97,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
 
   const deckFilter = "AND d.leader != '' AND d.leader != 'Decklist' AND d.base != ''";
 
-  const [popularityRows, winRateRows, topCutRows, matchupRows, countRows] = await Promise.all([
+  const [popularityRows, winRateRows, topCutRows, matchupRows, countRows, decklistRows] = await Promise.all([
     query(`
       SELECT d.leader, d.base, COUNT(*) as count, ac.aspects
       FROM decklists d
@@ -149,6 +158,15 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
         (SELECT COUNT(DISTINCT t.id) FROM tournaments t WHERE 1=1 ${dateCondition}) as total_tournaments,
         (SELECT COUNT(DISTINCT d.leader) FROM decklists d JOIN tournaments t ON t.id = d.tournament_id WHERE 1=1 ${dateCondition} ${deckFilter}) as unique_leaders
     `, dateParams).then(r => r.rows),
+
+    query(`
+      SELECT d.leader, d.base, p.username as player_username, t.name as tournament_name, t.id as tournament_id, d.decklist_guid
+      FROM decklists d
+      JOIN tournaments t ON t.id = d.tournament_id
+      JOIN players p ON p.id = d.player_id
+      WHERE 1=1 ${dateCondition} ${deckFilter}
+      ORDER BY t.date DESC
+    `, dateParams).then(r => r.rows),
   ]);
 
   const totalDecklists = Number(countRows[0]?.total_decklists ?? 0);
@@ -181,6 +199,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
         totalEntries: 0,
         topCutEntries: 0,
         conversionRate: 0,
+        decklists: [],
       });
     }
     const entry = deckMap.get(key)!;
@@ -200,6 +219,20 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     entry.wins += Number(r.wins);
     entry.losses += Number(r.losses);
     entry.draws += Number(r.draws);
+  }
+
+  for (const r of decklistRows) {
+    const key = getDeckKey(r.leader as string, r.base as string);
+    const entry = deckMap.get(key);
+    if (entry) {
+      entry.decklists.push({
+        playerUsername: r.player_username as string,
+        tournamentName: r.tournament_name as string,
+        tournamentId: r.tournament_id as number,
+        decklistGuid: r.decklist_guid as string | null,
+        base: r.base as string,
+      });
+    }
   }
 
   for (const r of topCutRows) {

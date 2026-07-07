@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { ASPECT_COLORS } from "@/lib/aspects";
 import { getLeaderThumbnailUrl, getLeaderSetCode, getLeaderImageUrl, getLeaderCropPosition, getBaseAbbrev, getBaseAspectColor, getBaseAspectIcon, getLeaderAspects, isForceBase, isSplashBase, getSplashGradient } from "@/lib/card-images";
+
+interface DecklistEntry {
+  playerUsername: string;
+  tournamentName: string;
+  tournamentId: number;
+  decklistGuid: string | null;
+  base: string;
+}
 
 interface DeckStats {
   leader: string;
@@ -19,6 +27,7 @@ interface DeckStats {
   totalEntries: number;
   topCutEntries: number;
   conversionRate: number;
+  decklists: DecklistEntry[];
 }
 
 function SortHeader({ label, sortKey, current, dir, onSort, className = "" }: { label: string; sortKey: SortKey; current: SortKey; dir: SortDir; onSort: (k: SortKey) => void; className?: string }) {
@@ -148,7 +157,7 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
 
   return (
     <div className="mb-6">
-      <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Top Decks del Meta</h2>
+      <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Top Decks</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {top3.map((d, i) => {
         const { gradientStyle } = useDeckColors(d);
@@ -208,6 +217,7 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
 export function MetaOverview({ decks }: { decks: DeckStats[] }) {
   const [sortBy, setSortBy] = useState<SortKey>("playRate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [hoverCard, setHoverCard] = useState<{ url: string; x: number; y: number } | null>(null);
 
   const handleSort = (key: SortKey) => {
@@ -250,41 +260,86 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                 const { uniqueStops, gradientStyle } = useDeckColors(d);
                 const setCode = getLeaderSetCode(d.leader);
 
+                const rowKey = `${d.leader}||${d.baseDisplay}`;
+                const isExpanded = expanded === rowKey;
+                const hasDecklists = d.decklists && d.decklists.length > 0;
+
                 return (
-                  <tr
-                    key={`${d.leader}||${d.baseDisplay}`}
-                    className="hover:bg-surface-light/50 transition-colors"
-                  >
-                    <td className="px-2 py-2 tabular-nums text-muted">{i + 1}</td>
-                    <td className="px-2 py-2">
-                      <div className="flex items-center gap-2.5">
-                        <DeckBadge d={d} onHover={handleHover} onLeave={() => setHoverCard(null)} />
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate" style={gradientStyle}>
-                            {d.leader.split(",")[0]} · {d.baseDisplay}
-                          </p>
-                          {setCode && <span className="text-[10px] text-muted">({setCode})</span>}
+                  <React.Fragment key={rowKey}>
+                    <tr
+                      className={`hover:bg-surface-light/50 transition-colors ${hasDecklists ? "cursor-pointer" : ""}`}
+                      onClick={() => hasDecklists && setExpanded(isExpanded ? null : rowKey)}
+                    >
+                      <td className="px-2 py-2 tabular-nums text-muted">{i + 1}</td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-center gap-2.5">
+                          <DeckBadge d={d} onHover={handleHover} onLeave={() => setHoverCard(null)} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate" style={gradientStyle}>
+                              {d.leader.split(",")[0]} · {d.baseDisplay}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {setCode && <span className="text-[10px] text-muted">({setCode})</span>}
+                              {hasDecklists && (
+                                <span className="text-[9px] text-muted">
+                                  {isExpanded ? "▲" : "▼"} {d.decklists.length} decklists
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground text-sm">{d.playRate}%</td>
-                    <td className="px-2 py-2 text-center tabular-nums text-muted text-sm hidden sm:table-cell">
-                      <span className="text-emerald-400">{d.wins}</span>
-                      <span className="text-muted">-</span>
-                      <span className="text-red-400">{d.losses}</span>
-                      {d.draws > 0 && <><span className="text-muted">-</span><span className="text-muted">{d.draws}</span></>}
-                    </td>
-                    <td className="px-2 py-2 text-center text-sm">
-                      <span className={`tabular-nums font-semibold ${d.winRate >= 55 ? "text-emerald-400" : d.winRate <= 45 ? "text-red-400" : "text-foreground"}`}>
-                        {d.winRate}%
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 text-center tabular-nums text-sm hidden sm:table-cell">
-                      <span className={`font-semibold ${d.conversionRate >= 40 ? "text-emerald-400" : d.conversionRate === 0 ? "text-muted" : "text-foreground"}`}>
-                        {d.conversionRate}%
-                      </span>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground text-sm">{d.playRate}%</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-muted text-sm hidden sm:table-cell">
+                        <span className="text-emerald-400">{d.wins}</span>
+                        <span className="text-muted">-</span>
+                        <span className="text-red-400">{d.losses}</span>
+                        {d.draws > 0 && <><span className="text-muted">-</span><span className="text-muted">{d.draws}</span></>}
+                      </td>
+                      <td className="px-2 py-2 text-center text-sm">
+                        <span className={`tabular-nums font-semibold ${d.winRate >= 55 ? "text-emerald-400" : d.winRate <= 45 ? "text-red-400" : "text-foreground"}`}>
+                          {d.winRate}%
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 text-center tabular-nums text-sm hidden sm:table-cell">
+                        <span className={`font-semibold ${d.conversionRate >= 40 ? "text-emerald-400" : d.conversionRate === 0 ? "text-muted" : "text-foreground"}`}>
+                          {d.conversionRate}%
+                        </span>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={6} className="bg-surface/50 px-4 py-2">
+                          <div className="max-h-48 overflow-y-auto space-y-1">
+                            {d.decklists.map((dl, j) => (
+                              <div key={j} className="flex items-center justify-between text-[11px]">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-foreground font-medium truncate">{dl.playerUsername}</span>
+                                  <span className="text-muted truncate hidden sm:inline">@ {dl.tournamentName}</span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <span className="text-[10px] text-muted">{dl.base}</span>
+                                  {dl.decklistGuid ? (
+                                    <a
+                                      href={`https://melee.gg/Decklist/View/${dl.decklistGuid}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-gold hover:text-gold/80 transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      Ver deck →
+                                    </a>
+                                  ) : (
+                                    <span className="text-muted/50 text-[10px]">sin link</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

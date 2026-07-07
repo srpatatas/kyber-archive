@@ -29,6 +29,13 @@ interface MetaStats {
     totalEntries: number;
     topCutEntries: number;
     conversionRate: number;
+    decklists: {
+      playerUsername: string;
+      tournamentName: string;
+      tournamentId: number;
+      decklistGuid: string | null;
+      base: string;
+    }[];
   }[];
   matchups: {
     leader1: string;
