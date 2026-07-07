@@ -628,20 +628,24 @@ export const LEADER_ASPECTS: Record<string, string[]> = {
   "Yoda, Sensing Darkness": ["Vigilance","Heroism"],
 };
 
+function ciLookup<T>(map: Record<string, T>, key: string): T | undefined {
+  return map[key] ?? Object.entries(map).find(([k]) => k.toLowerCase() === key.toLowerCase())?.[1];
+}
+
 export function getLeaderImageUrl(leaderName: string): string | null {
-  return LEADER_IMAGES[leaderName] ?? null;
+  return ciLookup(LEADER_IMAGES, leaderName) ?? null;
 }
 
 export function getLeaderThumbnailUrl(leaderName: string): string | null {
-  return LEADER_THUMBNAILS[leaderName] ?? null;
+  return ciLookup(LEADER_THUMBNAILS, leaderName) ?? null;
 }
 
 export function getLeaderSetCode(leaderName: string): string | null {
-  return LEADER_SETS[leaderName] ?? null;
+  return ciLookup(LEADER_SETS, leaderName) ?? null;
 }
 
 export function getLeaderAspects(leaderName: string): string[] {
-  return LEADER_ASPECTS[leaderName] ?? [];
+  return ciLookup(LEADER_ASPECTS, leaderName) ?? [];
 }
 
 // --- Manual additions below (not auto-generated) ---
