@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ASPECT_COLORS } from "@/lib/aspects";
-import { getLeaderAspects, getBaseAspectColor } from "@/lib/card-images";
+import { getLeaderAspects, getBaseAspectColor, getLeaderSetCode } from "@/lib/card-images";
 
 interface LeaderMatchup {
   leader1: string;
@@ -52,9 +52,11 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
   const deckLabel = (leader: string, base: string) => `${leader.split(",")[0]} · ${base || "?"}`;
   const deckShort = (leader: string, base: string) => {
     const name = leader.split(",")[0];
-    if (!base) return name;
+    const set = getLeaderSetCode(leader);
+    const nameWithSet = set ? `${name} (${set})` : name;
+    if (!base) return nameWithSet;
     const b = base.replace(/\s*\d+HP$/, "");
-    return `${name} ${b}`;
+    return `${nameWithSet} ${b}`;
   };
 
   const decks = new Set<string>();
