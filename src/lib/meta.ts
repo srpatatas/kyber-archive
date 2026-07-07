@@ -79,7 +79,7 @@ export async function getMetaStats(period: MetaPeriod = "6m"): Promise<MetaStats
   if (rows.length > 0) {
     return JSON.parse(rows[0].data as string);
   }
-  return { decks: [], matchups: [], totalDecklists: 0, totalTournaments: 0, uniqueLeaders: 0 };
+  return { decks: [], matchups: [], matchupsAll: [], totalDecklists: 0, totalTournaments: 0, uniqueLeaders: 0 };
 }
 
 async function computeMetaStats(startDate: string | null, endDate: string | null): Promise<MetaStats> {
