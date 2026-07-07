@@ -242,7 +242,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
 
   return (
     <>
-      <div className="rounded-xl border border-border overflow-x-auto mb-6">
+      <div className="rounded-xl border border-border overflow-x-auto mb-6 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface">

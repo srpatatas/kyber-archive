@@ -101,7 +101,7 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
               No hay suficientes datos
             </div>
           ) : (
-            <div className="border-t border-border/50 overflow-x-auto">
+            <div className="border-t border-border/50 overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
               <table className="text-[10px]">
                 <thead>
                   <tr>
