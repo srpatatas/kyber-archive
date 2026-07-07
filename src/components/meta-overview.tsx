@@ -309,7 +309,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                     {isExpanded && (
                       <tr>
                         <td colSpan={6} className="bg-surface/50 px-4 py-2">
-                          <div className="max-h-48 overflow-y-auto space-y-1">
+                          <div className="max-h-48 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
                             {d.decklists.map((dl, j) => (
                               <div key={j} className="flex items-center justify-between text-[11px]">
                                 <div className="flex items-center gap-2 min-w-0">

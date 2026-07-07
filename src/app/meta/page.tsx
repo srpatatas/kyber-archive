@@ -82,7 +82,7 @@ export default function MetaPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Metagame</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Meta Report</h1>
             {stats && (
               <p className="text-xs text-muted">
                 {stats.totalDecklists} decklists en {stats.totalTournaments} torneos
