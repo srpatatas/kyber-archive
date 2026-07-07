@@ -2,6 +2,7 @@ import { query, withTransaction } from "./db";
 import type { PoolClient } from "@neondatabase/serverless";
 import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings, computePureElo, computeEloWithPlacements, computeEloTrialWithPlacements, computeEloTrial, computeEloTrialScaledPlacements, computeEloTrialSizePlacements } from "./elo";
 import { normalizeBase } from "./base-normalization";
+import { recomputeMetaStats } from "./meta";
 
 interface StoredTournament {
   id: number;
@@ -90,6 +91,7 @@ export async function addTournament(
     await recomputeRatings(client);
   });
   await recomputeNacionalStandings();
+  await recomputeMetaStats();
   await stampLastRecalculated();
 }
 
@@ -364,11 +366,16 @@ export async function getPlayerAspects(playerId: string): Promise<string[]> {
 }
 
 export async function forceRecalculate(): Promise<void> {
+  await recalculateElo();
+  await recomputeNacionalStandings();
+  await recomputeMetaStats();
+  await stampLastRecalculated();
+}
+
+export async function recalculateElo(): Promise<void> {
   await withTransaction(async (client) => {
     await recomputeRatings(client);
   });
-  await recomputeNacionalStandings();
-  await stampLastRecalculated();
 }
 
 async function stampLastRecalculated(): Promise<void> {

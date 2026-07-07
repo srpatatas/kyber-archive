@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TournamentsPage() {
-  const tournaments = (await getIngestedTournaments()).slice().reverse();
+  const tournaments = await getIngestedTournaments();
 
   const grouped = new Map<string, typeof tournaments>();
   for (const t of tournaments) {
