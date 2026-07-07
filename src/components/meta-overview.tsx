@@ -134,14 +134,13 @@ function DeckBadge({ d, size = "sm", onHover, onLeave }: { d: DeckStats; size?: 
 export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   if (decks.length === 0) return null;
 
-  const eligible = decks.filter((d) => d.count >= 5);
-  if (eligible.length === 0) return null;
+  if (decks.length === 0) return null;
 
-  const maxPlayRate = Math.max(...eligible.map((d) => d.playRate));
-  const maxWinRate = Math.max(...eligible.map((d) => d.winRate));
-  const maxConversion = Math.max(...eligible.map((d) => d.conversionRate));
+  const maxPlayRate = Math.max(...decks.map((d) => d.playRate));
+  const maxWinRate = Math.max(...decks.map((d) => d.winRate));
+  const maxConversion = Math.max(...decks.map((d) => d.conversionRate));
 
-  const scored = eligible.map((d) => {
+  const scored = decks.map((d) => {
     const confidence = Math.min(d.count / 5, 1);
     const raw =
       (maxPlayRate > 0 ? (d.playRate / maxPlayRate) * 25 : 0) +
