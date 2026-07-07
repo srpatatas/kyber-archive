@@ -35,6 +35,14 @@ function getDeckGradientStyle(leader: string, base: string): React.CSSProperties
   return { color: unique[0] ?? "#666" };
 }
 
+function getDeckPrimaryColor(leader: string): string {
+  const visibleColor = (c: string | undefined) => c === "#040004" ? "#4a3060" : c;
+  const known = getLeaderAspects(leader);
+  const colorAspect = known.find((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy");
+  if (colorAspect) return visibleColor(ASPECT_COLORS[colorAspect.toLowerCase()]) ?? "#666";
+  return known[0] ? visibleColor(ASPECT_COLORS[known[0].toLowerCase()]) ?? "#666" : "#666";
+}
+
 export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
   const [open, setOpen] = useState(false);
 
@@ -135,10 +143,8 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
                         <th
                           key={k}
                           className="px-1.5 py-1.5 text-center font-medium whitespace-nowrap"
-                          style={{ writingMode: "vertical-lr", transform: "rotate(180deg)", minHeight: 90, ...getDeckGradientStyle(d.leader, d.base) }}
+                          style={{ writingMode: "vertical-lr", transform: "rotate(180deg)", minHeight: 90, color: getDeckPrimaryColor(d.leader) }}
                         >
-                          {deckShort(d.leader, d.base)}
-                        </th>
                       );
                     })}
                   </tr>
