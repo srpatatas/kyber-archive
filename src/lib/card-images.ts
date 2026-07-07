@@ -669,11 +669,17 @@ export function getLeaderCropPosition(leaderName: string): string {
   return LEADER_CROP_POSITION[leaderName] ?? "center";
 }
 
+const BASE_ABBREV_OVERRIDES: Record<string, string> = {
+  "Energy Conversion Lab": "ECL",
+  "Tarkintown": "TT",
+};
+
 export function getBaseAbbrev(baseDisplay: string): string {
+  if (BASE_ABBREV_OVERRIDES[baseDisplay]) return BASE_ABBREV_OVERRIDES[baseDisplay];
   if (baseDisplay.startsWith("Force ")) return "F";
   if (baseDisplay.startsWith("Splash ")) return "S";
   if (/^(Red|Green|Yellow|Blue) \d+HP$/.test(baseDisplay)) return baseDisplay.charAt(0);
-  return baseDisplay.split(/\s+/).map((w) => w.charAt(0)).join("").toUpperCase().slice(0, 2);
+  return baseDisplay.split(/\s+/).map((w) => w.charAt(0)).join("").toUpperCase().slice(0, 3);
 }
 
 const DISPLAY_COLOR_TO_ASPECT: Record<string, string> = {
