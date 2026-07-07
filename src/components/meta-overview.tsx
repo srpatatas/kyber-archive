@@ -242,17 +242,16 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
 
   return (
     <>
-      <div className="rounded-xl border border-border overflow-hidden mb-6">
-        <div className="overflow-x-auto">
+      <div className="rounded-xl border border-border overflow-x-auto mb-6">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted w-8">#</th>
                 <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">Deck</th>
                 <SortHeader label="Meta Share" sortKey="playRate" current={sortBy} dir={sortDir} onSort={handleSort} />
-                <SortHeader label="W-L-D Count" sortKey="wins" current={sortBy} dir={sortDir} onSort={handleSort} className="hidden sm:table-cell" />
+                <SortHeader label="W-L-D Count" sortKey="wins" current={sortBy} dir={sortDir} onSort={handleSort} className="" />
                 <SortHeader label="Win Rate" sortKey="winRate" current={sortBy} dir={sortDir} onSort={handleSort} />
-                <SortHeader label="Top Cut" sortKey="conversionRate" current={sortBy} dir={sortDir} onSort={handleSort} className="hidden sm:table-cell" />
+                <SortHeader label="Top Cut" sortKey="conversionRate" current={sortBy} dir={sortDir} onSort={handleSort} className="" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -290,7 +289,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                         </div>
                       </td>
                       <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground text-sm">{d.playRate}%</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-muted text-sm hidden sm:table-cell">
+                      <td className="px-2 py-2 text-center tabular-nums text-muted text-sm ">
                         <span className="text-emerald-400">{d.wins}</span>
                         <span className="text-muted">-</span>
                         <span className="text-red-400">{d.losses}</span>
@@ -301,7 +300,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                           {d.winRate}%
                         </span>
                       </td>
-                      <td className="px-2 py-2 text-center tabular-nums text-sm hidden sm:table-cell">
+                      <td className="px-2 py-2 text-center tabular-nums text-sm ">
                         <span className={`font-semibold ${d.conversionRate >= 40 ? "text-emerald-400" : d.conversionRate === 0 ? "text-muted" : "text-foreground"}`}>
                           {d.conversionRate}%
                         </span>
@@ -344,7 +343,6 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
               })}
             </tbody>
           </table>
-        </div>
 
         {hoverCard && typeof document !== "undefined" && createPortal(
           <div

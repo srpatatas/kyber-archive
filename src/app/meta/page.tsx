@@ -82,7 +82,7 @@ export default function MetaPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Metagame</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Metagame</h1>
             {stats && (
               <p className="text-xs text-muted">
                 {stats.totalDecklists} decklists en {stats.totalTournaments} torneos
@@ -111,6 +111,11 @@ export default function MetaPage() {
         ) : stats && stats.decks.length > 0 ? (
           <>
             <MetaSummary decks={stats.decks} />
+
+            <div className="lg:hidden rounded-xl border border-border bg-surface p-4 mb-6">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Distribución por Líder</h3>
+              <MetaPieChart decks={stats.decks} />
+            </div>
 
             <div className="flex flex-col lg:flex-row gap-6 mb-6">
               <div className="flex-1 min-w-0">
