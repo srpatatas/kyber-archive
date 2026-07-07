@@ -144,7 +144,10 @@ export default function MetaPage() {
             <MatchupMatrix matchups={stats.matchups} />
 
             <div className="mt-6">
-              <MatchupPicker matchups={stats.matchupsAll} />
+              <MatchupPicker
+                matchups={stats.matchupsAll}
+                decks={stats.decks.map((d) => ({ leader: d.leader, baseDisplay: d.baseDisplay }))}
+              />
             </div>
           </>
         ) : (
