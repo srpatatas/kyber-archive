@@ -136,9 +136,16 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
 
   if (decks.length === 0) return null;
 
+  const maxPlayRate = Math.max(...decks.map((d) => d.playRate)) || 1;
+  const maxWinRate = Math.max(...decks.map((d) => d.winRate)) || 1;
+  const maxConversion = Math.max(...decks.map((d) => d.conversionRate)) || 1;
+
   const scored = decks.map((d) => {
     const confidence = Math.min(d.count / 6, 1);
-    const raw = d.playRate * 0.25 + d.winRate * 0.35 + d.conversionRate * 0.40;
+    const raw =
+      (d.playRate / maxPlayRate) * 25 +
+      (d.winRate / maxWinRate) * 35 +
+      (d.conversionRate / maxConversion) * 40;
     return { ...d, score: raw * confidence };
   });
   scored.sort((a, b) => b.score - a.score);
