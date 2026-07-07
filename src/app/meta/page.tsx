@@ -49,6 +49,17 @@ interface MetaStats {
     total: number;
     leader1WinRate: number;
   }[];
+  matchupsAll: {
+    leader1: string;
+    base1: string;
+    leader2: string;
+    base2: string;
+    leader1Wins: number;
+    leader2Wins: number;
+    draws: number;
+    total: number;
+    leader1WinRate: number;
+  }[];
   totalDecklists: number;
   totalTournaments: number;
   uniqueLeaders: number;
@@ -134,7 +145,7 @@ export default function MetaPage() {
 
             <div className="mt-6">
               <MatchupPicker
-                matchups={stats.matchups}
+                matchups={stats.matchupsAll}
                 decks={stats.decks.map((d) => ({ leader: d.leader, baseDisplay: d.baseDisplay, key: `${d.leader}||${d.baseDisplay}` }))}
               />
             </div>

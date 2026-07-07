@@ -41,6 +41,7 @@ export interface LeaderMatchup {
 export interface MetaStats {
   decks: DeckStats[];
   matchups: LeaderMatchup[];
+  matchupsAll: LeaderMatchup[];
   totalDecklists: number;
   totalTournaments: number;
   uniqueLeaders: number;
@@ -302,8 +303,10 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     });
   }
   matchups.sort((a, b) => b.total - a.total);
+  const matchupsAll = [...matchups];
+  const matchupsFiltered = matchups.filter((m) => m.total >= 3);
 
-  return { decks, matchups, totalDecklists, totalTournaments, uniqueLeaders };
+  return { decks, matchups: matchupsFiltered, matchupsAll, totalDecklists, totalTournaments, uniqueLeaders };
 }
 
 function parseAspects(raw: unknown): string[] {

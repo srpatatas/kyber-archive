@@ -46,7 +46,7 @@ function getDeckPrimaryColor(leader: string): string {
 export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
   const [open, setOpen] = useState(true);
 
-  const filtered = matchups.filter((m) => m.total >= 3);
+  const filtered = matchups;
 
   const deckKey = (leader: string, base: string) => `${leader}||${base || "?"}`;
   const deckLabel = (leader: string, base: string) => `${leader.split(",")[0]} · ${base || "?"}`;
