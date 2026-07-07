@@ -256,12 +256,15 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
   }
   decks.sort((a, b) => b.count - a.count);
 
+  const validDeckKeys = new Set(decks.map((d) => `${d.leader}||${normalizeBase(d.baseDisplay).key}`));
+
   const matchupAgg = new Map<string, { l1: string; b1: string; l2: string; b2: string; l1Wins: number; l2Wins: number; draws: number }>();
   for (const r of matchupRows) {
     const b1Norm = normalizeBase(r.base1 as string);
     const b2Norm = normalizeBase(r.base2 as string);
     const deck1 = `${r.leader1}||${b1Norm.key}`;
     const deck2 = `${r.leader2}||${b2Norm.key}`;
+    if (!validDeckKeys.has(deck1) || !validDeckKeys.has(deck2)) continue;
     const [sortedA, sortedB] = [deck1, deck2].sort();
     const pairKey = `${sortedA}|||${sortedB}`;
     const isForward = deck1 <= deck2;
