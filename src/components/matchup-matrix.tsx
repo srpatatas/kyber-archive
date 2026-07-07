@@ -126,8 +126,8 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
                   {deckList.map((row) => {
                     const rd = deckInfo.get(row)!;
                     return (
-                      <tr key={row} className="hover:bg-surface-light/30 transition-colors">
-                        <td className="sticky left-0 z-10 bg-surface px-2 py-1 font-medium text-muted whitespace-nowrap border-r border-border/30 cursor-default">
+                      <tr key={row} className="group hover:bg-gold/10 transition-colors">
+                        <td className="sticky left-0 z-10 bg-surface group-hover:bg-gold/10 group-hover:text-gold px-2 py-1 font-medium text-muted whitespace-nowrap border-r border-border/30 cursor-default transition-colors">
                           {deckShort(rd.leader, rd.base)}
                         </td>
                         {deckList.map((col) => {
