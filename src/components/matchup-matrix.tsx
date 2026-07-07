@@ -145,6 +145,8 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
                           className="px-1.5 py-1.5 text-center font-medium text-muted whitespace-nowrap"
                           style={{ writingMode: "vertical-lr", transform: "rotate(180deg)", minHeight: 90 }}
                         >
+                          {deckShort(d.leader, d.base)}
+                        </th>
                       );
                     })}
                   </tr>
