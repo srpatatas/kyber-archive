@@ -248,7 +248,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
   }
 
   const allDecks = Array.from(deckMap.values());
-  const decks = allDecks.filter((d) => (d.wins + d.losses + d.draws) >= 5 && d.count >= 3);
+  const decks = allDecks.filter((d) => (d.wins + d.losses + d.draws) >= 5);
   const relevantDecklists = decks.reduce((sum, d) => sum + d.count, 0);
   for (const d of decks) {
     d.playRate = relevantDecklists > 0 ? Math.round((d.count / relevantDecklists) * 1000) / 10 : 0;
