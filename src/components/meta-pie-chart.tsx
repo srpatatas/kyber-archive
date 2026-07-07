@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ASPECT_COLORS } from "@/lib/aspects";
-import { getLeaderAspects, getLeaderThumbnailUrl } from "@/lib/card-images";
+import { getLeaderAspects, getLeaderThumbnailUrl, getLeaderSetCode } from "@/lib/card-images";
 
 interface DeckStats {
   leader: string;
@@ -16,6 +16,7 @@ interface DeckStats {
 interface LeaderBar {
   leader: string;
   shortName: string;
+  setCode: string | null;
   count: number;
   pct: number;
   color: string;
@@ -46,6 +47,7 @@ export function MetaPieChart({ decks }: { decks: DeckStats[] }) {
       leaderMap.set(key, {
         leader: d.leader,
         shortName: d.leader.split(",")[0],
+        setCode: getLeaderSetCode(d.leader),
         count: 0,
         pct: 0,
         color: getLeaderColor(d.leader, d.aspects),
@@ -71,6 +73,7 @@ export function MetaPieChart({ decks }: { decks: DeckStats[] }) {
     bars.push({
       leader: "Otros",
       shortName: "Otros",
+      setCode: null,
       count: otherCount,
       pct: Math.round((otherCount / total) * 1000) / 10,
       color: "#444",
@@ -109,7 +112,7 @@ export function MetaPieChart({ decks }: { decks: DeckStats[] }) {
             </div>
             <div className="relative h-full flex items-center justify-between px-2 z-10">
               <span className="text-[10px] font-semibold text-white truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                {b.shortName}
+                {b.shortName}{b.setCode && ` (${b.setCode})`}
               </span>
               <span className="text-[10px] font-bold text-white tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 {b.pct}%
@@ -120,7 +123,7 @@ export function MetaPieChart({ decks }: { decks: DeckStats[] }) {
           {hovered === i && b.bases.length > 0 && (
             <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-surface p-2.5 shadow-xl">
               <p className="text-[10px] font-semibold mb-1.5" style={{ color: b.color }}>
-                {b.shortName}
+                {b.shortName}{b.setCode && ` (${b.setCode})`}
                 <span className="ml-1 font-normal text-muted">{b.pct}%</span>
               </p>
               <div className="space-y-0.5">
