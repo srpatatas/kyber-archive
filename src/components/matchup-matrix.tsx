@@ -102,7 +102,7 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
             </div>
           ) : (
             <div className="border-t border-border/50 overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
-              <table className="text-[10px]">
+              <table className="text-xs">
                 <thead>
                   <tr>
                     <th className="sticky left-0 z-10 bg-surface px-2 py-1.5 text-left font-medium text-muted min-w-[120px]">
