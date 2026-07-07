@@ -65,7 +65,7 @@ interface MetaStats {
 }
 
 export default function MetaPage() {
-  const [period, setPeriod] = useState<MetaPeriod>("3m");
+  const [period, setPeriod] = useState<MetaPeriod>("6m");
   const [stats, setStats] = useState<MetaStats | null>(null);
   const [loading, setLoading] = useState(true);
 
