@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { MetaOverview, MetaSummary } from "@/components/meta-overview";
 import { MetaPieChart } from "@/components/meta-pie-chart";
 import { MatchupMatrix } from "@/components/matchup-matrix";
+import { MatchupPicker } from "@/components/matchup-picker";
 
 type MetaPeriod = "1m" | "3m" | "6m" | "pre";
 
@@ -130,6 +131,13 @@ export default function MetaPage() {
             </div>
 
             <MatchupMatrix matchups={stats.matchups} />
+
+            <div className="mt-6">
+              <MatchupPicker
+                matchups={stats.matchups}
+                decks={stats.decks.map((d) => ({ leader: d.leader, baseDisplay: d.baseDisplay, key: `${d.leader}||${d.baseDisplay}` }))}
+              />
+            </div>
           </>
         ) : (
           <p className="text-center text-muted py-12">
