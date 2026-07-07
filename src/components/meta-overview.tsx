@@ -158,7 +158,10 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
 
   return (
     <div className="mb-6">
-      <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Top Decks</h2>
+      <div className="mb-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-muted">Top Decks</h2>
+        <p className="text-[10px] text-muted/60">Ranking por Top Cut (40%) + Win Rate (35%) + Meta Share (25%)</p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {top3.map((d, i) => {
         const { gradientStyle } = useDeckColors(d);
