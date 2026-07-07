@@ -74,7 +74,7 @@ export async function recomputeMetaStats(): Promise<void> {
   }
 }
 
-export async function getMetaStats(period: MetaPeriod = "all"): Promise<MetaStats> {
+export async function getMetaStats(period: MetaPeriod = "6m"): Promise<MetaStats> {
   const { rows } = await query("SELECT data FROM meta_cache WHERE key = $1", [`meta_stats:${period}`]);
   if (rows.length > 0) {
     return JSON.parse(rows[0].data as string);
