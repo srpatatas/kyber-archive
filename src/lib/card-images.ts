@@ -670,6 +670,7 @@ export function getLeaderCropPosition(leaderName: string): string {
 }
 
 const BASE_ABBREV_OVERRIDES: Record<string, string> = {
+  "Colossus": "COL",
   "Energy Conversion Lab": "ECL",
   "Tarkintown": "TT",
 };
