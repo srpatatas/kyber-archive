@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ASPECT_COLORS } from "@/lib/aspects";
 import { getLeaderAspects, getLeaderThumbnailUrl, getLeaderCropPosition, getLeaderSetCode } from "@/lib/card-images";
 
@@ -32,10 +32,31 @@ function getDeckColor(leader: string): string {
 
 export function MatchupPicker({ matchups, decks }: { matchups: LeaderMatchup[]; decks: DeckOption[] }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const deckOptions = decks
     .filter((d) => d.leader && d.baseDisplay)
-    .map((d) => ({ ...d, key: `${d.leader}||${d.baseDisplay}` }));
+    .map((d) => {
+      const setCode = getLeaderSetCode(d.leader);
+      const label = `${d.leader.split(",")[0]}${setCode ? ` (${setCode})` : ""} · ${d.baseDisplay}`;
+      return { ...d, key: `${d.leader}||${d.baseDisplay}`, label };
+    });
+
+  const filtered = search
+    ? deckOptions.filter((d) => d.label.toLowerCase().includes(search.toLowerCase()))
+    : deckOptions;
 
   const getMatchups = (deckKey: string) => {
     const [leader, base] = deckKey.split("||");
@@ -80,22 +101,30 @@ export function MatchupPicker({ matchups, decks }: { matchups: LeaderMatchup[]; 
         <p className="text-[10px] text-muted mt-0.5">Seleccioná un deck para ver sus matchups</p>
       </div>
 
-      <div className="px-4 py-3 border-b border-border/50">
-        <select
-          value={selected ?? ""}
-          onChange={(e) => setSelected(e.target.value || null)}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
-        >
-          <option value="">Elegir deck...</option>
-          {deckOptions.map((d) => {
-            const setCode = getLeaderSetCode(d.leader);
-            return (
-              <option key={d.key} value={d.key}>
-                {d.leader.split(",")[0]}{setCode ? ` (${setCode})` : ""} · {d.baseDisplay}
-              </option>
-            );
-          })}
-        </select>
+      <div className="px-4 py-3 border-b border-border/50" ref={wrapperRef}>
+        <div className="relative">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
+            onFocus={() => setShowDropdown(true)}
+            placeholder="Buscar deck..."
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+          />
+          {showDropdown && filtered.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-48 overflow-y-auto rounded-lg border border-border bg-surface shadow-xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
+              {filtered.map((d) => (
+                <button
+                  key={d.key}
+                  onClick={() => { setSelected(d.key); setSearch(d.label); setShowDropdown(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gold/10 transition-colors ${selected === d.key ? "text-gold" : "text-foreground"}`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {selected && selectedDeck && (
