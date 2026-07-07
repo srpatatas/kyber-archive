@@ -55,7 +55,7 @@ const ROTATION_DATE = "2026-03-13";
 function periodDateRange(period: MetaPeriod): { startDate: string | null; endDate: string | null } {
   if (period === "pre") return { startDate: null, endDate: ROTATION_DATE };
   const now = new Date();
-  const months = period === "1m" ? 1 : period === "3m" ? 3 : 6;
+  const months = period === "3m" ? 3 : 6;
   now.setMonth(now.getMonth() - months);
   const periodDate = now.toISOString().slice(0, 10);
   return { startDate: periodDate > ROTATION_DATE ? periodDate : ROTATION_DATE, endDate: null };
