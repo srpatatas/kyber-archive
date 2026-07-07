@@ -17,7 +17,7 @@ interface LeaderMatchup {
 export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
   const [open, setOpen] = useState(false);
 
-  const filtered = matchups.filter((m) => m.total >= 2);
+  const filtered = matchups.filter((m) => m.total >= 3);
 
   const deckKey = (leader: string, base: string) => `${leader}||${base || "?"}`;
   const deckLabel = (leader: string, base: string) => `${leader.split(",")[0]} · ${base || "?"}`;
