@@ -136,16 +136,18 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
 
   if (decks.length === 0) return null;
 
-  const maxPlayRate = Math.max(...decks.map((d) => d.playRate)) || 1;
-  const maxWinRate = Math.max(...decks.map((d) => d.winRate)) || 1;
-  const maxConversion = Math.max(...decks.map((d) => d.conversionRate)) || 1;
+  const confident = decks.filter((d) => d.count >= 6);
+  const pool = confident.length >= 3 ? confident : decks;
+  const maxPlayRate = Math.max(...pool.map((d) => d.playRate)) || 1;
+  const maxWinRate = Math.max(...pool.map((d) => d.winRate)) || 1;
+  const maxConversion = Math.max(...pool.map((d) => d.conversionRate)) || 1;
 
   const scored = decks.map((d) => {
     const confidence = Math.min(d.count / 6, 1);
     const raw =
-      (d.playRate / maxPlayRate) * 25 +
-      (d.winRate / maxWinRate) * 35 +
-      (d.conversionRate / maxConversion) * 40;
+      Math.min(d.playRate / maxPlayRate, 1) * 25 +
+      Math.min(d.winRate / maxWinRate, 1) * 35 +
+      Math.min(d.conversionRate / maxConversion, 1) * 40;
     return { ...d, score: raw * confidence };
   });
   scored.sort((a, b) => b.score - a.score);
