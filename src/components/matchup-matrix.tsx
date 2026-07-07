@@ -16,9 +16,8 @@ interface LeaderMatchup {
 
 export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
   const [open, setOpen] = useState(false);
-  const [minGames, setMinGames] = useState(2);
 
-  const filtered = matchups.filter((m) => m.total >= minGames);
+  const filtered = matchups.filter((m) => m.total >= 2);
 
   const deckKey = (leader: string, base: string) => `${leader}||${base || "?"}`;
   const deckLabel = (leader: string, base: string) => `${leader.split(",")[0]} · ${base || "?"}`;
@@ -97,21 +96,6 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
 
       {open && (
         <>
-          <div className="flex items-center gap-2 px-4 py-2 border-t border-border/50 bg-surface/50">
-            <span className="text-[10px] text-muted uppercase tracking-wider">Min. partidas:</span>
-            {[1, 2, 3, 5].map((n) => (
-              <button
-                key={n}
-                onClick={() => setMinGames(n)}
-                className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                  minGames === n ? "bg-gold/20 text-gold" : "text-muted hover:text-foreground"
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-
           {deckList.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted border-t border-border/50">
               No hay suficientes datos
