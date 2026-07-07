@@ -158,9 +158,24 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
 
   return (
     <div className="mb-6">
-      <div className="mb-3">
+      <div className="mb-3 flex items-center gap-1.5">
         <h2 className="text-xs font-medium uppercase tracking-wider text-muted">Top Decks</h2>
-        <p className="text-[10px] text-muted/60">Ranking por Top Cut (40%) + Win Rate (35%) + Meta Share (25%)</p>
+        <div className="relative group">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-muted/50 cursor-help">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+            <text x="8" y="11.5" textAnchor="middle" fill="currentColor" fontSize="10" fontWeight="bold">?</text>
+          </svg>
+          <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block w-56 rounded-lg border border-border bg-surface p-3 shadow-xl text-[10px] text-muted">
+            <p className="font-semibold text-foreground mb-1">Cómo se calcula</p>
+            <p>Score compuesto ponderado:</p>
+            <ul className="mt-1 space-y-0.5">
+              <li>• Top Cut — 40%</li>
+              <li>• Win Rate — 35%</li>
+              <li>• Meta Share — 25%</li>
+            </ul>
+            <p className="mt-1.5 text-muted/60">Solo decks con 5+ partidas. Confianza plena a partir de 6 apariciones; decks con menos apariciones reciben un score reducido proporcionalmente.</p>
+          </div>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {top3.map((d, i) => {
