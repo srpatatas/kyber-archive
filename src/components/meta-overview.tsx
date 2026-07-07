@@ -134,8 +134,7 @@ function DeckBadge({ d, size = "sm", onHover, onLeave }: { d: DeckStats; size?: 
 export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   if (decks.length === 0) return null;
 
-  const minEntries = 2;
-  const eligible = decks.filter((d) => d.count >= minEntries);
+  const eligible = decks.filter((d) => d.count >= 5);
   if (eligible.length === 0) return null;
 
   const maxPlayRate = Math.max(...eligible.map((d) => d.playRate));
@@ -145,9 +144,9 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   const scored = eligible.map((d) => {
     const confidence = Math.min(d.count / 5, 1);
     const raw =
-      (maxPlayRate > 0 ? (d.playRate / maxPlayRate) * 20 : 0) +
-      (maxWinRate > 0 ? (d.winRate / maxWinRate) * 38 : 0) +
-      (maxConversion > 0 ? (d.conversionRate / maxConversion) * 42 : 0);
+      (maxPlayRate > 0 ? (d.playRate / maxPlayRate) * 25 : 0) +
+      (maxWinRate > 0 ? (d.winRate / maxWinRate) * 35 : 0) +
+      (maxConversion > 0 ? (d.conversionRate / maxConversion) * 40 : 0);
     return { ...d, score: raw * confidence };
   });
   scored.sort((a, b) => b.score - a.score);
