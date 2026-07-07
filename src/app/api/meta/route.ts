@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMetaStats, MetaEra } from "@/lib/meta";
+import { getMetaStats, MetaPeriod } from "@/lib/meta";
 
-const VALID_ERAS: MetaEra[] = ["current", "pre-rotation", "all-time"];
+const VALID_PERIODS: MetaPeriod[] = ["1m", "3m", "6m", "pre"];
 
 export async function GET(request: NextRequest) {
   try {
-    const era = (request.nextUrl.searchParams.get("era") ?? "current") as MetaEra;
-    if (!VALID_ERAS.includes(era)) {
-      return NextResponse.json({ error: "Invalid era" }, { status: 400 });
+    const period = (request.nextUrl.searchParams.get("period") ?? "6m") as MetaPeriod;
+    if (!VALID_PERIODS.includes(period)) {
+      return NextResponse.json({ error: "Invalid period" }, { status: 400 });
     }
-    const stats = await getMetaStats(era);
+    const stats = await getMetaStats(period);
     return NextResponse.json(stats);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

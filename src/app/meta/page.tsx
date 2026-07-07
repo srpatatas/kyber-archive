@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { MetaOverview } from "@/components/meta-overview";
+import { MetaOverview, MetaSummary } from "@/components/meta-overview";
+import { MetaPieChart } from "@/components/meta-pie-chart";
 import { MatchupMatrix } from "@/components/matchup-matrix";
-import { StatCard } from "@/components/stat-card";
 
-type MetaEra = "current" | "pre-rotation" | "all-time";
+type MetaPeriod = "1m" | "3m" | "6m" | "pre";
 
-const ERAS: { key: MetaEra; label: string; sublabel: string }[] = [
-  { key: "current", label: "Post-Rotación", sublabel: "Mar 2026+" },
-  { key: "pre-rotation", label: "Pre-Rotación", sublabel: "Pre Mar 2026" },
-  { key: "all-time", label: "All-Time", sublabel: "Todo" },
+const PERIODS: { key: MetaPeriod; label: string }[] = [
+  { key: "1m", label: "1 Mes" },
+  { key: "3m", label: "3 Meses" },
+  { key: "6m", label: "6 Meses" },
+  { key: "pre", label: "Pre-Rotación" },
 ];
 
 interface MetaStats {
@@ -46,14 +47,14 @@ interface MetaStats {
 }
 
 export default function MetaPage() {
-  const [era, setEra] = useState<MetaEra>("current");
+  const [period, setPeriod] = useState<MetaPeriod>("6m");
   const [stats, setStats] = useState<MetaStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchStats = useCallback(async (e: MetaEra) => {
+  const fetchStats = useCallback(async (p: MetaPeriod) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/meta?era=${e}`);
+      const res = await fetch(`/api/meta?period=${p}`);
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -66,10 +67,8 @@ export default function MetaPage() {
   }, []);
 
   useEffect(() => {
-    fetchStats(era);
-  }, [era, fetchStats]);
-
-  const topDeck = stats?.decks[0];
+    fetchStats(period);
+  }, [period, fetchStats]);
 
   return (
     <main className="flex-1">
@@ -84,18 +83,17 @@ export default function MetaPage() {
             )}
           </div>
           <div className="flex gap-1 rounded-lg border border-border bg-surface p-0.5">
-            {ERAS.map((e) => (
+            {PERIODS.map((p) => (
               <button
-                key={e.key}
-                onClick={() => setEra(e.key)}
+                key={p.key}
+                onClick={() => setPeriod(p.key)}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  era === e.key
+                  period === p.key
                     ? "bg-gold/20 text-gold"
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                <span>{e.label}</span>
-                <span className="hidden sm:inline ml-1 text-[10px] opacity-60">{e.sublabel}</span>
+                {p.label}
               </button>
             ))}
           </div>
@@ -105,18 +103,20 @@ export default function MetaPage() {
           <p className="text-center text-muted py-12">Cargando...</p>
         ) : stats && stats.decks.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
-              <StatCard label="Decks Analizados" value={stats.totalDecklists} />
-              <StatCard label="Líderes Únicos" value={stats.uniqueLeaders} />
-              <StatCard label="Arquetipos" value={stats.decks.length} />
-              <StatCard
-                label="Más Popular"
-                value={topDeck?.leader?.split(",")[0] ?? "-"}
-                subtext={topDeck ? `${topDeck.playRate}% del meta` : undefined}
-              />
+            <MetaSummary decks={stats.decks} />
+
+            <div className="flex flex-col lg:flex-row gap-6 mb-6">
+              <div className="flex-1 min-w-0">
+                <MetaOverview decks={stats.decks} />
+              </div>
+              <div className="hidden lg:block w-64 flex-shrink-0">
+                <div className="sticky top-20 rounded-xl border border-border bg-surface p-4">
+                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Distribución por Líder</h3>
+                  <MetaPieChart decks={stats.decks} />
+                </div>
+              </div>
             </div>
 
-            <MetaOverview decks={stats.decks} />
             <MatchupMatrix matchups={stats.matchups} />
           </>
         ) : (

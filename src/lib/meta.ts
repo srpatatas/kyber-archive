@@ -37,39 +37,34 @@ export interface MetaStats {
   uniqueLeaders: number;
 }
 
-export type MetaEra = "current" | "pre-rotation" | "all-time";
-
-export const META_ERAS: { key: MetaEra; label: string; sublabel: string }[] = [
-  { key: "current", label: "Post-Rotación", sublabel: "Mar 2026+" },
-  { key: "pre-rotation", label: "Pre-Rotación", sublabel: "Antes de Mar 2026" },
-  { key: "all-time", label: "All-Time", sublabel: "Todos los torneos" },
-];
+export type MetaPeriod = "1m" | "3m" | "6m" | "pre";
 
 const ROTATION_DATE = "2026-03-13";
 
-function eraDateRange(era: MetaEra): { startDate: string | null; endDate: string | null } {
-  switch (era) {
-    case "current": return { startDate: ROTATION_DATE, endDate: null };
-    case "pre-rotation": return { startDate: null, endDate: ROTATION_DATE };
-    case "all-time": return { startDate: null, endDate: null };
-  }
+function periodDateRange(period: MetaPeriod): { startDate: string | null; endDate: string | null } {
+  if (period === "pre") return { startDate: null, endDate: ROTATION_DATE };
+  const now = new Date();
+  const months = period === "1m" ? 1 : period === "3m" ? 3 : 6;
+  now.setMonth(now.getMonth() - months);
+  const periodDate = now.toISOString().slice(0, 10);
+  return { startDate: periodDate > ROTATION_DATE ? periodDate : ROTATION_DATE, endDate: null };
 }
 
 export async function recomputeMetaStats(): Promise<void> {
-  const eras: MetaEra[] = ["current", "pre-rotation", "all-time"];
-  for (const era of eras) {
-    const { startDate, endDate } = eraDateRange(era);
+  const periods: MetaPeriod[] = ["1m", "3m", "6m", "pre"];
+  for (const period of periods) {
+    const { startDate, endDate } = periodDateRange(period);
     const stats = await computeMetaStats(startDate, endDate);
     await query(
       `INSERT INTO meta_cache (key, data) VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data`,
-      [`meta_stats:${era}`, JSON.stringify(stats)]
+      [`meta_stats:${period}`, JSON.stringify(stats)]
     );
   }
 }
 
-export async function getMetaStats(era: MetaEra = "current"): Promise<MetaStats> {
-  const { rows } = await query("SELECT data FROM meta_cache WHERE key = $1", [`meta_stats:${era}`]);
+export async function getMetaStats(period: MetaPeriod = "all"): Promise<MetaStats> {
+  const { rows } = await query("SELECT data FROM meta_cache WHERE key = $1", [`meta_stats:${period}`]);
   if (rows.length > 0) {
     return JSON.parse(rows[0].data as string);
   }
@@ -216,9 +211,11 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     }
   }
 
-  const decks = Array.from(deckMap.values());
+  const allDecks = Array.from(deckMap.values());
+  const decks = allDecks.filter((d) => (d.wins + d.losses + d.draws) >= 5);
+  const relevantDecklists = decks.reduce((sum, d) => sum + d.count, 0);
   for (const d of decks) {
-    d.playRate = totalDecklists > 0 ? Math.round((d.count / totalDecklists) * 1000) / 10 : 0;
+    d.playRate = relevantDecklists > 0 ? Math.round((d.count / relevantDecklists) * 1000) / 10 : 0;
     const totalGames = d.wins + d.losses;
     d.winRate = totalGames > 0 ? Math.round((d.wins / totalGames) * 1000) / 10 : 0;
     d.conversionRate = d.totalEntries > 0 ? Math.round((d.topCutEntries / d.totalEntries) * 1000) / 10 : 0;
