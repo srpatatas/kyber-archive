@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ASPECT_COLORS } from "@/lib/aspects";
+import { getLeaderAspects, getBaseAspectColor } from "@/lib/card-images";
 
 interface LeaderMatchup {
   leader1: string;
@@ -12,6 +14,25 @@ interface LeaderMatchup {
   draws: number;
   total: number;
   leader1WinRate: number;
+}
+
+function getDeckGradientStyle(leader: string, base: string): React.CSSProperties {
+  const visibleColor = (c: string | undefined) => c === "#040004" ? "#4a3060" : c;
+  const known = getLeaderAspects(leader);
+  const leaderColors = (known.length > 0 ? known : [])
+    .filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy")
+    .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
+    .filter(Boolean) as string[];
+  if (leaderColors.length === 0 && known.length > 0) {
+    leaderColors.push(visibleColor(ASPECT_COLORS[known[0].toLowerCase()]) ?? "#666");
+  }
+  const baseColor = getBaseAspectColor(base) ?? "#666";
+  const stops = [...leaderColors, baseColor];
+  const unique = stops.filter((c, i) => i === 0 || c !== stops[i - 1]);
+  if (unique.length >= 2) {
+    return { backgroundImage: `linear-gradient(to right, ${unique.join(", ")})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" };
+  }
+  return { color: unique[0] ?? "#666" };
 }
 
 export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
@@ -113,8 +134,8 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
                       return (
                         <th
                           key={k}
-                          className="px-1.5 py-1.5 text-center font-medium text-muted whitespace-nowrap"
-                          style={{ writingMode: "vertical-lr", transform: "rotate(180deg)", minHeight: 90 }}
+                          className="px-1.5 py-1.5 text-center font-medium whitespace-nowrap"
+                          style={{ writingMode: "vertical-lr", transform: "rotate(180deg)", minHeight: 90, ...getDeckGradientStyle(d.leader, d.base) }}
                         >
                           {deckShort(d.leader, d.base)}
                         </th>
@@ -127,8 +148,10 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
                     const rd = deckInfo.get(row)!;
                     return (
                       <tr key={row} className="group hover:bg-gold/10 transition-colors">
-                        <td className="sticky left-0 z-10 bg-surface group-hover:bg-gold/10 group-hover:text-gold px-2 py-1 font-medium text-muted whitespace-nowrap border-r border-border/30 cursor-default transition-colors">
-                          {deckShort(rd.leader, rd.base)}
+                        <td className="sticky left-0 z-10 bg-surface group-hover:bg-gold/10 px-2 py-1 font-medium whitespace-nowrap border-r border-border/30 cursor-default transition-colors">
+                          <span style={getDeckGradientStyle(rd.leader, rd.base)} className="group-hover:[background-image:none] group-hover:[-webkit-text-fill-color:unset] group-hover:text-gold">
+                            {deckShort(rd.leader, rd.base)}
+                          </span>
                         </td>
                         {deckList.map((col) => {
                           if (row === col) {
