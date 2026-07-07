@@ -105,10 +105,10 @@ export function MatchupMatrix({ matchups }: { matchups: LeaderMatchup[] }) {
         className="w-full flex items-center justify-between px-4 py-3 bg-surface hover:bg-surface-light/50 transition-colors"
       >
         <div>
-          <h2 className="text-sm font-medium text-foreground text-left">
+          <h2 className="text-base font-medium text-foreground text-left">
             Matchup Matrix
           </h2>
-          <p className="text-[10px] text-muted text-left">
+          <p className="text-xs text-muted text-left">
             Win rate por líder vs líder · {filtered.length} matchups con 3+ partidas
           </p>
         </div>
