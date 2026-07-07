@@ -11,6 +11,7 @@ export interface DecklistEntry {
 
 export interface DeckStats {
   leader: string;
+  baseKey: string;
   baseDisplay: string;
   baseAspect: string | null;
   aspects: string[];
@@ -188,6 +189,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
       const norm = normalizeBase(base);
       deckMap.set(key, {
         leader,
+        baseKey: norm.key,
         baseDisplay: norm.display,
         baseAspect: norm.aspect,
         aspects,
@@ -256,7 +258,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
   }
   decks.sort((a, b) => b.count - a.count);
 
-  const validDeckKeys = new Set(decks.map((d) => `${d.leader}||${normalizeBase(d.baseDisplay).key}`));
+  const validDeckKeys = new Set(decks.map((d) => `${d.leader}||${d.baseKey}`));
 
   function aggregateMatchups(filter: (deck1: string, deck2: string) => boolean): LeaderMatchup[] {
     const agg = new Map<string, { l1: string; b1: string; l2: string; b2: string; l1Wins: number; l2Wins: number; draws: number }>();
