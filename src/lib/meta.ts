@@ -258,56 +258,53 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
 
   const validDeckKeys = new Set(decks.map((d) => `${d.leader}||${normalizeBase(d.baseDisplay).key}`));
 
-  const matchupAgg = new Map<string, { l1: string; b1: string; l2: string; b2: string; l1Wins: number; l2Wins: number; draws: number }>();
-  for (const r of matchupRows) {
-    const b1Norm = normalizeBase(r.base1 as string);
-    const b2Norm = normalizeBase(r.base2 as string);
-    const deck1 = `${r.leader1}||${b1Norm.key}`;
-    const deck2 = `${r.leader2}||${b2Norm.key}`;
-    if (!validDeckKeys.has(deck1) || !validDeckKeys.has(deck2)) continue;
-    const [sortedA, sortedB] = [deck1, deck2].sort();
-    const pairKey = `${sortedA}|||${sortedB}`;
-    const isForward = deck1 <= deck2;
+  function aggregateMatchups(filter: (deck1: string, deck2: string) => boolean): LeaderMatchup[] {
+    const agg = new Map<string, { l1: string; b1: string; l2: string; b2: string; l1Wins: number; l2Wins: number; draws: number }>();
+    for (const r of matchupRows) {
+      const b1Norm = normalizeBase(r.base1 as string);
+      const b2Norm = normalizeBase(r.base2 as string);
+      const deck1 = `${r.leader1}||${b1Norm.key}`;
+      const deck2 = `${r.leader2}||${b2Norm.key}`;
+      if (!filter(deck1, deck2)) continue;
+      const [sortedA, sortedB] = [deck1, deck2].sort();
+      const pairKey = `${sortedA}|||${sortedB}`;
+      const isForward = deck1 <= deck2;
 
-    if (!matchupAgg.has(pairKey)) {
-      matchupAgg.set(pairKey, {
-        l1: isForward ? (r.leader1 as string) : (r.leader2 as string),
-        b1: isForward ? b1Norm.display : b2Norm.display,
-        l2: isForward ? (r.leader2 as string) : (r.leader1 as string),
-        b2: isForward ? b2Norm.display : b1Norm.display,
-        l1Wins: 0, l2Wins: 0, draws: 0,
+      if (!agg.has(pairKey)) {
+        agg.set(pairKey, {
+          l1: isForward ? (r.leader1 as string) : (r.leader2 as string),
+          b1: isForward ? b1Norm.display : b2Norm.display,
+          l2: isForward ? (r.leader2 as string) : (r.leader1 as string),
+          b2: isForward ? b2Norm.display : b1Norm.display,
+          l1Wins: 0, l2Wins: 0, draws: 0,
+        });
+      }
+      const entry = agg.get(pairKey)!;
+      if (isForward) {
+        entry.l1Wins += Number(r.l1_wins);
+        entry.l2Wins += Number(r.l2_wins);
+      } else {
+        entry.l1Wins += Number(r.l2_wins);
+        entry.l2Wins += Number(r.l1_wins);
+      }
+      entry.draws += Number(r.draws);
+    }
+
+    const result: LeaderMatchup[] = [];
+    for (const a of agg.values()) {
+      const total = a.l1Wins + a.l2Wins + a.draws;
+      const totalDecisive = a.l1Wins + a.l2Wins;
+      result.push({
+        leader1: a.l1, base1: a.b1, leader2: a.l2, base2: a.b2,
+        leader1Wins: a.l1Wins, leader2Wins: a.l2Wins, draws: a.draws, total,
+        leader1WinRate: totalDecisive > 0 ? Math.round((a.l1Wins / totalDecisive) * 1000) / 10 : 50,
       });
     }
-    const agg = matchupAgg.get(pairKey)!;
-    if (isForward) {
-      agg.l1Wins += Number(r.l1_wins);
-      agg.l2Wins += Number(r.l2_wins);
-    } else {
-      agg.l1Wins += Number(r.l2_wins);
-      agg.l2Wins += Number(r.l1_wins);
-    }
-    agg.draws += Number(r.draws);
+    return result.sort((a, b) => b.total - a.total);
   }
 
-  const matchups: LeaderMatchup[] = [];
-  for (const agg of matchupAgg.values()) {
-    const total = agg.l1Wins + agg.l2Wins + agg.draws;
-    const totalDecisive = agg.l1Wins + agg.l2Wins;
-    matchups.push({
-      leader1: agg.l1,
-      base1: agg.b1,
-      leader2: agg.l2,
-      base2: agg.b2,
-      leader1Wins: agg.l1Wins,
-      leader2Wins: agg.l2Wins,
-      draws: agg.draws,
-      total,
-      leader1WinRate: totalDecisive > 0 ? Math.round((agg.l1Wins / totalDecisive) * 1000) / 10 : 50,
-    });
-  }
-  matchups.sort((a, b) => b.total - a.total);
-  const matchupsAll = [...matchups];
-  const matchupsFiltered = matchups.filter((m) => m.total >= 3);
+  const matchupsFiltered = aggregateMatchups((d1, d2) => validDeckKeys.has(d1) && validDeckKeys.has(d2)).filter((m) => m.total >= 3);
+  const matchupsAll = aggregateMatchups((d1, d2) => validDeckKeys.has(d1) || validDeckKeys.has(d2));
 
   return { decks, matchups: matchupsFiltered, matchupsAll, totalDecklists, totalTournaments, uniqueLeaders };
 }
