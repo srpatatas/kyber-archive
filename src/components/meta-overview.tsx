@@ -148,9 +148,9 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   const scored = decks.map((d) => {
     const confidence = Math.min(d.count / 6, 1);
     const raw =
-      Math.min(d.kyberCount / maxKyber, 1) * 35 +
-      Math.min(d.conversionRate / maxConversion, 1) * 25 +
-      Math.min(d.winRate / maxWinRate, 1) * 22 +
+      Math.min(d.kyberCount / maxKyber, 1) * 30 +
+      Math.min(d.conversionRate / maxConversion, 1) * 27 +
+      Math.min(d.winRate / maxWinRate, 1) * 25 +
       Math.min(d.playRate / maxPlayRate, 1) * 18;
     return { ...d, score: raw * confidence };
   });
@@ -172,9 +172,9 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
             <p className="font-semibold text-foreground mb-1.5">Cómo se calcula</p>
             <p>Score compuesto ponderado:</p>
             <ul className="mt-1 space-y-0.5">
-              <li>• Kyber (torneos ganados) — 35%</li>
-              <li>• Top Cut — 25%</li>
-              <li>• Win Rate — 22%</li>
+              <li>• Kyber (torneos ganados) — 30%</li>
+              <li>• Top Cut — 27%</li>
+              <li>• Win Rate — 25%</li>
               <li>• Meta Share — 18%</li>
             </ul>
             <p className="mt-2 text-foreground/60">Solo decks con 5+ partidas. Confianza plena a partir de 6 apariciones; decks con menos apariciones reciben un score reducido proporcionalmente.</p>
@@ -272,12 +272,12 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
   return (
     <>
       <div className="rounded-xl border border-border overflow-x-auto mb-6 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted w-8">#</th>
-                <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">Deck</th>
-                <SortHeader label="Kyber" sortKey="kyberCount" current={sortBy} dir={sortDir} onSort={handleSort} />
+                <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted w-[40%]">Deck</th>
+                <SortHeader label="Kyber Count" sortKey="kyberCount" current={sortBy} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Meta Share" sortKey="playRate" current={sortBy} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="W-L-D Count" sortKey="wins" current={sortBy} dir={sortDir} onSort={handleSort} className="" />
                 <SortHeader label="Win Rate" sortKey="winRate" current={sortBy} dir={sortDir} onSort={handleSort} />
@@ -326,7 +326,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                         )}
                       </td>
                       <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground text-sm">{d.playRate}%</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-muted text-sm ">
+                      <td className="px-2 py-2 text-center tabular-nums text-muted text-sm">
                         <span className="text-emerald-400">{d.wins}</span>
                         <span className="text-muted">-</span>
                         <span className="text-red-400">{d.losses}</span>

@@ -133,7 +133,7 @@ export default function MetaPage() {
               <div className="flex-1 min-w-0">
                 <MetaOverview decks={stats.decks} />
               </div>
-              <div className="hidden lg:block w-64 flex-shrink-0">
+              <div className="hidden lg:block w-52 flex-shrink-0">
                 <div className="sticky top-20 rounded-xl border border-border bg-surface p-4">
                   <h3 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Distribución por Líder</h3>
                   <MetaPieChart decks={stats.decks} />
