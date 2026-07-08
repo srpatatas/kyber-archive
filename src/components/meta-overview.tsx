@@ -47,7 +47,7 @@ function SortHeader({ label, sortKey, current, dir, onSort, className = "" }: { 
   );
 }
 
-type SortKey = "playRate" | "wins" | "winRate" | "conversionRate" | "kyberCount";
+type SortKey = "score" | "playRate" | "wins" | "winRate" | "conversionRate" | "kyberCount";
 type SortDir = "asc" | "desc";
 
 function useDeckColors(d: DeckStats) {
@@ -137,27 +137,27 @@ function DeckBadge({ d, size = "sm", onHover, onLeave }: { d: DeckStats; size?: 
   );
 }
 
+type ScoredDeck = DeckStats & { score: number };
+
+function scoreDecks(decks: DeckStats[]): ScoredDeck[] {
+  const totalTournaments = new Set(decks.flatMap((d) => d.kyberTournaments?.map((t) => t.id) ?? [])).size || Math.max(...decks.map((d) => d.count)) || 1;
+  const maxKyberPossible = totalTournaments * 2;
+
+  return decks.map((d) => {
+    const confidence = Math.min(d.count / 6, 1);
+    const raw =
+      Math.min(d.kyberScore / maxKyberPossible, 1) * 30 +
+      (d.conversionRate / 100) * 27 +
+      (d.winRate / 100) * 25 +
+      (d.playRate / 100) * 18;
+    return { ...d, score: raw * confidence };
+  });
+}
+
 export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   if (decks.length === 0) return null;
 
-  if (decks.length === 0) return null;
-
-  const confident = decks.filter((d) => d.count >= 6);
-  const pool = confident.length >= 3 ? confident : decks;
-  const maxPlayRate = Math.max(...pool.map((d) => d.playRate)) || 1;
-  const maxWinRate = Math.max(...pool.map((d) => d.winRate)) || 1;
-  const maxConversion = Math.max(...pool.map((d) => d.conversionRate)) || 1;
-  const maxKyber = Math.max(...pool.map((d) => d.kyberScore)) || 1;
-
-  const scored = decks.map((d) => {
-    const confidence = Math.min(d.count / 6, 1);
-    const raw =
-      Math.min(d.kyberScore / maxKyber, 1) * 30 +
-      Math.min(d.conversionRate / maxConversion, 1) * 27 +
-      Math.min(d.winRate / maxWinRate, 1) * 25 +
-      Math.min(d.playRate / maxPlayRate, 1) * 18;
-    return { ...d, score: raw * confidence };
-  });
+  const scored = scoreDecks(decks);
   scored.sort((a, b) => b.score - a.score);
 
   const top3 = scored.slice(0, 3);
@@ -173,16 +173,16 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
             <text x="8" y="11.5" textAnchor="middle" fill="currentColor" fontSize="10" fontWeight="bold">?</text>
           </svg>
           <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block w-64 rounded-lg border border-border bg-surface p-3 shadow-xl text-xs text-foreground/80">
-            <p className="font-semibold text-foreground mb-1.5">Cómo se calcula</p>
-            <p>Score compuesto ponderado:</p>
+            <p className="font-semibold text-foreground mb-1.5">Cómo se calcula el Score</p>
+            <p>Score ponderado (0-100) basado en:</p>
             <ul className="mt-1 space-y-0.5">
               <li>• Kyber (torneos ganados) — 30%</li>
               <li>• Top Cut — 27%</li>
               <li>• Win Rate — 25%</li>
               <li>• Meta Share — 18%</li>
             </ul>
-            <p className="mt-2 text-foreground/60">Kyber ponderado por tier: Minor 1x, Showdown 1.2x, Major 1.5x, Planetary 2x.</p>
-            <p className="mt-1 text-foreground/60">Solo decks con 5+ partidas. Confianza plena a partir de 6 apariciones; decks con menos apariciones reciben un score reducido proporcionalmente.</p>
+            <p className="mt-2 text-foreground/60">Cada métrica se compara contra el máximo teórico (100% WR, 100% TC, ganar todos los torneos). Kyber ponderado por tier: Minor 1x, Showdown 1.2x, Major 1.5x, Planetary 2x.</p>
+            <p className="mt-1 text-foreground/60">Solo decks con 5+ partidas. Confianza plena a partir de 6 apariciones; decks con menos reciben un score reducido.</p>
           </div>
         </div>
       </div>
@@ -193,6 +193,7 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
         const setCode = getLeaderSetCode(d.leader);
         return (
           <div key={`${d.leader}||${d.baseDisplay}`} className="relative rounded-xl border border-border bg-surface overflow-hidden">
+            <div className="absolute top-2 right-3 z-10 text-2xl font-bold tabular-nums text-gold/70">{d.score.toFixed(1)}</div>
             {imgUrl && (
               <div className="h-16 overflow-hidden">
                 <img src={imgUrl} alt="" className="w-full h-full object-cover opacity-40" />
@@ -217,7 +218,7 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
               </div>
               <div className="mt-2 grid grid-cols-4 gap-2 text-center">
                 <div>
-                  <p className="text-[10px] text-muted uppercase">Kyber</p>
+                  <p className="text-[10px] text-muted uppercase">Kybers</p>
                   <p className={`text-sm font-bold ${d.kyberCount > 0 ? "text-gold" : "text-muted"}`}>
                     {d.kyberCount > 0 ? d.kyberCount : "-"}
                   </p>
@@ -249,10 +250,12 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
 }
 
 export function MetaOverview({ decks }: { decks: DeckStats[] }) {
-  const [sortBy, setSortBy] = useState<SortKey>("playRate");
+  const [sortBy, setSortBy] = useState<SortKey>("score");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [hoverCard, setHoverCard] = useState<{ url: string; x: number; y: number } | null>(null);
+
+  const scoredDecks = scoreDecks(decks);
 
   const handleSort = (key: SortKey) => {
     if (key === sortBy) {
@@ -263,7 +266,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
     }
   };
 
-  const sorted = [...decks].sort((a, b) => {
+  const sorted = [...scoredDecks].sort((a, b) => {
     const diff = b[sortBy] - a[sortBy];
     const directed = sortDir === "desc" ? diff : -diff;
     return directed || b.count - a.count;
@@ -282,6 +285,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
               <tr className="border-b border-border bg-surface">
                 <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted w-8">#</th>
                 <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted w-[40%]">Deck</th>
+                <SortHeader label="Score" sortKey="score" current={sortBy} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Kyber Count" sortKey="kyberCount" current={sortBy} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="Meta Share" sortKey="playRate" current={sortBy} dir={sortDir} onSort={handleSort} />
                 <SortHeader label="W-L-D Count" sortKey="wins" current={sortBy} dir={sortDir} onSort={handleSort} className="" />
@@ -323,6 +327,9 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                           </div>
                         </div>
                       </td>
+                      <td className="px-2 py-2 text-center tabular-nums font-semibold text-sm text-gold">
+                        {d.score.toFixed(1)}
+                      </td>
                       <td className="px-2 py-2 text-center tabular-nums font-semibold text-sm">
                         {d.kyberCount > 0 ? (
                           <div className="relative group/kyber inline-block">
@@ -355,7 +362,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                         )}
                       </td>
                       <td className="px-2 py-2 text-center tabular-nums font-semibold text-foreground text-sm">{d.playRate}%</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-muted text-sm">
+                      <td className="px-2 py-2 text-center tabular-nums text-muted text-sm whitespace-nowrap">
                         <span className="text-emerald-400">{d.wins}</span>
                         <span className="text-muted">-</span>
                         <span className="text-red-400">{d.losses}</span>
@@ -374,7 +381,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={7} className="bg-surface/50 px-4 py-2">
+                        <td colSpan={8} className="bg-surface/50 px-4 py-2">
                           <div className="max-h-48 overflow-y-auto space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-surface [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
                             {d.decklists.map((dl, j) => (
                               <div key={j} className="flex items-center justify-between text-[11px]">
