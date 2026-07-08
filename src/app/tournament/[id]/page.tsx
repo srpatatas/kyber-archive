@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { getTournamentDetail } from "@/lib/store";
+import { BackButton } from "@/components/back-button";
 import { getTierConfig } from "@/lib/tiers";
 import { KyberCrystal } from "@/components/kyber-crystal";
 import { BracketView } from "@/components/bracket-view";
@@ -23,15 +23,7 @@ export default async function TournamentPage({
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <Link
-          href="/tournaments"
-          className="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-gold transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M10 12L6 8L10 4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back to Tournaments
-        </Link>
+        <BackButton />
 
         <div className="rounded-xl border border-border bg-surface overflow-hidden">
           <div className={`h-2 ${
