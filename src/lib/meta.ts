@@ -24,6 +24,7 @@ export interface DeckStats {
   totalEntries: number;
   topCutEntries: number;
   conversionRate: number;
+  kyberCount: number;
   decklists: DecklistEntry[];
 }
 
@@ -133,7 +134,8 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     query(`
       SELECT d.leader, d.base,
         COUNT(DISTINCT d.tournament_id || ':' || d.player_id) as total_entries,
-        COUNT(DISTINCT CASE WHEN p.placement IS NOT NULL THEN d.tournament_id || ':' || d.player_id END) as top_cut_entries
+        COUNT(DISTINCT CASE WHEN p.placement IS NOT NULL THEN d.tournament_id || ':' || d.player_id END) as top_cut_entries,
+        COUNT(DISTINCT CASE WHEN p.placement = 1 THEN d.tournament_id || ':' || d.player_id END) as kyber_count
       FROM decklists d
       JOIN tournaments t ON t.id = d.tournament_id
       LEFT JOIN placements p ON p.tournament_id = d.tournament_id AND p.player_id = d.player_id
@@ -202,6 +204,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
         totalEntries: 0,
         topCutEntries: 0,
         conversionRate: 0,
+        kyberCount: 0,
         decklists: [],
       });
     }
@@ -244,6 +247,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     if (entry) {
       entry.totalEntries += Number(r.total_entries);
       entry.topCutEntries += Number(r.top_cut_entries);
+      entry.kyberCount += Number(r.kyber_count);
     }
   }
 

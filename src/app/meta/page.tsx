@@ -29,6 +29,7 @@ interface MetaStats {
     totalEntries: number;
     topCutEntries: number;
     conversionRate: number;
+    kyberCount: number;
     decklists: {
       playerUsername: string;
       tournamentName: string;
