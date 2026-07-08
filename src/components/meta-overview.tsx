@@ -30,6 +30,7 @@ interface DeckStats {
   topCutEntries: number;
   conversionRate: number;
   kyberCount: number;
+  kyberScore: number;
   kyberTournaments: { name: string; id: number; tier: string }[];
   decklists: DecklistEntry[];
 }
@@ -146,12 +147,12 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   const maxPlayRate = Math.max(...pool.map((d) => d.playRate)) || 1;
   const maxWinRate = Math.max(...pool.map((d) => d.winRate)) || 1;
   const maxConversion = Math.max(...pool.map((d) => d.conversionRate)) || 1;
-  const maxKyber = Math.max(...pool.map((d) => d.kyberCount)) || 1;
+  const maxKyber = Math.max(...pool.map((d) => d.kyberScore)) || 1;
 
   const scored = decks.map((d) => {
     const confidence = Math.min(d.count / 6, 1);
     const raw =
-      Math.min(d.kyberCount / maxKyber, 1) * 30 +
+      Math.min(d.kyberScore / maxKyber, 1) * 30 +
       Math.min(d.conversionRate / maxConversion, 1) * 27 +
       Math.min(d.winRate / maxWinRate, 1) * 25 +
       Math.min(d.playRate / maxPlayRate, 1) * 18;
@@ -180,7 +181,8 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
               <li>• Win Rate — 25%</li>
               <li>• Meta Share — 18%</li>
             </ul>
-            <p className="mt-2 text-foreground/60">Solo decks con 5+ partidas. Confianza plena a partir de 6 apariciones; decks con menos apariciones reciben un score reducido proporcionalmente.</p>
+            <p className="mt-2 text-foreground/60">Kyber ponderado por tier: Minor 1x, Showdown 1.2x, Major 1.5x, Planetary 2x.</p>
+            <p className="mt-1 text-foreground/60">Solo decks con 5+ partidas. Confianza plena a partir de 6 apariciones; decks con menos apariciones reciben un score reducido proporcionalmente.</p>
           </div>
         </div>
       </div>

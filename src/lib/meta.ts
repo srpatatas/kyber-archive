@@ -25,9 +25,19 @@ export interface DeckStats {
   topCutEntries: number;
   conversionRate: number;
   kyberCount: number;
+  kyberScore: number;
   kyberTournaments: { name: string; id: number; tier: string }[];
   decklists: DecklistEntry[];
 }
+
+const KYBER_TIER_WEIGHTS: Record<string, number> = {
+  minor: 1,
+  showdown: 1.2,
+  major: 1.5,
+  planetary: 2,
+  sector: 3,
+  galactic: 4,
+};
 
 export interface LeaderMatchup {
   leader1: string;
@@ -215,6 +225,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
         topCutEntries: 0,
         conversionRate: 0,
         kyberCount: 0,
+        kyberScore: 0,
         kyberTournaments: [],
         decklists: [],
       });
@@ -266,11 +277,9 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     const key = getDeckKey(r.leader as string, r.base as string);
     const entry = deckMap.get(key);
     if (entry) {
-      entry.kyberTournaments.push({
-        name: r.tournament_name as string,
-        id: r.tournament_id as number,
-        tier: r.event_tier as string,
-      });
+      const tier = r.event_tier as string;
+      entry.kyberTournaments.push({ name: r.tournament_name as string, id: r.tournament_id as number, tier });
+      entry.kyberScore += KYBER_TIER_WEIGHTS[tier] ?? 1;
     }
   }
 
