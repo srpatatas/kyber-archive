@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { ASPECT_COLORS } from "@/lib/aspects";
 import { getLeaderThumbnailUrl, getLeaderSetCode, getLeaderImageUrl, getLeaderCropPosition, getBaseAbbrev, getBaseAspectColor, getBaseAspectIcon, getLeaderAspects, isForceBase, isSplashBase, getSplashGradient } from "@/lib/card-images";
 import { getTierConfig } from "@/lib/tiers";
@@ -330,7 +331,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                                   {d.kyberTournaments.map((t, j) => {
                                     const tier = getTierConfig(t.tier);
                                     return (
-                                      <a
+                                      <Link
                                         key={j}
                                         href={`/tournament/${t.id}`}
                                         onClick={(e) => e.stopPropagation()}
@@ -340,7 +341,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                                           <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill={tier.crystalColor} opacity="0.9" />
                                         </svg>
                                         <span className="text-[11px] text-foreground/80 truncate">{t.name}</span>
-                                      </a>
+                                      </Link>
                                     );
                                   })}
                                 </div>
