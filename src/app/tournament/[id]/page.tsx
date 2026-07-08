@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getTournamentDetail } from "@/lib/store";
 import { BackButton } from "@/components/back-button";
 import { getTierConfig } from "@/lib/tiers";
