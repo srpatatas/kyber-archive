@@ -318,6 +318,7 @@ export default function AdminPage() {
       { key: "elo", label: "Recalculando ELO..." },
       { key: "nacional", label: "Recalculando Nacional..." },
       { key: "meta", label: "Recalculando Metagame..." },
+      { key: "stamp", label: "Finalizando..." },
     ];
     try {
       for (const step of steps) {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, getPlayerBestFinish, getPlayerTitleTiers, HeadToHead } from "@/lib/store";
 import { getTierConfig } from "@/lib/tiers";
 import { StatCard } from "@/components/stat-card";
+import { BackButton } from "@/components/back-button";
 import { LeadersSection } from "@/components/leaders-section";
 import { PlayerEvents } from "@/components/player-events";
 import { KyberCrystal } from "@/components/kyber-crystal";
@@ -35,15 +36,7 @@ export default async function PlayerPage({
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <Link
-          href="/"
-          className="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-gold transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M10 12L6 8L10 4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back to Leaderboard
-        </Link>
+        <BackButton />
 
         <div className="rounded-xl border border-border bg-surface overflow-hidden">
           <div className="h-2 bg-gradient-to-r from-gold to-gold/40" />

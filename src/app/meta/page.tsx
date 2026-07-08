@@ -30,6 +30,7 @@ interface MetaStats {
     topCutEntries: number;
     conversionRate: number;
     kyberCount: number;
+    kyberTournaments: { name: string; id: number; tier: string }[];
     decklists: {
       playerUsername: string;
       tournamentName: string;
