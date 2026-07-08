@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recalculateElo, forceRecalculate, getLastRecalculated } from "@/lib/store";
+import { recalculateElo, forceRecalculate, stampLastRecalculated } from "@/lib/store";
 import { recomputeNacionalStandings } from "@/lib/store";
 import { recomputeMetaStats } from "@/lib/meta";
 import { requireAdminPin } from "@/lib/admin-auth";
@@ -9,6 +9,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   elo: recalculateElo,
   nacional: recomputeNacionalStandings,
   meta: recomputeMetaStats,
+  stamp: async () => { await stampLastRecalculated(); revalidateAllData(); },
 };
 
 export async function POST(request: NextRequest) {

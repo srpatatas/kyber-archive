@@ -25,6 +25,7 @@ export interface DeckStats {
   topCutEntries: number;
   conversionRate: number;
   kyberCount: number;
+  kyberTournaments: { name: string; id: number; tier: string }[];
   decklists: DecklistEntry[];
 }
 
@@ -100,7 +101,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
 
   const deckFilter = "AND d.leader != '' AND d.leader != 'Decklist' AND d.base != ''";
 
-  const [popularityRows, winRateRows, topCutRows, matchupRows, countRows, decklistRows] = await Promise.all([
+  const [popularityRows, winRateRows, topCutRows, matchupRows, countRows, decklistRows, kyberRows] = await Promise.all([
     query(`
       SELECT d.leader, d.base, COUNT(*) as count, ac.aspects
       FROM decklists d
@@ -171,6 +172,15 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
       WHERE 1=1 ${dateCondition} ${deckFilter}
       ORDER BY t.date DESC
     `, dateParams).then(r => r.rows),
+
+    query(`
+      SELECT d.leader, d.base, t.name as tournament_name, t.id as tournament_id, t.event_tier
+      FROM decklists d
+      JOIN tournaments t ON t.id = d.tournament_id
+      JOIN placements p ON p.tournament_id = d.tournament_id AND p.player_id = d.player_id AND p.placement = 1
+      WHERE 1=1 ${dateCondition} ${deckFilter}
+      ORDER BY t.date DESC
+    `, dateParams).then(r => r.rows),
   ]);
 
   const totalDecklists = Number(countRows[0]?.total_decklists ?? 0);
@@ -205,6 +215,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
         topCutEntries: 0,
         conversionRate: 0,
         kyberCount: 0,
+        kyberTournaments: [],
         decklists: [],
       });
     }
@@ -248,6 +259,18 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
       entry.totalEntries += Number(r.total_entries);
       entry.topCutEntries += Number(r.top_cut_entries);
       entry.kyberCount += Number(r.kyber_count);
+    }
+  }
+
+  for (const r of kyberRows) {
+    const key = getDeckKey(r.leader as string, r.base as string);
+    const entry = deckMap.get(key);
+    if (entry) {
+      entry.kyberTournaments.push({
+        name: r.tournament_name as string,
+        id: r.tournament_id as number,
+        tier: r.event_tier as string,
+      });
     }
   }
 

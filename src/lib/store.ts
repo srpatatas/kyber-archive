@@ -378,7 +378,7 @@ export async function recalculateElo(): Promise<void> {
   });
 }
 
-async function stampLastRecalculated(): Promise<void> {
+export async function stampLastRecalculated(): Promise<void> {
   await query(
     `INSERT INTO metadata (key, value) VALUES ('last_recalculated', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
