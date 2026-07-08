@@ -148,10 +148,10 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   const scored = decks.map((d) => {
     const confidence = Math.min(d.count / 6, 1);
     const raw =
-      Math.min(d.kyberCount / maxKyber, 1) * 30 +
-      Math.min(d.conversionRate / maxConversion, 1) * 30 +
-      Math.min(d.winRate / maxWinRate, 1) * 25 +
-      Math.min(d.playRate / maxPlayRate, 1) * 15;
+      Math.min(d.kyberCount / maxKyber, 1) * 35 +
+      Math.min(d.conversionRate / maxConversion, 1) * 25 +
+      Math.min(d.winRate / maxWinRate, 1) * 22 +
+      Math.min(d.playRate / maxPlayRate, 1) * 18;
     return { ...d, score: raw * confidence };
   });
   scored.sort((a, b) => b.score - a.score);
@@ -172,10 +172,10 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
             <p className="font-semibold text-foreground mb-1.5">Cómo se calcula</p>
             <p>Score compuesto ponderado:</p>
             <ul className="mt-1 space-y-0.5">
-              <li>• Kyber (torneos ganados) — 30%</li>
-              <li>• Top Cut — 30%</li>
-              <li>• Win Rate — 25%</li>
-              <li>• Meta Share — 15%</li>
+              <li>• Kyber (torneos ganados) — 35%</li>
+              <li>• Top Cut — 25%</li>
+              <li>• Win Rate — 22%</li>
+              <li>• Meta Share — 18%</li>
             </ul>
             <p className="mt-2 text-foreground/60">Solo decks con 5+ partidas. Confianza plena a partir de 6 apariciones; decks con menos apariciones reciben un score reducido proporcionalmente.</p>
           </div>
