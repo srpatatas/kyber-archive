@@ -333,6 +333,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                                       <a
                                         key={j}
                                         href={`/tournament/${t.id}`}
+                                        onClick={(e) => e.stopPropagation()}
                                         className="flex items-center gap-2 hover:bg-gold/10 rounded px-1.5 py-1 transition-colors"
                                       >
                                         <svg viewBox="0 0 20 32" className="w-3 h-5 flex-shrink-0">
