@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { LiveLeaderboard } from "./live-leaderboard";
-import { StatCard } from "./stat-card";
+import { getLeaderThumbnailUrl, getLeaderAspects, getBaseAspectColor } from "@/lib/card-images";
+import { normalizeBase } from "@/lib/base-normalization";
+import { ASPECT_COLORS } from "@/lib/aspects";
+import { KyberCrystal } from "./kyber-crystal";
+import { getTierConfig } from "@/lib/tiers";
 import type { PlayerRating } from "@/lib/elo";
 
-type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[] };
+type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[]; kyberTiers?: string[] };
+
+const TIER_ORDER: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
 
 type Season = "year1" | "year0" | "allTime";
 
@@ -34,19 +41,8 @@ export function SeasonalLeaderboard({
   const players = data[season];
   const count = tournamentCounts[season];
 
-  const topPlayer = players[0] ?? null;
-  const avgRating =
-    players.length > 0
-      ? Math.round(players.reduce((sum, p) => sum + p.rating, 0) / players.length)
-      : 0;
-  const totalGames = players.reduce(
-    (sum, p) => sum + p.wins + p.losses + p.draws,
-    0
-  );
-  const mostTop8s = players.reduce(
-    (best, p) => (p.top8s > (best?.top8s ?? 0) ? p : best),
-    null as (typeof players)[number] | null
-  );
+  const top3 = players.slice(0, 3);
+  const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <>
@@ -68,28 +64,87 @@ export function SeasonalLeaderboard({
             indicate stronger Force sensitivity.
           </p>
 
-          {players.length > 0 && (
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard
-                label="Top Rated"
-                value={topPlayer!.rating.toLocaleString()}
-                subtext={topPlayer!.username}
-              />
-              <StatCard
-                label="Avg Rating"
-                value={avgRating.toLocaleString()}
-                subtext={`Across ${players.length} ranked players`}
-              />
-              <StatCard
-                label="Total Games"
-                value={totalGames.toLocaleString()}
-                subtext={`From ${count} tournament${count === 1 ? "" : "s"}`}
-              />
-              <StatCard
-                label="Most Top 8s"
-                value={mostTop8s && mostTop8s.top8s > 0 ? mostTop8s.top8s : "-"}
-                subtext={mostTop8s && mostTop8s.top8s > 0 ? mostTop8s.username : undefined}
-              />
+          {top3.length > 0 && (
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {top3.map((p, i) => {
+                const leaderName = p.mainLeader?.split(" - ")[0] ?? null;
+                const baseName = p.mainLeader?.split(" - ")[1] ?? null;
+                const imgUrl = leaderName ? getLeaderThumbnailUrl(leaderName) : null;
+                const totalGames = p.wins + p.losses + p.draws;
+                const winRate = totalGames > 0 ? Math.round((p.wins / totalGames) * 1000) / 10 : 0;
+
+                const visibleColor = (c: string | undefined) => c === "#040004" ? "#4a3060" : c;
+                const leaderAspects = leaderName ? getLeaderAspects(leaderName) : [];
+                const playerAspects = p.aspects ?? [];
+                const aspectSource = leaderAspects.length > 0 ? leaderAspects : playerAspects;
+                const leaderColorAspects = aspectSource
+                  .filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy");
+                const leaderStops = (leaderColorAspects.length > 0 ? leaderColorAspects : aspectSource)
+                  .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
+                  .filter(Boolean) as string[];
+                const baseNorm = baseName ? normalizeBase(baseName) : null;
+                const baseColor = baseName ? getBaseAspectColor(baseName, baseNorm?.aspect) ?? "#666" : "#666";
+                const allStops = [...(leaderStops.length > 0 ? leaderStops : ["#666"]), baseColor]
+                  .filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
+                const hasGradient = allStops.length >= 2;
+                const nameStyle: React.CSSProperties = hasGradient
+                  ? { backgroundImage: `linear-gradient(to right, ${allStops.join(", ")})` }
+                  : { color: allStops[0] ?? "#666" };
+
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/player/${p.id}`}
+                    className="relative rounded-xl border border-border bg-surface hover:border-gold/30 transition-colors group"
+                  >
+                    <div className="absolute top-2 right-3 z-10 text-2xl font-bold tabular-nums text-gold/70">{p.rating.toLocaleString()}</div>
+                    {imgUrl && (
+                      <div className="h-16 overflow-hidden rounded-t-xl">
+                        <img src={imgUrl} alt="" className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity" />
+                        <div className="absolute inset-0 h-16 bg-gradient-to-t from-surface to-transparent" />
+                      </div>
+                    )}
+                    <div className="relative px-4 pb-4 -mt-4">
+                      <div className="flex items-center gap-3">
+                        <div className="text-3xl">{medals[i]}</div>
+                        <div className="min-w-0 flex-1">
+                          <span style={hasGradient ? { fontWeight: "bold", fontSize: "0.875rem", background: `linear-gradient(to right, ${allStops.join(", ")})`, WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" } : { fontWeight: "bold", fontSize: "0.875rem", ...nameStyle }}>
+                            {p.username}
+                          </span>
+                          {p.mainLeader && (
+                            <p className="text-[10px] text-muted truncate">{p.mainLeader}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p className="text-[10px] text-muted uppercase">Kybers</p>
+                          {p.kyberTiers && p.kyberTiers.length > 0 ? (
+                            <div className="flex items-center justify-center gap-0.5 mt-1">
+                              {[...p.kyberTiers].sort((a, b) => (TIER_ORDER[a] ?? 9) - (TIER_ORDER[b] ?? 9)).slice(0, 5).map((tier, j) => (
+                                <KyberCrystal key={j} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
+                              ))}
+                              {p.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{p.kyberTiers.length - 5}</span>}
+                            </div>
+                          ) : (
+                            <p className="text-sm font-bold text-muted">-</p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted uppercase">Win Rate</p>
+                          <p className={`text-sm font-bold ${winRate >= 55 ? "text-emerald-400" : winRate <= 45 ? "text-red-400" : "text-foreground"}`}>
+                            {winRate}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted uppercase">Top Cuts</p>
+                          <p className="text-sm font-bold text-foreground">{p.top8s}/{p.tournamentCount}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

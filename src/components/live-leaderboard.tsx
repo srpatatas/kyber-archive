@@ -5,10 +5,14 @@ import Link from "next/link";
 import { PlayerRating } from "@/lib/elo";
 import { ASPECT_COLORS, ASPECT_ABBREV } from "@/lib/aspects";
 import { RankBadge } from "./rank-badge";
+import { KyberCrystal } from "./kyber-crystal";
+import { getTierConfig } from "@/lib/tiers";
+import { getLeaderAspects, getLeaderThumbnailUrl, getLeaderCropPosition, getBaseAspectColor } from "@/lib/card-images";
+import { normalizeBase } from "@/lib/base-normalization";
 
-type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentCount";
+type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentWins";
 
-type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number };
+type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number; kyberTiers?: string[] };
 
 function getWinRate(p: RankedPlayer): number {
   const total = p.wins + p.losses + p.draws;
@@ -58,8 +62,8 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
           const bRate = b.tournamentCount > 0 ? b.top8s / b.tournamentCount : 0;
           cmp = bRate - aRate;
           break;
-        case "tournamentCount":
-          cmp = b.tournamentCount - a.tournamentCount;
+        case "tournamentWins":
+          cmp = b.tournamentWins - a.tournamentWins;
           break;
       }
       return sortAsc ? -cmp : cmp;
@@ -115,17 +119,17 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-medium uppercase tracking-wider text-muted">Player</span>
               </th>
-              <th className="px-4 py-3 text-right">
+              <th className="px-4 py-3 text-center">
                 <SortHeader label="KA Rating" sortKeyName="rating" />
               </th>
-              <th className="px-4 py-3 text-right">
+              <th className="px-4 py-3 text-center">
+                <SortHeader label="Kybers" sortKeyName="tournamentWins" />
+              </th>
+              <th className="px-4 py-3 text-center">
                 <SortHeader label="Win Rate %" sortKeyName="winRate" />
               </th>
               <th className="px-4 py-3 text-center">
                 <SortHeader label="Top Cut %" sortKeyName="top8s" />
-              </th>
-              <th className="px-4 py-3 text-center">
-                <SortHeader label="Events" sortKeyName="tournamentCount" />
               </th>
             </tr>
           </thead>
@@ -146,69 +150,89 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/player/${player.id}`} className="group/link block">
-                      <div>
-                        <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
-                          {player.username}
-                        </p>
-                        <p className="text-xs text-muted">{player.name}</p>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-muted">{totalGames} games</p>
-                        {player.mainLeader && (
-                          <span className="contents">
-                            <span className="text-muted">·</span>
-                            <span className="text-[10px] text-sand truncate max-w-[120px]">
-                              {player.mainLeader}
-                            </span>
-                          </span>
-                        )}
-                        {player.aspects && player.aspects.length > 0 && (
-                          <span className="inline-flex gap-0.5">
-                            {player.aspects.map((a: string) => {
-                              const isVillainy = a === "villainy";
-                              return (
-                                <span
-                                  key={a}
-                                  className="rounded px-1 py-px text-[8px] font-bold leading-tight"
-                                  style={{
-                                    backgroundColor: isVillainy ? ASPECT_COLORS[a] : `${ASPECT_COLORS[a]}25`,
-                                    color: isVillainy ? "#ffffff" : ASPECT_COLORS[a],
-                                    border: `1px solid ${isVillainy ? "#ffffff40" : `${ASPECT_COLORS[a]}40`}`,
-                                  }}
-                                >
-                                  {ASPECT_ABBREV[a] ?? a}
-                                </span>
-                              );
-                            })}
-                          </span>
-                        )}
-                      </div>
+                    <Link href={`/player/${player.id}`} className="group/link flex items-center gap-3">
+                      {(() => {
+                        const leaderName = player.mainLeader?.split(" - ")[0] ?? null;
+                        const baseName = player.mainLeader?.split(" - ")[1] ?? null;
+                        const imgUrl = leaderName ? getLeaderThumbnailUrl(leaderName) : null;
+                        const cropPos = leaderName ? getLeaderCropPosition(leaderName) : "center";
+                        const visibleColor = (c: string | undefined) => c === "#040004" ? "#4a3060" : c;
+                        const leaderAspects = leaderName ? getLeaderAspects(leaderName) : [];
+                        const colorStops = leaderAspects
+                          .filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy")
+                          .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
+                          .filter(Boolean) as string[];
+                        if (colorStops.length === 0 && leaderAspects.length > 0) {
+                          colorStops.push(visibleColor(ASPECT_COLORS[leaderAspects[0].toLowerCase()]) ?? "#666");
+                        }
+                        const baseNorm = baseName ? normalizeBase(baseName) : null;
+                        const baseColor = baseName ? getBaseAspectColor(baseName, baseNorm?.aspect) ?? "#666" : "#666";
+                        const allStops = [...(colorStops.length > 0 ? colorStops : ["#666"]), baseColor]
+                          .filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
+                        const borderGradient = allStops.length >= 2
+                          ? `linear-gradient(to bottom, ${allStops.join(", ")})`
+                          : allStops[0] ?? "var(--color-border)";
+
+                        return (
+                          <>
+                            {imgUrl && (
+                              <div className="w-9 h-9 rounded-lg p-[1.5px] shadow-sm flex-shrink-0" style={{ background: borderGradient }}>
+                                <div className="w-full h-full rounded-[7px] overflow-hidden">
+                                  <img src={imgUrl} alt="" className="w-full h-full object-cover" style={{ objectPosition: cropPos }} />
+                                </div>
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground group-hover/link:text-gold transition-colors">
+                                {player.username}
+                              </p>
+                              {player.mainLeader ? (
+                                <p className="text-[10px] text-muted truncate">{player.mainLeader} · {totalGames} games</p>
+                              ) : (
+                                <p className="text-xs text-muted">{player.name} · {totalGames} games</p>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-center">
                     <span className="text-lg font-bold text-gold tabular-nums">
                       {player.rating.toLocaleString()}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-surface-lighter sm:block">
-                        <div
-                          className="h-full rounded-full bg-gold"
-                          style={{ width: `${winRate}%` }}
-                        />
+                  <td className="px-4 py-3 text-center">
+                    {player.kyberTiers && player.kyberTiers.length > 0 ? (
+                      <div className="flex items-center justify-center gap-0.5">
+                        {[...player.kyberTiers].sort((a, b) => {
+                          const order: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
+                          return (order[a] ?? 9) - (order[b] ?? 9);
+                        }).slice(0, 5).map((tier, j) => (
+                          <KyberCrystal key={j} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
+                        ))}
+                        {player.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{player.kyberTiers.length - 5}</span>}
                       </div>
-                      <span className="text-sm font-bold tabular-nums">{winRate}%</span>
-                    </div>
-                    <p className="text-[10px] tabular-nums text-muted mt-0.5 text-right">
+                    ) : player.tournamentWins > 0 ? (
+                      <div className="flex items-center justify-center gap-0.5">
+                        {Array.from({ length: Math.min(player.tournamentWins, 5) }).map((_, j) => (
+                          <KyberCrystal key={j} color="#d4a017" tier="kyber" size="sm" />
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-sm font-bold tabular-nums ${winRate >= 55 ? "text-emerald-400" : winRate <= 45 ? "text-red-400" : "text-foreground"}`}>{winRate}%</span>
+                    <p className="text-[10px] tabular-nums text-muted mt-0.5">
                       {player.wins}-{player.losses}-{player.draws}
                     </p>
                   </td>
                   <td className="px-4 py-3 text-center">
                     {player.top8s > 0 ? (
                       <div>
-                        <span className="text-sm font-bold tabular-nums text-foreground">
+                        <span className={`text-sm font-bold tabular-nums ${Math.round((player.top8s / player.tournamentCount) * 100) >= 40 ? "text-emerald-400" : "text-foreground"}`}>
                           {Math.round((player.top8s / player.tournamentCount) * 100)}%
                         </span>
                         <p className="text-[10px] tabular-nums text-muted">
@@ -218,11 +242,6 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                     ) : (
                       <span className="text-sm text-muted">-</span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="text-sm tabular-nums text-muted">
-                      {player.tournamentCount}
-                    </span>
                   </td>
                 </tr>
               );

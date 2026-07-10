@@ -560,7 +560,6 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
     let aspects: string[] = [];
     if (decks) {
       const top = Array.from(decks.values())
-        .filter(d => d.count >= 2)
         .sort((a, b) => b.count - a.count || b.maxDate.localeCompare(a.maxDate))[0];
       if (top) {
         mainLeader = top.display;
@@ -660,7 +659,7 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     .sort((a, b) => b.rating - a.rating);
 
   const ROTATION_DATE = "2026-03-13";
-  const deckStartDate = startDate < ROTATION_DATE && endDate > ROTATION_DATE ? ROTATION_DATE : startDate;
+  const hasRotation = startDate < ROTATION_DATE && endDate > ROTATION_DATE;
 
   const { rows: deckRows } = await query(`
     SELECT d.player_id, d.leader, d.base, ac.aspects, t.date
@@ -668,7 +667,7 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     JOIN tournaments t ON t.id = d.tournament_id
     LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
     WHERE t.date >= $1 AND t.date < $2
-  `, [deckStartDate, endDate]);
+  `, [startDate, endDate]);
 
   const decksByPlayer = new Map<string, Map<string, { display: string; aspects: string | null; count: number; maxDate: string }>>();
   for (const d of deckRows as Record<string, unknown>[]) {
@@ -696,13 +695,61 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     }
   }
 
+  const { rows: kyberRows } = await query(`
+    SELECT p.player_id, t.event_tier
+    FROM placements p
+    JOIN tournaments t ON t.id = p.tournament_id
+    WHERE p.placement = 1 AND t.date >= $1 AND t.date < $2
+    ORDER BY t.date
+  `, [startDate, endDate]);
+
+  const kybersByPlayer = new Map<string, string[]>();
+  for (const r of kyberRows as Record<string, unknown>[]) {
+    const pid = r.player_id as string;
+    if (!kybersByPlayer.has(pid)) kybersByPlayer.set(pid, []);
+    kybersByPlayer.get(pid)!.push(r.event_tier as string);
+  }
+
+  const postRotationDecks = hasRotation
+    ? new Map<string, Map<string, { display: string; aspects: string | null; count: number; maxDate: string }>>()
+    : null;
+
+  if (postRotationDecks) {
+    for (const d of deckRows as Record<string, unknown>[]) {
+      if ((d.date as string) < ROTATION_DATE) continue;
+      const pid = d.player_id as string;
+      if (!postRotationDecks.has(pid)) postRotationDecks.set(pid, new Map());
+      const normalized = normalizeBase(d.base as string);
+      const key = `${d.leader}||${normalized.key}`;
+      const existing = postRotationDecks.get(pid)!.get(key);
+      const date = d.date as string;
+      if (existing) {
+        existing.count++;
+        if (date > existing.maxDate) existing.maxDate = date;
+        if (d.aspects) {
+          const newAspects = JSON.parse(d.aspects as string) as string[];
+          const oldAspects = existing.aspects ? JSON.parse(existing.aspects) as string[] : [];
+          if (newAspects.length > oldAspects.length) existing.aspects = d.aspects as string;
+        }
+      } else {
+        postRotationDecks.get(pid)!.set(key, {
+          display: `${d.leader} - ${normalized.display}`,
+          aspects: d.aspects as string | null,
+          count: 1,
+          maxDate: date,
+        });
+      }
+    }
+  }
+
   return eligible.map((r, i) => {
-    const decks = decksByPlayer.get(r.id);
+    const postDecks = postRotationDecks?.get(r.id);
+    const allDecks = decksByPlayer.get(r.id);
+    const decks = postDecks && postDecks.size > 0 ? postDecks : allDecks;
     let mainLeader: string | null = null;
     let aspects: string[] = [];
     if (decks) {
       const top = Array.from(decks.values())
-        .filter((d) => d.count >= 2)
         .sort((a, b) => b.count - a.count || b.maxDate.localeCompare(a.maxDate))[0];
       if (top) {
         mainLeader = top.display;
@@ -714,6 +761,7 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
       rank: i + 1,
       mainLeader,
       aspects,
+      kyberTiers: kybersByPlayer.get(r.id) ?? [],
     };
   });
 }
