@@ -70,20 +70,17 @@ export function SeasonalLeaderboard({
 
                 const visibleColor = (c: string | undefined) => c === "#040004" ? "#4a3060" : c;
                 const leaderAspects = leaderName ? getLeaderAspects(leaderName) : [];
-                const leaderStops = leaderAspects
-                  .filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy")
+                const playerAspects = p.aspects ?? [];
+                const aspectSource = leaderAspects.length > 0 ? leaderAspects : playerAspects;
+                const colorStops = aspectSource
                   .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
                   .filter(Boolean) as string[];
-                if (leaderStops.length === 0 && leaderAspects.length > 0) {
-                  leaderStops.push(visibleColor(ASPECT_COLORS[leaderAspects[0].toLowerCase()]) ?? "#666");
-                }
+                if (colorStops.length === 0) colorStops.push("#666");
                 const baseColor = baseName ? getBaseAspectColor(baseName) ?? "#666" : "#666";
-                const allStops = [...leaderStops, baseColor].filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
+                const allStops = [...colorStops, baseColor].filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
                 const nameStyle = allStops.length >= 2
                   ? { backgroundImage: `linear-gradient(to right, ${allStops.join(", ")})`, WebkitBackgroundClip: "text" as const, WebkitTextFillColor: "transparent" }
-                  : allStops.length === 1
-                  ? { color: allStops[0] }
-                  : {};
+                  : { color: allStops[0] ?? "#666" };
 
                 return (
                   <Link
