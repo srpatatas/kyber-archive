@@ -213,7 +213,7 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                         ))}
                         {player.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{player.kyberTiers.length - 5}</span>}
                         <div className="absolute left-1/2 -translate-x-1/2 top-full z-50 hidden group-hover/kyber:block pt-1">
-                          <div className="w-52 rounded-lg border border-gold/30 bg-surface p-2 shadow-xl space-y-1.5">
+                          <div className="w-52 rounded-lg border border-gold/30 bg-background p-2 shadow-xl space-y-1.5">
                             {player.kyberTiers.map((k, j) => {
                               const tier = getTierConfig(k.tier);
                               return (
