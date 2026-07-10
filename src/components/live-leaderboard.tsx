@@ -196,7 +196,10 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                   <td className="px-4 py-3 text-center">
                     {player.kyberTiers && player.kyberTiers.length > 0 ? (
                       <div className="flex items-center justify-center gap-0.5">
-                        {player.kyberTiers.slice(0, 5).map((tier, j) => (
+                        {[...player.kyberTiers].sort((a, b) => {
+                          const order: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
+                          return (order[a] ?? 9) - (order[b] ?? 9);
+                        }).slice(0, 5).map((tier, j) => (
                           <KyberCrystal key={j} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
                         ))}
                         {player.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{player.kyberTiers.length - 5}</span>}

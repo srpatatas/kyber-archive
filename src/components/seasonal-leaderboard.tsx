@@ -6,9 +6,13 @@ import { LiveLeaderboard } from "./live-leaderboard";
 import { getLeaderThumbnailUrl, getLeaderAspects, getBaseAspectColor } from "@/lib/card-images";
 import { normalizeBase } from "@/lib/base-normalization";
 import { ASPECT_COLORS } from "@/lib/aspects";
+import { KyberCrystal } from "./kyber-crystal";
+import { getTierConfig } from "@/lib/tiers";
 import type { PlayerRating } from "@/lib/elo";
 
-type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[] };
+type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[]; kyberTiers?: string[] };
+
+const TIER_ORDER: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
 
 type Season = "year1" | "year0" | "allTime";
 
@@ -115,9 +119,16 @@ export function SeasonalLeaderboard({
                       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                         <div>
                           <p className="text-[10px] text-muted uppercase">Kybers</p>
-                          <p className={`text-sm font-bold ${p.tournamentWins > 0 ? "text-gold" : "text-muted"}`}>
-                            {p.tournamentWins > 0 ? p.tournamentWins : "-"}
-                          </p>
+                          {p.kyberTiers && p.kyberTiers.length > 0 ? (
+                            <div className="flex items-center justify-center gap-0.5 mt-1">
+                              {[...p.kyberTiers].sort((a, b) => (TIER_ORDER[a] ?? 9) - (TIER_ORDER[b] ?? 9)).slice(0, 5).map((tier, j) => (
+                                <KyberCrystal key={j} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
+                              ))}
+                              {p.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{p.kyberTiers.length - 5}</span>}
+                            </div>
+                          ) : (
+                            <p className="text-sm font-bold text-muted">-</p>
+                          )}
                         </div>
                         <div>
                           <p className="text-[10px] text-muted uppercase">Win Rate</p>
