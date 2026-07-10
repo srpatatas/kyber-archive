@@ -17,7 +17,7 @@ function getWinRate(p: RankedPlayer): number {
 }
 
 function RankMovement({ current, previous }: { current: number; previous: number | undefined }) {
-  if (previous === undefined) return <span className="text-[10px] text-emerald-400 ml-1">NEW</span>;
+  if (previous === undefined) return null;
   const delta = previous - current;
   if (delta === 0) return null;
   if (delta > 0) return <span className="text-[10px] text-emerald-400 ml-1">▲{delta}</span>;
