@@ -250,6 +250,18 @@ try {
     }
   }
 
+  // Snapshot current rankings BEFORE inserting new data
+  console.log("Taking rank snapshot...");
+  try {
+    await fetch("http://localhost:3001/api/admin/recalculate?step=snapshot", {
+      method: "POST",
+      headers: { "x-admin-pin": process.env.ADMIN_PIN || "" },
+    });
+    console.log("Snapshot taken.");
+  } catch {
+    console.log("Warning: could not take snapshot.");
+  }
+
   // Clear existing data for this tournament
   await client.query("DELETE FROM matches WHERE tournament_id = $1", [tournamentId]);
   await client.query("DELETE FROM placements WHERE tournament_id = $1", [tournamentId]);
@@ -328,7 +340,7 @@ try {
 // Trigger rating recalculation via the API
 console.log("Recalculating ratings...");
 try {
-  await fetch("http://localhost:3001/api/admin/recalculate?snapshot=true", {
+  await fetch("http://localhost:3001/api/admin/recalculate", {
     method: "POST",
     headers: { "x-admin-pin": process.env.ADMIN_PIN || "" },
   });

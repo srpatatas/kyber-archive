@@ -6,6 +6,7 @@ import { requireAdminPin } from "@/lib/admin-auth";
 import { revalidateAllData } from "@/lib/revalidate";
 
 const STEPS: Record<string, (snapshot: boolean) => Promise<void>> = {
+  snapshot: async () => { await snapshotCurrentRanks(); },
   elo: async (snapshot) => { if (snapshot) await snapshotCurrentRanks(); await recalculateElo(); },
   nacional: async () => { await recomputeNacionalStandings(); },
   meta: async (snapshot) => { await recomputeMetaStats(snapshot); },
