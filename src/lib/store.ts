@@ -560,7 +560,6 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
     let aspects: string[] = [];
     if (decks) {
       const top = Array.from(decks.values())
-        .filter(d => d.count >= 2)
         .sort((a, b) => b.count - a.count || b.maxDate.localeCompare(a.maxDate))[0];
       if (top) {
         mainLeader = top.display;
@@ -717,7 +716,6 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     let aspects: string[] = [];
     if (decks) {
       const top = Array.from(decks.values())
-        .filter((d) => d.count >= 2)
         .sort((a, b) => b.count - a.count || b.maxDate.localeCompare(a.maxDate))[0];
       if (top) {
         mainLeader = top.display;
