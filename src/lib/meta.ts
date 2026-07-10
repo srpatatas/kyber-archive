@@ -26,6 +26,7 @@ export interface DeckStats {
   conversionRate: number;
   kyberCount: number;
   kyberScore: number;
+  score: number;
   kyberTournaments: { name: string; id: number; tier: string }[];
   decklists: DecklistEntry[];
 }
@@ -58,6 +59,7 @@ export interface MetaStats {
   totalDecklists: number;
   totalTournaments: number;
   uniqueLeaders: number;
+  previousDeckOrder?: string[];
 }
 
 export type MetaPeriod = "3m" | "6m" | "pre";
@@ -76,8 +78,12 @@ function periodDateRange(period: MetaPeriod): { startDate: string | null; endDat
 export async function recomputeMetaStats(): Promise<void> {
   const periods: MetaPeriod[] = ["3m", "6m", "pre"];
   for (const period of periods) {
+    const previous = await getMetaStats(period);
+    const previousDeckOrder = previous.decks.map((d) => `${d.leader}||${d.baseKey}`);
+
     const { startDate, endDate } = periodDateRange(period);
     const stats = await computeMetaStats(startDate, endDate);
+    stats.previousDeckOrder = previousDeckOrder;
     await query(
       `INSERT INTO meta_cache (key, data) VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data`,
@@ -226,6 +232,7 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
         conversionRate: 0,
         kyberCount: 0,
         kyberScore: 0,
+        score: 0,
         kyberTournaments: [],
         decklists: [],
       });
@@ -292,7 +299,19 @@ async function computeMetaStats(startDate: string | null, endDate: string | null
     d.winRate = totalGames > 0 ? Math.round((d.wins / totalGames) * 1000) / 10 : 0;
     d.conversionRate = d.totalEntries > 0 ? Math.round((d.topCutEntries / d.totalEntries) * 1000) / 10 : 0;
   }
-  decks.sort((a, b) => b.count - a.count);
+
+  const totalTournamentIds = new Set(decks.flatMap((d) => d.kyberTournaments?.map((t) => t.id) ?? []));
+  const maxKyberPossible = (totalTournamentIds.size || Math.max(...decks.map((d) => d.count)) || 1) * 2;
+  for (const d of decks) {
+    const confidence = Math.min(d.count / 6, 1);
+    const raw =
+      Math.min(d.kyberScore / maxKyberPossible, 1) * 30 +
+      (d.conversionRate / 100) * 27 +
+      (d.winRate / 100) * 25 +
+      (d.playRate / 100) * 18;
+    d.score = Math.round(raw * confidence * 10) / 10;
+  }
+  decks.sort((a, b) => b.score - a.score);
 
   const validDeckKeys = new Set(decks.map((d) => `${d.leader}||${d.baseKey}`));
 

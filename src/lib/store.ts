@@ -393,6 +393,16 @@ async function snapshotCurrentRanks(): Promise<void> {
   }
 }
 
+export async function snapshotMetaRanks(deckKeys: string[], snapshotKey: string): Promise<void> {
+  await query("DELETE FROM rank_snapshots WHERE snapshot_key = $1", [snapshotKey]);
+  for (let i = 0; i < deckKeys.length; i++) {
+    await query(
+      "INSERT INTO rank_snapshots (player_id, snapshot_key, rank) VALUES ($1, $2, $3)",
+      [deckKeys[i], snapshotKey, i + 1]
+    );
+  }
+}
+
 export async function getPreviousRanks(snapshotKey: string): Promise<Map<string, number>> {
   const { rows } = await query("SELECT player_id, rank FROM rank_snapshots WHERE snapshot_key = $1", [snapshotKey]);
   return new Map(rows.map((r: Record<string, unknown>) => [r.player_id as string, r.rank as number]));

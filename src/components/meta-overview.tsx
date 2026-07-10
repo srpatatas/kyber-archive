@@ -17,6 +17,7 @@ interface DecklistEntry {
 
 interface DeckStats {
   leader: string;
+  baseKey?: string;
   baseDisplay: string;
   baseAspect: string | null;
   aspects: string[];
@@ -31,6 +32,7 @@ interface DeckStats {
   conversionRate: number;
   kyberCount: number;
   kyberScore: number;
+  score: number;
   kyberTournaments: { name: string; id: number; tier: string }[];
   decklists: DecklistEntry[];
 }
@@ -137,30 +139,11 @@ function DeckBadge({ d, size = "sm", onHover, onLeave }: { d: DeckStats; size?: 
   );
 }
 
-type ScoredDeck = DeckStats & { score: number };
-
-function scoreDecks(decks: DeckStats[]): ScoredDeck[] {
-  const totalTournaments = new Set(decks.flatMap((d) => d.kyberTournaments?.map((t) => t.id) ?? [])).size || Math.max(...decks.map((d) => d.count)) || 1;
-  const maxKyberPossible = totalTournaments * 2;
-
-  return decks.map((d) => {
-    const confidence = Math.min(d.count / 6, 1);
-    const raw =
-      Math.min(d.kyberScore / maxKyberPossible, 1) * 30 +
-      (d.conversionRate / 100) * 27 +
-      (d.winRate / 100) * 25 +
-      (d.playRate / 100) * 18;
-    return { ...d, score: raw * confidence };
-  });
-}
 
 export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   if (decks.length === 0) return null;
 
-  const scored = scoreDecks(decks);
-  scored.sort((a, b) => b.score - a.score);
-
-  const top3 = scored.slice(0, 3);
+  const top3 = [...decks].sort((a, b) => b.score - a.score).slice(0, 3);
   const medals = ["🥇", "🥈", "🥉"];
 
   return (
@@ -249,13 +232,24 @@ export function MetaSummary({ decks }: { decks: DeckStats[] }) {
   );
 }
 
-export function MetaOverview({ decks }: { decks: DeckStats[] }) {
+function MetaRankMovement({ current, previous }: { current: number; previous: number | undefined }) {
+  if (previous === undefined) return null;
+  const delta = previous - current;
+  if (delta === 0) return null;
+  if (delta > 0) return <span className="text-[10px] text-emerald-400 ml-1">▲{delta}</span>;
+  return <span className="text-[10px] text-red-400 ml-1">▼{Math.abs(delta)}</span>;
+}
+
+export function MetaOverview({ decks, previousDeckOrder }: { decks: DeckStats[]; previousDeckOrder?: string[] }) {
   const [sortBy, setSortBy] = useState<SortKey>("score");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [hoverCard, setHoverCard] = useState<{ url: string; x: number; y: number } | null>(null);
 
-  const scoredDecks = scoreDecks(decks);
+  const prevRankMap = new Map<string, number>();
+  if (previousDeckOrder) {
+    previousDeckOrder.forEach((key, i) => prevRankMap.set(key, i + 1));
+  }
 
   const handleSort = (key: SortKey) => {
     if (key === sortBy) {
@@ -266,7 +260,7 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
     }
   };
 
-  const sorted = [...scoredDecks].sort((a, b) => {
+  const sorted = [...decks].sort((a, b) => {
     const diff = b[sortBy] - a[sortBy];
     const directed = sortDir === "desc" ? diff : -diff;
     return directed || b.count - a.count;
@@ -308,7 +302,12 @@ export function MetaOverview({ decks }: { decks: DeckStats[] }) {
                       className={`hover:bg-surface-light/50 transition-colors ${hasDecklists ? "cursor-pointer" : ""}`}
                       onClick={() => hasDecklists && setExpanded(isExpanded ? null : rowKey)}
                     >
-                      <td className="px-2 py-2 tabular-nums text-muted">{i + 1}</td>
+                      <td className="px-2 py-2 tabular-nums text-muted">
+                        <span className="inline-flex items-center">
+                          {i + 1}
+                          <MetaRankMovement current={i + 1} previous={prevRankMap.get(`${d.leader}||${d.baseKey ?? d.baseDisplay}`)} />
+                        </span>
+                      </td>
                       <td className="px-2 py-2">
                         <div className="flex items-center gap-2.5">
                           <DeckBadge d={d} onHover={handleHover} onLeave={() => setHoverCard(null)} />
