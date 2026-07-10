@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { LiveLeaderboard } from "./live-leaderboard";
-import { getLeaderThumbnailUrl } from "@/lib/card-images";
+import { getLeaderThumbnailUrl, getLeaderAspects, getBaseAspectColor } from "@/lib/card-images";
+import { ASPECT_COLORS } from "@/lib/aspects";
 import type { PlayerRating } from "@/lib/elo";
 
 type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[] };
@@ -62,9 +63,27 @@ export function SeasonalLeaderboard({
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
               {top3.map((p, i) => {
                 const leaderName = p.mainLeader?.split(" - ")[0] ?? null;
+                const baseName = p.mainLeader?.split(" - ")[1] ?? null;
                 const imgUrl = leaderName ? getLeaderThumbnailUrl(leaderName) : null;
                 const totalGames = p.wins + p.losses + p.draws;
                 const winRate = totalGames > 0 ? Math.round((p.wins / totalGames) * 1000) / 10 : 0;
+
+                const visibleColor = (c: string | undefined) => c === "#040004" ? "#4a3060" : c;
+                const leaderAspects = leaderName ? getLeaderAspects(leaderName) : [];
+                const leaderStops = leaderAspects
+                  .filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy")
+                  .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
+                  .filter(Boolean) as string[];
+                if (leaderStops.length === 0 && leaderAspects.length > 0) {
+                  leaderStops.push(visibleColor(ASPECT_COLORS[leaderAspects[0].toLowerCase()]) ?? "#666");
+                }
+                const baseColor = baseName ? getBaseAspectColor(baseName) ?? "#666" : "#666";
+                const allStops = [...leaderStops, baseColor].filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
+                const nameStyle = allStops.length >= 2
+                  ? { backgroundImage: `linear-gradient(to right, ${allStops.join(", ")})`, WebkitBackgroundClip: "text" as const, WebkitTextFillColor: "transparent" }
+                  : allStops.length === 1
+                  ? { color: allStops[0] }
+                  : {};
 
                 return (
                   <Link
@@ -72,6 +91,7 @@ export function SeasonalLeaderboard({
                     href={`/player/${p.id}`}
                     className="relative rounded-xl border border-border bg-surface overflow-hidden hover:border-gold/30 transition-colors group"
                   >
+                    <div className="absolute top-2 right-3 z-10 text-2xl font-bold tabular-nums text-gold/70">{p.rating.toLocaleString()}</div>
                     {imgUrl && (
                       <div className="h-16 overflow-hidden">
                         <img src={imgUrl} alt="" className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity" />
@@ -82,16 +102,12 @@ export function SeasonalLeaderboard({
                       <div className="flex items-center gap-3">
                         <div className="text-3xl">{medals[i]}</div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-sm text-foreground truncate">
+                          <p className="font-bold text-sm truncate" style={nameStyle}>
                             {p.username}
                           </p>
-                          <p className="text-[10px] text-muted truncate">
-                            {p.name}
-                            {p.mainLeader && <span className="ml-1.5 text-muted/60">· {p.mainLeader}</span>}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-xl font-bold text-gold tabular-nums">{p.rating.toLocaleString()}</p>
+                          {p.mainLeader && (
+                            <p className="text-[10px] text-muted truncate">{p.mainLeader}</p>
+                          )}
                         </div>
                       </div>
                       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
