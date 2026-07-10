@@ -43,6 +43,7 @@ export async function addTournament(
   decklistEntries: DecklistEntry[],
   players: Record<string, PlayerInfo>
 ): Promise<void> {
+  await snapshotCurrentRanks();
   await withTransaction(async (client) => {
     await client.query("DELETE FROM matches WHERE tournament_id = $1", [tournament.id]);
     await client.query("DELETE FROM placements WHERE tournament_id = $1", [tournament.id]);
@@ -91,7 +92,7 @@ export async function addTournament(
     await recomputeRatings(client);
   });
   await recomputeNacionalStandings();
-  await recomputeMetaStats();
+  await recomputeMetaStats(true);
   await stampLastRecalculated();
 }
 
@@ -366,7 +367,6 @@ export async function getPlayerAspects(playerId: string): Promise<string[]> {
 }
 
 export async function forceRecalculate(): Promise<void> {
-  await snapshotCurrentRanks();
   await recalculateElo();
   await recomputeNacionalStandings();
   await recomputeMetaStats();
