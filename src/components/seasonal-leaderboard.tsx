@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { LiveLeaderboard } from "./live-leaderboard";
 import { getLeaderThumbnailUrl, getLeaderAspects, getBaseAspectColor } from "@/lib/card-images";
+import { normalizeBase } from "@/lib/base-normalization";
 import { ASPECT_COLORS } from "@/lib/aspects";
 import type { PlayerRating } from "@/lib/elo";
 
@@ -77,7 +78,8 @@ export function SeasonalLeaderboard({
                 const leaderStops = (leaderColorAspects.length > 0 ? leaderColorAspects : aspectSource)
                   .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
                   .filter(Boolean) as string[];
-                const baseColor = baseName ? getBaseAspectColor(baseName) ?? "#666" : "#666";
+                const baseNorm = baseName ? normalizeBase(baseName) : null;
+                const baseColor = baseName ? getBaseAspectColor(baseName, baseNorm?.aspect) ?? "#666" : "#666";
                 const allStops = [...(leaderStops.length > 0 ? leaderStops : ["#666"]), baseColor]
                   .filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
                 const hasGradient = allStops.length >= 2;
