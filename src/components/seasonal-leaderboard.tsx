@@ -20,11 +20,13 @@ export function SeasonalLeaderboard({
   year0,
   allTime,
   tournamentCounts,
+  previousRanks,
 }: {
   year1: RankedPlayer[];
   year0: RankedPlayer[];
   allTime: RankedPlayer[];
   tournamentCounts: { year1: number; year0: number; allTime: number };
+  previousRanks?: Record<string, number>;
 }) {
   const [season, setSeason] = useState<Season>("year1");
 
@@ -112,7 +114,7 @@ export function SeasonalLeaderboard({
         </div>
 
         {players.length > 0 ? (
-          <LiveLeaderboard players={players} />
+          <LiveLeaderboard players={players} previousRanks={season === "year1" ? previousRanks : undefined} />
         ) : (
           <div className="rounded-xl border border-border bg-surface p-12 text-center">
             <p className="text-sm text-muted">No ranked players in this season yet</p>

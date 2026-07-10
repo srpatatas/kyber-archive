@@ -127,6 +127,13 @@ export async function ensureMigrated(): Promise<void> {
       data TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS rank_snapshots (
+      player_id TEXT NOT NULL,
+      snapshot_key TEXT NOT NULL,
+      rank INTEGER NOT NULL,
+      PRIMARY KEY (player_id, snapshot_key)
+    );
+
     ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_nacional BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS counts_for_nacional BOOLEAN NOT NULL DEFAULT FALSE;
 

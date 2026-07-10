@@ -366,6 +366,7 @@ export async function getPlayerAspects(playerId: string): Promise<string[]> {
 }
 
 export async function forceRecalculate(): Promise<void> {
+  await snapshotCurrentRanks();
   await recalculateElo();
   await recomputeNacionalStandings();
   await recomputeMetaStats();
@@ -376,6 +377,25 @@ export async function recalculateElo(): Promise<void> {
   await withTransaction(async (client) => {
     await recomputeRatings(client);
   });
+}
+
+const YEAR_1_START = "2025-07-28";
+const YEAR_1_END = "2026-07-28";
+
+async function snapshotCurrentRanks(): Promise<void> {
+  const year1 = await getSeasonLeaderboard(YEAR_1_START, YEAR_1_END);
+  await query("DELETE FROM rank_snapshots WHERE snapshot_key = 'year1'");
+  for (const p of year1) {
+    await query(
+      "INSERT INTO rank_snapshots (player_id, snapshot_key, rank) VALUES ($1, $2, $3)",
+      [p.id, "year1", p.rank]
+    );
+  }
+}
+
+export async function getPreviousRanks(snapshotKey: string): Promise<Map<string, number>> {
+  const { rows } = await query("SELECT player_id, rank FROM rank_snapshots WHERE snapshot_key = $1", [snapshotKey]);
+  return new Map(rows.map((r: Record<string, unknown>) => [r.player_id as string, r.rank as number]));
 }
 
 export async function stampLastRecalculated(): Promise<void> {

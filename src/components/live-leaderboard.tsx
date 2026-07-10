@@ -16,7 +16,15 @@ function getWinRate(p: RankedPlayer): number {
   return Math.round((p.wins / total) * 1000) / 10;
 }
 
-export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
+function RankMovement({ current, previous }: { current: number; previous: number | undefined }) {
+  if (previous === undefined) return <span className="text-[10px] text-emerald-400 ml-1">NEW</span>;
+  const delta = previous - current;
+  if (delta === 0) return null;
+  if (delta > 0) return <span className="text-[10px] text-emerald-400 ml-1">▲{delta}</span>;
+  return <span className="text-[10px] text-red-400 ml-1">▼{Math.abs(delta)}</span>;
+}
+
+export function LiveLeaderboard({ players, previousRanks }: { players: RankedPlayer[]; previousRanks?: Record<string, number> }) {
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortAsc, setSortAsc] = useState(false);
   const [search, setSearch] = useState("");
@@ -132,7 +140,10 @@ export function LiveLeaderboard({ players }: { players: RankedPlayer[] }) {
                   style={{ animationDelay: `${i * 30}ms` }}
                 >
                   <td className="px-4 py-3">
-                    <RankBadge rank={player.rank} />
+                    <div className="flex items-center">
+                      <RankBadge rank={player.rank} />
+                      {previousRanks && <RankMovement current={player.rank} previous={previousRanks[player.id]} />}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/player/${player.id}`} className="group/link block">
