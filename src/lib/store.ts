@@ -554,6 +554,18 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
     }
   }
 
+  const { rows: kyberRows } = await query(`
+    SELECT p.player_id, t.event_tier, t.name as tournament_name, t.id as tournament_id
+    FROM placements p JOIN tournaments t ON t.id = p.tournament_id
+    WHERE p.placement = 1 ORDER BY t.date
+  `);
+  const kybersByPlayer = new Map<string, { tier: string; name: string; id: number }[]>();
+  for (const kr of kyberRows as Record<string, unknown>[]) {
+    const pid = kr.player_id as string;
+    if (!kybersByPlayer.has(pid)) kybersByPlayer.set(pid, []);
+    kybersByPlayer.get(pid)!.push({ tier: kr.event_tier as string, name: kr.tournament_name as string, id: kr.tournament_id as number });
+  }
+
   return rows.map((r: Record<string, unknown>, i: number) => {
     const decks = decksByPlayer.get(r.player_id as string);
     let mainLeader: string | null = null;
@@ -584,6 +596,7 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
       mainLeader,
       aspects,
       rank: i + 1,
+      kyberTiers: kybersByPlayer.get(r.player_id as string) ?? [],
     };
   });
 }

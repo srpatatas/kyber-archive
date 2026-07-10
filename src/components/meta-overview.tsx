@@ -334,7 +334,7 @@ export function MetaOverview({ decks, previousDeckOrder }: { decks: DeckStats[];
                           <div className="relative group/kyber inline-block">
                             <span className="text-gold cursor-default">{d.kyberCount}</span>
                             {d.kyberTournaments && d.kyberTournaments.length > 0 && (
-                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full z-50 hidden group-hover/kyber:block pb-1">
+                              <div className="absolute left-1/2 -translate-x-1/2 top-full z-50 hidden group-hover/kyber:block pt-1">
                                 <div className="w-52 rounded-lg border border-gold/30 bg-surface p-2 shadow-xl space-y-1.5">
                                   {d.kyberTournaments.map((t, j) => {
                                     const tier = getTierConfig(t.tier);
