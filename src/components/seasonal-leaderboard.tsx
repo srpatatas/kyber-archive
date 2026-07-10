@@ -114,18 +114,20 @@ export function SeasonalLeaderboard({
                       </div>
                       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                         <div>
+                          <p className="text-[10px] text-muted uppercase">Kybers</p>
+                          <p className={`text-sm font-bold ${p.tournamentWins > 0 ? "text-gold" : "text-muted"}`}>
+                            {p.tournamentWins > 0 ? p.tournamentWins : "-"}
+                          </p>
+                        </div>
+                        <div>
                           <p className="text-[10px] text-muted uppercase">Win Rate</p>
                           <p className={`text-sm font-bold ${winRate >= 55 ? "text-emerald-400" : winRate <= 45 ? "text-red-400" : "text-foreground"}`}>
                             {winRate}%
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-muted uppercase">Events</p>
-                          <p className="text-sm font-bold text-foreground">{p.tournamentCount}</p>
-                        </div>
-                        <div>
                           <p className="text-[10px] text-muted uppercase">Top Cuts</p>
-                          <p className="text-sm font-bold text-foreground">{p.top8s}</p>
+                          <p className="text-sm font-bold text-foreground">{p.top8s}/{p.tournamentCount}</p>
                         </div>
                       </div>
                     </div>
