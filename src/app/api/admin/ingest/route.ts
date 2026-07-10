@@ -7,6 +7,7 @@ import {
   getDecklistAspects,
 } from "@/lib/melee-client";
 import { addTournament, isTournamentIngested, removeTournament, updateTournamentTier, getCachedAspects, setCachedAspects, loadAliasMap, flagNewPlayers, setTournamentNacional, setTournamentCountsForNacional } from "@/lib/store";
+import { query } from "@/lib/db";
 import { MatchResult, PlacementResult, EventTier, classifyEvent } from "@/lib/elo";
 import { requireAdminPin } from "@/lib/admin-auth";
 import { revalidateAllData } from "@/lib/revalidate";
@@ -201,6 +202,13 @@ export async function POST(request: NextRequest) {
       placements,
       decklistEntries,
       players
+    );
+
+    await query(
+      `INSERT INTO scraped_data (tournament_id, raw_json, scraped_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (tournament_id) DO UPDATE SET raw_json = EXCLUDED.raw_json, scraped_at = EXCLUDED.scraped_at`,
+      [tournamentId, JSON.stringify({ standings, name: tournament.Name }), new Date().toISOString()]
     );
 
     revalidateAllData();
