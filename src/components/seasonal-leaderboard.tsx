@@ -89,11 +89,11 @@ export function SeasonalLeaderboard({
                   <Link
                     key={p.id}
                     href={`/player/${p.id}`}
-                    className="relative rounded-xl border border-border bg-surface overflow-hidden hover:border-gold/30 transition-colors group"
+                    className="relative rounded-xl border border-border bg-surface hover:border-gold/30 transition-colors group"
                   >
                     <div className="absolute top-2 right-3 z-10 text-2xl font-bold tabular-nums text-gold/70">{p.rating.toLocaleString()}</div>
                     {imgUrl && (
-                      <div className="h-16 overflow-hidden">
+                      <div className="h-16 overflow-hidden rounded-t-xl">
                         <img src={imgUrl} alt="" className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity" />
                         <div className="absolute inset-0 h-16 bg-gradient-to-t from-surface to-transparent" />
                       </div>
