@@ -1553,7 +1553,7 @@ export async function recomputeNacionalStandings(): Promise<void> {
   const qualifiedFromId = new Map<string, number>();
   const tournamentPlacements = new Map<number, { playerId: string; placement: number; tournamentName: string }[]>();
 
-  // First load placements from the placements table
+  // Load from placements table as fallback (API-ingested tournaments without scrape data)
   for (const r of placementRows) {
     const tid = r.tournament_id as number;
     if (!tournamentPlacements.has(tid)) tournamentPlacements.set(tid, []);
@@ -1564,13 +1564,9 @@ export async function recomputeNacionalStandings(): Promise<void> {
     });
   }
 
-  // Then supplement with full standings from scraped_data for tournaments
-  // that only have 1st place (kyber-only, no top cut detected)
+  // Override with full standings from scraped data (has all players, not just top cut)
   for (const r of scrapedRows) {
     const tid = r.tournament_id as number;
-    const existing = tournamentPlacements.get(tid);
-    if (existing && existing.length > 1) continue;
-
     try {
       const raw = JSON.parse(r.raw_json as string);
       const standings = raw.standings || [];
@@ -1592,8 +1588,8 @@ export async function recomputeNacionalStandings(): Promise<void> {
   }
 
   const tournamentOrder = [...tournamentPlacements.keys()].sort((a, b) => {
-    const dateA = scrapedRows.find(r => r.tournament_id === a)?.date as string ?? placementRows.find(r => r.tournament_id === a)?.date as string ?? "";
-    const dateB = scrapedRows.find(r => r.tournament_id === b)?.date as string ?? placementRows.find(r => r.tournament_id === b)?.date as string ?? "";
+    const dateA = scrapedRows.find(r => r.tournament_id === a)?.date as string ?? "";
+    const dateB = scrapedRows.find(r => r.tournament_id === b)?.date as string ?? "";
     return dateA.localeCompare(dateB);
   });
 
