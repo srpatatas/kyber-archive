@@ -1524,6 +1524,17 @@ export async function recomputeNacionalStandings(): Promise<void> {
     ORDER BY t.date ASC, p.placement ASC
   `, dateParams);
 
+  const { rows: scrapedRows } = await query(`
+    SELECT t.id as tournament_id, t.name as tournament_name, t.date, sd.raw_json
+    FROM tournaments t
+    JOIN scraped_data sd ON sd.tournament_id = t.id
+    ${dateFilter}
+    ORDER BY t.date ASC
+  `, dateParams);
+
+  const aliasMap = await loadAliasMap();
+  const resolveAlias = (key: string) => aliasMap.get(key) ?? key;
+
   const { rows: playerRows } = await query("SELECT id, name, username FROM players");
   const playerMap = new Map(playerRows.map((r: Record<string, unknown>) => [r.id as string, { name: r.name as string, username: r.username as string }]));
 
@@ -1542,6 +1553,7 @@ export async function recomputeNacionalStandings(): Promise<void> {
   const qualifiedFromId = new Map<string, number>();
   const tournamentPlacements = new Map<number, { playerId: string; placement: number; tournamentName: string }[]>();
 
+  // First load placements from the placements table
   for (const r of placementRows) {
     const tid = r.tournament_id as number;
     if (!tournamentPlacements.has(tid)) tournamentPlacements.set(tid, []);
@@ -1552,7 +1564,38 @@ export async function recomputeNacionalStandings(): Promise<void> {
     });
   }
 
-  const tournamentOrder = [...new Set(placementRows.map((r: Record<string, unknown>) => r.tournament_id as number))];
+  // Then supplement with full standings from scraped_data for tournaments
+  // that only have 1st place (kyber-only, no top cut detected)
+  for (const r of scrapedRows) {
+    const tid = r.tournament_id as number;
+    const existing = tournamentPlacements.get(tid);
+    if (existing && existing.length > 1) continue;
+
+    try {
+      const raw = JSON.parse(r.raw_json as string);
+      const standings = raw.standings || [];
+      const fullStandings: { playerId: string; placement: number; tournamentName: string }[] = [];
+      for (const s of standings) {
+        const player = (s.Team?.Players as Record<string, unknown>[] | undefined)?.[0];
+        if (!player) continue;
+        const pid = resolveAlias(((player.Username || player.DisplayName) as string).toLowerCase());
+        fullStandings.push({
+          playerId: pid,
+          placement: s.Rank as number,
+          tournamentName: r.tournament_name as string,
+        });
+      }
+      if (fullStandings.length > 0) {
+        tournamentPlacements.set(tid, fullStandings);
+      }
+    } catch {}
+  }
+
+  const tournamentOrder = [...tournamentPlacements.keys()].sort((a, b) => {
+    const dateA = scrapedRows.find(r => r.tournament_id === a)?.date as string ?? placementRows.find(r => r.tournament_id === a)?.date as string ?? "";
+    const dateB = scrapedRows.find(r => r.tournament_id === b)?.date as string ?? placementRows.find(r => r.tournament_id === b)?.date as string ?? "";
+    return dateA.localeCompare(dateB);
+  });
 
   for (const tid of tournamentOrder) {
     const placements = tournamentPlacements.get(tid);
