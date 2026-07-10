@@ -115,13 +115,13 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-medium uppercase tracking-wider text-muted">Player</span>
               </th>
-              <th className="px-4 py-3 text-right">
+              <th className="px-4 py-3 text-center">
                 <SortHeader label="KA Rating" sortKeyName="rating" />
               </th>
               <th className="px-4 py-3 text-center">
                 <SortHeader label="Kybers" sortKeyName="tournamentWins" />
               </th>
-              <th className="px-4 py-3 text-right">
+              <th className="px-4 py-3 text-center">
                 <SortHeader label="Win Rate %" sortKeyName="winRate" />
               </th>
               <th className="px-4 py-3 text-center">
@@ -186,7 +186,7 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                       </div>
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-center">
                     <span className="text-lg font-bold text-gold tabular-nums">
                       {player.rating.toLocaleString()}
                     </span>
@@ -196,9 +196,9 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                       {player.tournamentWins > 0 ? player.tournamentWins : "-"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-center">
                     <span className={`text-sm font-bold tabular-nums ${winRate >= 55 ? "text-emerald-400" : winRate <= 45 ? "text-red-400" : "text-foreground"}`}>{winRate}%</span>
-                    <p className="text-[10px] tabular-nums text-muted mt-0.5 text-right">
+                    <p className="text-[10px] tabular-nums text-muted mt-0.5">
                       {player.wins}-{player.losses}-{player.draws}
                     </p>
                   </td>
