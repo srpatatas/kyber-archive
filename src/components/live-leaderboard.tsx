@@ -199,7 +199,7 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                           style={{ width: `${winRate}%` }}
                         />
                       </div>
-                      <span className="text-sm font-bold tabular-nums">{winRate}%</span>
+                      <span className={`text-sm font-bold tabular-nums ${winRate >= 55 ? "text-emerald-400" : winRate <= 45 ? "text-red-400" : "text-foreground"}`}>{winRate}%</span>
                     </div>
                     <p className="text-[10px] tabular-nums text-muted mt-0.5 text-right">
                       {player.wins}-{player.losses}-{player.draws}
@@ -208,7 +208,7 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                   <td className="px-4 py-3 text-center">
                     {player.top8s > 0 ? (
                       <div>
-                        <span className="text-sm font-bold tabular-nums text-foreground">
+                        <span className={`text-sm font-bold tabular-nums ${Math.round((player.top8s / player.tournamentCount) * 100) >= 40 ? "text-emerald-400" : "text-foreground"}`}>
                           {Math.round((player.top8s / player.tournamentCount) * 100)}%
                         </span>
                         <p className="text-[10px] tabular-nums text-muted">
