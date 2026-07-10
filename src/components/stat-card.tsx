@@ -12,7 +12,7 @@ export function StatCard({
       <p className="text-xs font-medium uppercase tracking-wider text-muted">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-bold text-gold">{value}</p>
+      <p className="mt-1 text-2xl font-bold text-gold truncate">{value}</p>
       {subtext && <p className="mt-0.5 text-xs text-muted">{subtext}</p>}
     </div>
   );
