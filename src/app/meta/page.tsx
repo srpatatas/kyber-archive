@@ -31,6 +31,7 @@ interface MetaStats {
     conversionRate: number;
     kyberCount: number;
     kyberScore: number;
+    score: number;
     kyberTournaments: { name: string; id: number; tier: string }[];
     decklists: {
       playerUsername: string;
@@ -65,6 +66,7 @@ interface MetaStats {
   totalDecklists: number;
   totalTournaments: number;
   uniqueLeaders: number;
+  previousDeckOrder?: string[];
 }
 
 export default function MetaPage() {
@@ -133,7 +135,7 @@ export default function MetaPage() {
 
             <div className="flex flex-col lg:flex-row gap-6 mb-6">
               <div className="flex-1 min-w-0">
-                <MetaOverview decks={stats.decks} />
+                <MetaOverview decks={stats.decks} previousDeckOrder={stats.previousDeckOrder} />
               </div>
               <div className="hidden lg:block w-52 flex-shrink-0">
                 <div className="sticky top-20 rounded-xl border border-border bg-surface p-4">
