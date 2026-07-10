@@ -6,7 +6,7 @@ import { PlayerRating } from "@/lib/elo";
 import { ASPECT_COLORS, ASPECT_ABBREV } from "@/lib/aspects";
 import { RankBadge } from "./rank-badge";
 
-type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentCount";
+type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentWins";
 
 type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number };
 
@@ -58,8 +58,8 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
           const bRate = b.tournamentCount > 0 ? b.top8s / b.tournamentCount : 0;
           cmp = bRate - aRate;
           break;
-        case "tournamentCount":
-          cmp = b.tournamentCount - a.tournamentCount;
+        case "tournamentWins":
+          cmp = b.tournamentWins - a.tournamentWins;
           break;
       }
       return sortAsc ? -cmp : cmp;
@@ -118,14 +118,14 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
               <th className="px-4 py-3 text-right">
                 <SortHeader label="KA Rating" sortKeyName="rating" />
               </th>
+              <th className="px-4 py-3 text-center">
+                <SortHeader label="Kybers" sortKeyName="tournamentWins" />
+              </th>
               <th className="px-4 py-3 text-right">
                 <SortHeader label="Win Rate %" sortKeyName="winRate" />
               </th>
               <th className="px-4 py-3 text-center">
                 <SortHeader label="Top Cut %" sortKeyName="top8s" />
-              </th>
-              <th className="px-4 py-3 text-center">
-                <SortHeader label="Events" sortKeyName="tournamentCount" />
               </th>
             </tr>
           </thead>
@@ -191,6 +191,11 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                       {player.rating.toLocaleString()}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-sm font-bold tabular-nums ${player.tournamentWins > 0 ? "text-gold" : "text-muted"}`}>
+                      {player.tournamentWins > 0 ? player.tournamentWins : "-"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-surface-lighter sm:block">
@@ -218,11 +223,6 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                     ) : (
                       <span className="text-sm text-muted">-</span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="text-sm tabular-nums text-muted">
-                      {player.tournamentCount}
-                    </span>
                   </td>
                 </tr>
               );
