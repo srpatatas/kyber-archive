@@ -382,7 +382,7 @@ export async function recalculateElo(): Promise<void> {
 const YEAR_1_START = "2025-07-28";
 const YEAR_1_END = "2026-07-28";
 
-async function snapshotCurrentRanks(): Promise<void> {
+export async function snapshotCurrentRanks(): Promise<void> {
   const year1 = await getSeasonLeaderboard(YEAR_1_START, YEAR_1_END);
   await query("DELETE FROM rank_snapshots WHERE snapshot_key = 'year1'");
   for (const p of year1) {
