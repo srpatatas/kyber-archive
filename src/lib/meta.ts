@@ -75,11 +75,13 @@ function periodDateRange(period: MetaPeriod): { startDate: string | null; endDat
   return { startDate: periodDate > ROTATION_DATE ? periodDate : ROTATION_DATE, endDate: null };
 }
 
-export async function recomputeMetaStats(): Promise<void> {
+export async function recomputeMetaStats(snapshot = false): Promise<void> {
   const periods: MetaPeriod[] = ["3m", "6m", "pre"];
   for (const period of periods) {
     const previous = await getMetaStats(period);
-    const previousDeckOrder = previous.decks.map((d) => `${d.leader}||${d.baseKey}`);
+    const previousDeckOrder = snapshot
+      ? previous.decks.map((d) => `${d.leader}||${d.baseKey}`)
+      : previous.previousDeckOrder ?? [];
 
     const { startDate, endDate } = periodDateRange(period);
     const stats = await computeMetaStats(startDate, endDate);
