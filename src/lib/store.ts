@@ -696,6 +696,21 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     }
   }
 
+  const { rows: kyberRows } = await query(`
+    SELECT p.player_id, t.event_tier
+    FROM placements p
+    JOIN tournaments t ON t.id = p.tournament_id
+    WHERE p.placement = 1 AND t.date >= $1 AND t.date < $2
+    ORDER BY t.date
+  `, [startDate, endDate]);
+
+  const kybersByPlayer = new Map<string, string[]>();
+  for (const r of kyberRows as Record<string, unknown>[]) {
+    const pid = r.player_id as string;
+    if (!kybersByPlayer.has(pid)) kybersByPlayer.set(pid, []);
+    kybersByPlayer.get(pid)!.push(r.event_tier as string);
+  }
+
   return eligible.map((r, i) => {
     const decks = decksByPlayer.get(r.id);
     let mainLeader: string | null = null;
@@ -714,6 +729,7 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
       rank: i + 1,
       mainLeader,
       aspects,
+      kyberTiers: kybersByPlayer.get(r.id) ?? [],
     };
   });
 }

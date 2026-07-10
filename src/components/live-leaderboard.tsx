@@ -6,10 +6,11 @@ import { PlayerRating } from "@/lib/elo";
 import { ASPECT_COLORS, ASPECT_ABBREV } from "@/lib/aspects";
 import { RankBadge } from "./rank-badge";
 import { KyberCrystal } from "./kyber-crystal";
+import { getTierConfig } from "@/lib/tiers";
 
 type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentWins";
 
-type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number };
+type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number; kyberTiers?: string[] };
 
 function getWinRate(p: RankedPlayer): number {
   const total = p.wins + p.losses + p.draws;
@@ -193,12 +194,18 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {player.tournamentWins > 0 ? (
+                    {player.kyberTiers && player.kyberTiers.length > 0 ? (
+                      <div className="flex items-center justify-center gap-0.5">
+                        {player.kyberTiers.slice(0, 5).map((tier, j) => (
+                          <KyberCrystal key={j} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
+                        ))}
+                        {player.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{player.kyberTiers.length - 5}</span>}
+                      </div>
+                    ) : player.tournamentWins > 0 ? (
                       <div className="flex items-center justify-center gap-0.5">
                         {Array.from({ length: Math.min(player.tournamentWins, 5) }).map((_, j) => (
                           <KyberCrystal key={j} color="#d4a017" tier="kyber" size="sm" />
                         ))}
-                        {player.tournamentWins > 5 && <span className="text-[10px] text-gold ml-0.5">+{player.tournamentWins - 5}</span>}
                       </div>
                     ) : (
                       <span className="text-sm text-muted">-</span>
