@@ -187,9 +187,9 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                                 {player.username}
                               </p>
                               {player.mainLeader ? (
-                                <p className="text-[10px] text-muted truncate">{player.mainLeader}</p>
+                                <p className="text-[10px] text-muted truncate">{player.mainLeader} · {totalGames} games</p>
                               ) : (
-                                <p className="text-xs text-muted">{player.name}</p>
+                                <p className="text-xs text-muted">{player.name} · {totalGames} games</p>
                               )}
                             </div>
                           </>
