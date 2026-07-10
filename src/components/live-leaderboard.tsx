@@ -7,6 +7,7 @@ import { ASPECT_COLORS, ASPECT_ABBREV } from "@/lib/aspects";
 import { RankBadge } from "./rank-badge";
 import { KyberCrystal } from "./kyber-crystal";
 import { getTierConfig } from "@/lib/tiers";
+import { getLeaderAspects } from "@/lib/card-images";
 
 type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentWins";
 
@@ -165,9 +166,15 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                             </span>
                           </span>
                         )}
-                        {player.aspects && player.aspects.length > 0 && (
+                        {(() => {
+                          const aspects = player.aspects && player.aspects.length > 0
+                            ? player.aspects
+                            : player.mainLeader
+                            ? getLeaderAspects(player.mainLeader.split(" - ")[0]).map(a => a.toLowerCase())
+                            : [];
+                          return aspects.length > 0 && (
                           <span className="inline-flex gap-0.5">
-                            {player.aspects.map((a: string) => {
+                            {aspects.map((a: string) => {
                               const isVillainy = a === "villainy";
                               return (
                                 <span
@@ -184,7 +191,8 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                               );
                             })}
                           </span>
-                        )}
+                        );
+                        })()}
                       </div>
                     </Link>
                   </td>
