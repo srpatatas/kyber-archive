@@ -72,19 +72,16 @@ export function SeasonalLeaderboard({
                 const leaderAspects = leaderName ? getLeaderAspects(leaderName) : [];
                 const playerAspects = p.aspects ?? [];
                 const aspectSource = leaderAspects.length > 0 ? leaderAspects : playerAspects;
-                const colorStops = aspectSource
-                  .filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy")
+                const leaderColorAspects = aspectSource
+                  .filter((a) => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy");
+                const leaderStops = (leaderColorAspects.length > 0 ? leaderColorAspects : aspectSource)
                   .map((a) => visibleColor(ASPECT_COLORS[a.toLowerCase()]))
                   .filter(Boolean) as string[];
-                if (colorStops.length === 0) {
-                  const fallback = aspectSource[0];
-                  if (fallback) colorStops.push(visibleColor(ASPECT_COLORS[fallback.toLowerCase()]) ?? "#666");
-                  else colorStops.push("#666");
-                }
                 const baseColor = baseName ? getBaseAspectColor(baseName) ?? "#666" : "#666";
-                const allStops = [...colorStops, baseColor].filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
-                const nameStyle = allStops.length >= 2
-                  ? { backgroundImage: `linear-gradient(to right, ${allStops.join(", ")})`, WebkitBackgroundClip: "text" as const, WebkitTextFillColor: "transparent" }
+                const allStops = [...(leaderStops.length > 0 ? leaderStops : ["#666"]), baseColor]
+                  .filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
+                const nameStyle: React.CSSProperties = allStops.length >= 2
+                  ? { backgroundImage: `linear-gradient(to right, ${allStops.join(", ")})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }
                   : { color: allStops[0] ?? "#666" };
 
                 return (
