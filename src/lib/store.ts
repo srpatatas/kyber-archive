@@ -659,13 +659,16 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     })
     .sort((a, b) => b.rating - a.rating);
 
+  const ROTATION_DATE = "2026-03-13";
+  const deckStartDate = startDate < ROTATION_DATE && endDate > ROTATION_DATE ? ROTATION_DATE : startDate;
+
   const { rows: deckRows } = await query(`
     SELECT d.player_id, d.leader, d.base, ac.aspects, t.date
     FROM decklists d
     JOIN tournaments t ON t.id = d.tournament_id
     LEFT JOIN aspect_cache ac ON ac.deck_key = d.leader || '||' || d.base
     WHERE t.date >= $1 AND t.date < $2
-  `, [startDate, endDate]);
+  `, [deckStartDate, endDate]);
 
   const decksByPlayer = new Map<string, Map<string, { display: string; aspects: string | null; count: number; maxDate: string }>>();
   for (const d of deckRows as Record<string, unknown>[]) {
