@@ -80,8 +80,9 @@ export function SeasonalLeaderboard({
                 const baseColor = baseName ? getBaseAspectColor(baseName) ?? "#666" : "#666";
                 const allStops = [...(leaderStops.length > 0 ? leaderStops : ["#666"]), baseColor]
                   .filter((c, idx, arr) => idx === 0 || c !== arr[idx - 1]);
-                const nameStyle: React.CSSProperties = allStops.length >= 2
-                  ? { backgroundImage: `linear-gradient(to right, ${allStops.join(", ")})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }
+                const hasGradient = allStops.length >= 2;
+                const nameStyle: React.CSSProperties = hasGradient
+                  ? { backgroundImage: `linear-gradient(to right, ${allStops.join(", ")})` }
                   : { color: allStops[0] ?? "#666" };
 
                 return (
@@ -101,9 +102,9 @@ export function SeasonalLeaderboard({
                       <div className="flex items-center gap-3">
                         <div className="text-3xl">{medals[i]}</div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-sm truncate" style={nameStyle}>
+                          <span style={hasGradient ? { fontWeight: "bold", fontSize: "0.875rem", background: `linear-gradient(to right, ${allStops.join(", ")})`, WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" } : { fontWeight: "bold", fontSize: "0.875rem", ...nameStyle }}>
                             {p.username}
-                          </p>
+                          </span>
                           {p.mainLeader && (
                             <p className="text-[10px] text-muted truncate">{p.mainLeader}</p>
                           )}
