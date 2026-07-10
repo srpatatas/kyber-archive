@@ -12,7 +12,7 @@ import { normalizeBase } from "@/lib/base-normalization";
 
 type SortKey = "rank" | "rating" | "winRate" | "wins" | "top8s" | "tournamentWins";
 
-type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number; kyberTiers?: string[] };
+type RankedPlayer = PlayerRating & { rank: number; aspects?: string[]; mainLeader?: string | null; ratingDelta?: number; kyberTiers?: { tier: string; name: string; id: number }[] };
 
 function getWinRate(p: RankedPlayer): number {
   const total = p.wins + p.losses + p.draws;
@@ -204,14 +204,34 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                   </td>
                   <td className="px-4 py-3 text-center">
                     {player.kyberTiers && player.kyberTiers.length > 0 ? (
-                      <div className="flex items-center justify-center gap-0.5">
+                      <div className="relative group/kyber inline-flex items-center justify-center gap-0.5">
                         {[...player.kyberTiers].sort((a, b) => {
                           const order: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
-                          return (order[a] ?? 9) - (order[b] ?? 9);
-                        }).slice(0, 5).map((tier, j) => (
-                          <KyberCrystal key={j} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
+                          return (order[a.tier] ?? 9) - (order[b.tier] ?? 9);
+                        }).slice(0, 5).map((k, j) => (
+                          <KyberCrystal key={j} color={getTierConfig(k.tier).crystalColor} tier={k.tier} size="sm" />
                         ))}
                         {player.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{player.kyberTiers.length - 5}</span>}
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full z-50 hidden group-hover/kyber:block pb-1">
+                          <div className="w-52 rounded-lg border border-gold/30 bg-surface p-2 shadow-xl space-y-1.5">
+                            {player.kyberTiers.map((k, j) => {
+                              const tier = getTierConfig(k.tier);
+                              return (
+                                <Link
+                                  key={j}
+                                  href={`/tournament/${k.id}`}
+                                  className="flex items-center gap-2 hover:bg-gold/10 rounded px-1.5 py-1 transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <svg viewBox="0 0 20 32" className="w-3 h-5 flex-shrink-0">
+                                    <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill={tier.crystalColor} opacity="0.9" />
+                                  </svg>
+                                  <span className="text-[11px] text-foreground/80 truncate">{k.name}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     ) : player.tournamentWins > 0 ? (
                       <div className="flex items-center justify-center gap-0.5">

@@ -10,7 +10,7 @@ import { KyberCrystal } from "./kyber-crystal";
 import { getTierConfig } from "@/lib/tiers";
 import type { PlayerRating } from "@/lib/elo";
 
-type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[]; kyberTiers?: string[] };
+type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[]; kyberTiers?: { tier: string; name: string; id: number }[] };
 
 const TIER_ORDER: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
 
@@ -121,8 +121,8 @@ export function SeasonalLeaderboard({
                           <p className="text-[10px] text-muted uppercase">Kybers</p>
                           {p.kyberTiers && p.kyberTiers.length > 0 ? (
                             <div className="flex items-center justify-center gap-0.5 mt-1">
-                              {[...p.kyberTiers].sort((a, b) => (TIER_ORDER[a] ?? 9) - (TIER_ORDER[b] ?? 9)).slice(0, 5).map((tier, j) => (
-                                <KyberCrystal key={j} color={getTierConfig(tier).crystalColor} tier={tier} size="sm" />
+                              {[...p.kyberTiers].sort((a, b) => (TIER_ORDER[a.tier] ?? 9) - (TIER_ORDER[b.tier] ?? 9)).slice(0, 5).map((k, j) => (
+                                <KyberCrystal key={j} color={getTierConfig(k.tier).crystalColor} tier={k.tier} size="sm" />
                               ))}
                               {p.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{p.kyberTiers.length - 5}</span>}
                             </div>

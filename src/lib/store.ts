@@ -696,18 +696,22 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
   }
 
   const { rows: kyberRows } = await query(`
-    SELECT p.player_id, t.event_tier
+    SELECT p.player_id, t.event_tier, t.name as tournament_name, t.id as tournament_id
     FROM placements p
     JOIN tournaments t ON t.id = p.tournament_id
     WHERE p.placement = 1 AND t.date >= $1 AND t.date < $2
     ORDER BY t.date
   `, [startDate, endDate]);
 
-  const kybersByPlayer = new Map<string, string[]>();
+  const kybersByPlayer = new Map<string, { tier: string; name: string; id: number }[]>();
   for (const r of kyberRows as Record<string, unknown>[]) {
     const pid = r.player_id as string;
     if (!kybersByPlayer.has(pid)) kybersByPlayer.set(pid, []);
-    kybersByPlayer.get(pid)!.push(r.event_tier as string);
+    kybersByPlayer.get(pid)!.push({
+      tier: r.event_tier as string,
+      name: r.tournament_name as string,
+      id: r.tournament_id as number,
+    });
   }
 
   const postRotationDecks = hasRotation
