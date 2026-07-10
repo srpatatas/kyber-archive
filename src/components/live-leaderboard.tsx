@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { PlayerRating } from "@/lib/elo";
 import { ASPECT_COLORS, ASPECT_ABBREV } from "@/lib/aspects";
@@ -32,6 +33,7 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortAsc, setSortAsc] = useState(false);
   const [search, setSearch] = useState("");
+  const [kyberHover, setKyberHover] = useState<{ kybers: { tier: string; name: string; id: number }[]; x: number; y: number } | null>(null);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -204,7 +206,18 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                   </td>
                   <td className="px-4 py-3 text-center">
                     {player.kyberTiers && player.kyberTiers.length > 0 ? (
-                      <div className="relative group/kyber inline-flex items-center justify-center gap-0.5">
+                      <div
+                        className="inline-flex items-center justify-center gap-0.5 cursor-default"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setKyberHover({ kybers: player.kyberTiers!, x: rect.left + rect.width / 2, y: rect.bottom });
+                        }}
+                        onMouseLeave={(e) => {
+                          const related = e.relatedTarget as HTMLElement | null;
+                          if (related?.closest?.("[data-kyber-popup]")) return;
+                          setKyberHover(null);
+                        }}
+                      >
                         {[...player.kyberTiers].sort((a, b) => {
                           const order: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
                           return (order[a.tier] ?? 9) - (order[b.tier] ?? 9);
@@ -212,26 +225,6 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                           <KyberCrystal key={j} color={getTierConfig(k.tier).crystalColor} tier={k.tier} size="sm" />
                         ))}
                         {player.kyberTiers.length > 5 && <span className="text-[10px] text-gold ml-0.5">+{player.kyberTiers.length - 5}</span>}
-                        <div className="absolute left-1/2 -translate-x-1/2 top-full z-50 hidden group-hover/kyber:block pt-1">
-                          <div className="w-52 rounded-lg border border-gold/30 bg-background p-2 shadow-xl space-y-1.5">
-                            {player.kyberTiers.map((k, j) => {
-                              const tier = getTierConfig(k.tier);
-                              return (
-                                <Link
-                                  key={j}
-                                  href={`/tournament/${k.id}`}
-                                  className="flex items-center gap-2 hover:bg-gold/10 rounded px-1.5 py-1 transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <svg viewBox="0 0 20 32" className="w-3 h-5 flex-shrink-0">
-                                    <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill={tier.crystalColor} opacity="0.9" />
-                                  </svg>
-                                  <span className="text-[11px] text-foreground/80 truncate">{k.name}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </div>
                       </div>
                     ) : player.tournamentWins > 0 ? (
                       <div className="flex items-center justify-center gap-0.5">
@@ -269,6 +262,34 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
           </tbody>
         </table>
       </div>
+
+      {kyberHover && typeof document !== "undefined" && createPortal(
+        <div
+          data-kyber-popup
+          className="fixed z-[200] pointer-events-auto pt-1"
+          style={{ left: kyberHover.x, top: kyberHover.y, transform: "translateX(-50%)" }}
+          onMouseLeave={() => setKyberHover(null)}
+        >
+          <div className="w-52 rounded-lg border border-gold/30 p-2 shadow-xl space-y-1.5" style={{ backgroundColor: "#1c1917" }}>
+            {kyberHover.kybers.map((k, j) => {
+              const tier = getTierConfig(k.tier);
+              return (
+                <Link
+                  key={j}
+                  href={`/tournament/${k.id}`}
+                  className="flex items-center gap-2 hover:bg-gold/10 rounded px-1.5 py-1 transition-colors"
+                >
+                  <svg viewBox="0 0 20 32" className="w-3 h-5 flex-shrink-0">
+                    <path d="M10 0L17 8V20L10 32L3 20V8L10 0Z" fill={tier.crystalColor} opacity="0.9" />
+                  </svg>
+                  <span className="text-[11px] text-foreground/80 truncate">{k.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {sorted.length === 0 && (
         <div className="py-12 text-center text-muted">
