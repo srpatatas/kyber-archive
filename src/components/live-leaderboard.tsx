@@ -197,15 +197,7 @@ export function LiveLeaderboard({ players, previousRanks }: { players: RankedPla
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-surface-lighter sm:block">
-                        <div
-                          className="h-full rounded-full bg-gold"
-                          style={{ width: `${winRate}%` }}
-                        />
-                      </div>
-                      <span className={`text-sm font-bold tabular-nums ${winRate >= 55 ? "text-emerald-400" : winRate <= 45 ? "text-red-400" : "text-foreground"}`}>{winRate}%</span>
-                    </div>
+                    <span className={`text-sm font-bold tabular-nums ${winRate >= 55 ? "text-emerald-400" : winRate <= 45 ? "text-red-400" : "text-foreground"}`}>{winRate}%</span>
                     <p className="text-[10px] tabular-nums text-muted mt-0.5 text-right">
                       {player.wins}-{player.losses}-{player.draws}
                     </p>
