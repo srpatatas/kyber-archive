@@ -301,6 +301,14 @@ export function computeEloTrial(matches: MatchResult[]): Map<string, PlayerRatin
       tournamentSnapshots.set(currentTournamentId, snapshot);
     }
 
+    if (match.player1Id === "__bye__" || match.player2Id === "__bye__") {
+      const byeWinner = match.player1Id === "__bye__" ? getOrCreate(match.player2Id) : getOrCreate(match.player1Id);
+      byeWinner.wins++;
+      byeWinner.streak = Math.max(0, byeWinner.streak) + 1;
+      byeWinner.lastActive = match.date;
+      continue;
+    }
+
     const p1 = getOrCreate(match.player1Id);
     const p2 = getOrCreate(match.player2Id);
 
@@ -409,6 +417,14 @@ export function computeEloTrialSizePlacements(matches: MatchResult[], placements
       const snapshot = new Map<string, number>();
       for (const [id, p] of ratings) snapshot.set(id, p.rating);
       tournamentSnapshots.set(currentTournamentId, snapshot);
+    }
+
+    if (match.player1Id === "__bye__" || match.player2Id === "__bye__") {
+      const byeWinner = match.player1Id === "__bye__" ? getOrCreate(match.player2Id) : getOrCreate(match.player1Id);
+      byeWinner.wins++;
+      byeWinner.streak = Math.max(0, byeWinner.streak) + 1;
+      byeWinner.lastActive = match.date;
+      continue;
     }
 
     const p1 = getOrCreate(match.player1Id);

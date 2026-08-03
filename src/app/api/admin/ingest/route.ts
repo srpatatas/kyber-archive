@@ -61,7 +61,21 @@ export async function POST(request: NextRequest) {
       const matches = await getRoundMatches(round.ID);
 
       for (const match of matches) {
-        if (match.ByeReason != null || match.GhostMatch || !match.HasResult || match.Competitors.length < 2) continue;
+        if (match.GhostMatch || !match.HasResult) continue;
+
+        // Handle byes — count as a win for the single competitor
+        if (match.Competitors.length < 2 || match.ByeReason != null) {
+          const c = match.Competitors?.[0];
+          if (!c?.Team?.Players?.length) continue;
+          const p = c.Team.Players[0];
+          const pKey = resolve((p.Username || p.DisplayName).toLowerCase());
+          players[pKey] = { id: pKey, meleeId: p.ID, name: p.Name || p.DisplayName, username: p.Username || p.DisplayName };
+          allMatches.push({
+            player1Id: pKey, player2Id: "__bye__", player1Wins: 2, player2Wins: 0,
+            tournamentId, tournamentName: tournament.Name, roundName: round.Name, date: tournamentDate, eventTier: pendingTier,
+          });
+          continue;
+        }
 
         const c1 = match.Competitors[0];
         const c2 = match.Competitors[1];
