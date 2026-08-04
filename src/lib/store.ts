@@ -1531,12 +1531,10 @@ export async function recomputeNacionalStandings(): Promise<void> {
     SELECT sub.player_id, COUNT(*) as match_count, COUNT(DISTINCT sub.tournament_id) as tournament_count
     FROM (
       SELECT player1_id as player_id, m.tournament_id
-      FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter}
-      WHERE m.player1_id != '__bye__'
+      FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter} AND m.player1_id != '__bye__'
       UNION ALL
       SELECT player2_id as player_id, m.tournament_id
-      FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter}
-      WHERE m.player2_id != '__bye__'
+      FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter} AND m.player2_id != '__bye__'
     ) sub
     GROUP BY sub.player_id
   `, dateParams);
