@@ -3,9 +3,23 @@
 import { useState } from "react";
 import { NacionalLeaderboard } from "@/components/nacional-leaderboard";
 
+const AUTH_KEY = "ka_nacional_auth";
+const AUTH_TTL = 30 * 24 * 60 * 60 * 1000;
+
+function getSavedAuth(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return false;
+    const { expiry } = JSON.parse(raw);
+    if (Date.now() > expiry) { localStorage.removeItem(AUTH_KEY); return false; }
+    return true;
+  } catch { return false; }
+}
+
 export default function NacionalPage() {
   const [password, setPassword] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticated, setAuthenticated] = useState(getSavedAuth());
   const [error, setError] = useState(false);
 
   if (!authenticated) {
@@ -23,6 +37,7 @@ export default function NacionalPage() {
             onSubmit={(e) => {
               e.preventDefault();
               if (password.toUpperCase() === "ORDER66") {
+                localStorage.setItem(AUTH_KEY, JSON.stringify({ expiry: Date.now() + AUTH_TTL }));
                 setAuthenticated(true);
               } else {
                 setError(true);
