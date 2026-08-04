@@ -46,9 +46,28 @@ interface Toast {
 
 type IngestMode = "api" | "scrape";
 
+const AUTH_KEY = "ka_admin_auth";
+const AUTH_TTL = 30 * 24 * 60 * 60 * 1000;
+
+function getSavedAuth(): { pin: string; authenticated: boolean } {
+  if (typeof window === "undefined") return { pin: "", authenticated: false };
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return { pin: "", authenticated: false };
+    const { pin, expiry } = JSON.parse(raw);
+    if (Date.now() > expiry) { localStorage.removeItem(AUTH_KEY); return { pin: "", authenticated: false }; }
+    return { pin, authenticated: true };
+  } catch { return { pin: "", authenticated: false }; }
+}
+
+function saveAuth(pin: string) {
+  localStorage.setItem(AUTH_KEY, JSON.stringify({ pin, expiry: Date.now() + AUTH_TTL }));
+}
+
 export default function AdminPage() {
-  const [pin, setPin] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
+  const saved = getSavedAuth();
+  const [pin, setPin] = useState(saved.pin);
+  const [authenticated, setAuthenticated] = useState(saved.authenticated);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<IngestMode>("api");
@@ -143,6 +162,7 @@ export default function AdminPage() {
                 headers: { "x-admin-pin": pin },
               });
               if (res.ok) {
+                saveAuth(pin);
                 setAuthenticated(true);
               } else {
                 setPinError(true);
