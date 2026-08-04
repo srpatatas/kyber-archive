@@ -1066,10 +1066,10 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
 
   const { rows: matchRows } = await query(`
     SELECT m.round_name, m.player1_id, m.player2_id, m.player1_wins, m.player2_wins,
-           p1.username as p1_username, p2.username as p2_username
+           p1.username as p1_username, COALESCE(p2.username, 'BYE') as p2_username
     FROM matches m
     JOIN players p1 ON p1.id = m.player1_id
-    JOIN players p2 ON p2.id = m.player2_id
+    LEFT JOIN players p2 ON p2.id = m.player2_id
     WHERE m.tournament_id = $1
     ORDER BY m.id
   `, [id]);
@@ -1092,11 +1092,17 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
 
   const playerStats = new Map<string, { wins: number; losses: number; draws: number }>();
   for (const m of matchRows as Record<string, unknown>[]) {
-    for (const pid of [m.player1_id as string, m.player2_id as string]) {
-      if (!playerStats.has(pid)) playerStats.set(pid, { wins: 0, losses: 0, draws: 0 });
+    const p1 = m.player1_id as string;
+    const p2 = m.player2_id as string;
+    if (p1 !== "__bye__") { if (!playerStats.has(p1)) playerStats.set(p1, { wins: 0, losses: 0, draws: 0 }); }
+    if (p2 !== "__bye__") { if (!playerStats.has(p2)) playerStats.set(p2, { wins: 0, losses: 0, draws: 0 }); }
+    if (p1 === "__bye__" || p2 === "__bye__") {
+      const real = p1 === "__bye__" ? p2 : p1;
+      playerStats.get(real)!.wins++;
+      continue;
     }
-    const s1 = playerStats.get(m.player1_id as string)!;
-    const s2 = playerStats.get(m.player2_id as string)!;
+    const s1 = playerStats.get(p1)!;
+    const s2 = playerStats.get(p2)!;
     if ((m.player1_wins as number) > (m.player2_wins as number)) { s1.wins++; s2.losses++; }
     else if ((m.player2_wins as number) > (m.player1_wins as number)) { s2.wins++; s1.losses++; }
     else { s1.draws++; s2.draws++; }
