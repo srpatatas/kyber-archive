@@ -1532,9 +1532,11 @@ export async function recomputeNacionalStandings(): Promise<void> {
     FROM (
       SELECT player1_id as player_id, m.tournament_id
       FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter}
+      WHERE m.player1_id != '__bye__'
       UNION ALL
       SELECT player2_id as player_id, m.tournament_id
       FROM matches m JOIN tournaments t ON t.id = m.tournament_id ${dateFilter}
+      WHERE m.player2_id != '__bye__'
     ) sub
     GROUP BY sub.player_id
   `, dateParams);
