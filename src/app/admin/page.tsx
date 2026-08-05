@@ -36,6 +36,14 @@ interface IngestResult {
   matchesIngested?: number;
   playersFound?: number;
   eventTier?: EventTier;
+  dryRun?: boolean;
+  elapsed?: string;
+  matchCount?: number;
+  playerCount?: number;
+  standingsCount?: number;
+  byeCount?: number;
+  roundNames?: string[];
+  topStandings?: { rank: number; player: string; decklist: string | null }[];
 }
 
 interface Toast {
@@ -204,21 +212,36 @@ export default function AdminPage() {
 
     if (mode === "scrape") {
       try {
-        const res = await adminFetch("/api/admin/scrape", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: url.trim(), eventTier: scrapeTier }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          setResult(null);
-          pollScrapeStatus();
+        const isLocal = typeof window !== "undefined" && window.location.hostname === "localhost";
+        if (isLocal) {
+          const res = await adminFetch("/api/admin/scrape", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: url.trim(), eventTier: scrapeTier }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            setResult(null);
+            pollScrapeStatus();
+          } else {
+            setResult(data);
+            setLoading(false);
+          }
         } else {
+          const res = await adminFetch("/api/admin/scrape-prod", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: url.trim(), eventTier: scrapeTier, dryRun: true }),
+          });
+          const data = await res.json();
           setResult(data);
+          if (data.success) {
+            showToast(`Dry run: ${data.tournament} — ${data.matchCount} matches, ${data.standingsCount} standings (${data.elapsed})`);
+          }
           setLoading(false);
         }
       } catch {
-        setResult({ error: "Network error — is the server running?" });
+        setResult({ error: "Network error" });
         setLoading(false);
       }
     } else {
@@ -508,32 +531,30 @@ export default function AdminPage() {
         </div>
 
         <form onSubmit={handleIngest} className="mb-8 space-y-3">
-          {typeof window !== "undefined" && window.location.hostname === "localhost" && (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setMode("api")}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  mode === "api"
-                    ? "border-gold/40 bg-gold/10 text-gold"
-                    : "border-border bg-surface text-muted hover:text-foreground"
-                }`}
-              >
-                API (with access)
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("scrape")}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  mode === "scrape"
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                    : "border-border bg-surface text-muted hover:text-foreground"
-                }`}
-              >
-                Scrape (no access needed)
-              </button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setMode("api")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === "api"
+                  ? "border-gold/40 bg-gold/10 text-gold"
+                  : "border-border bg-surface text-muted hover:text-foreground"
+              }`}
+            >
+              API (with access)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("scrape")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === "scrape"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                  : "border-border bg-surface text-muted hover:text-foreground"
+              }`}
+            >
+              Scrape (no access needed)
+            </button>
+          </div>
           <div className="flex gap-3">
             <input
               type="text"
@@ -584,11 +605,33 @@ export default function AdminPage() {
           <div
             className={`mb-6 rounded-lg border p-4 ${
               result.success
-                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400"
+                ? result.dryRun
+                  ? "border-sky-500/30 bg-sky-500/5 text-sky-400"
+                  : "border-emerald-500/30 bg-emerald-500/5 text-emerald-400"
                 : "border-red-500/30 bg-red-500/5 text-red-400"
             }`}
           >
-            {result.success ? (
+            {result.dryRun ? (
+              <div>
+                <p className="font-medium">
+                  Dry Run: {result.tournament} ({result.elapsed})
+                </p>
+                <p className="mt-1 text-sm opacity-80">
+                  {result.matchCount} matches &middot; {result.playerCount} players &middot; {result.standingsCount} standings &middot; {result.byeCount} byes
+                </p>
+                <p className="mt-1 text-sm opacity-80">
+                  Rounds: {result.roundNames?.join(", ")}
+                </p>
+                {(result.topStandings?.length ?? 0) > 0 && (
+                  <div className="mt-2 text-xs opacity-70">
+                    <p className="font-medium mb-1">Top standings:</p>
+                    {result.topStandings?.map((s: { rank: number; player: string; decklist: string | null }, i: number) => (
+                      <p key={i}>#{s.rank} {s.player}{s.decklist ? ` — ${s.decklist}` : ""}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : result.success ? (
               <div>
                 <p className="font-medium">
                   Ingested: {result.tournament}
