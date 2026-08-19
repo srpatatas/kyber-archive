@@ -144,6 +144,26 @@ export async function ensureMigrated(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_matches_player2 ON matches(player2_id);
     CREATE INDEX IF NOT EXISTS idx_placements_tournament ON placements(tournament_id);
     CREATE INDEX IF NOT EXISTS idx_placements_player ON placements(player_id);
+
+    CREATE TABLE IF NOT EXISTS teams (
+      id SERIAL PRIMARY KEY,
+      tag TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS team_members (
+      id SERIAL PRIMARY KEY,
+      team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+      player_id TEXT NOT NULL,
+      joined_at TEXT NOT NULL,
+      left_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
+    CREATE INDEX IF NOT EXISTS idx_team_members_player ON team_members(player_id);
+
+    ALTER TABLE teams ADD COLUMN IF NOT EXISTS avatar_url TEXT;
   `);
   _migrated = true;
 }

@@ -455,6 +455,117 @@ export async function getSiteStats(): Promise<SiteStats> {
   };
 }
 
+// ── Admin-managed teams ──────────────────────────────────────────────
+
+export interface AdminTeamMember {
+  id: number;
+  playerId: string;
+  playerName: string;
+  playerUsername: string;
+  joinedAt: string;
+  leftAt: string | null;
+}
+
+export interface AdminTeam {
+  id: number;
+  tag: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  members: AdminTeamMember[];
+}
+
+export async function getAdminTeams(): Promise<AdminTeam[]> {
+  const { rows: teamRows } = await query("SELECT id, tag, display_name, avatar_url, created_at FROM teams ORDER BY tag");
+  const { rows: memberRows } = await query(`
+    SELECT tm.id, tm.team_id, tm.player_id, tm.joined_at, tm.left_at,
+           COALESCE(p.name, tm.player_id) as player_name,
+           COALESCE(p.username, tm.player_id) as player_username
+    FROM team_members tm
+    LEFT JOIN players p ON p.id = tm.player_id
+    ORDER BY tm.joined_at
+  `);
+
+  const membersByTeam = new Map<number, AdminTeamMember[]>();
+  for (const m of memberRows as Record<string, unknown>[]) {
+    const teamId = m.team_id as number;
+    if (!membersByTeam.has(teamId)) membersByTeam.set(teamId, []);
+    membersByTeam.get(teamId)!.push({
+      id: m.id as number,
+      playerId: m.player_id as string,
+      playerName: m.player_name as string,
+      playerUsername: m.player_username as string,
+      joinedAt: m.joined_at as string,
+      leftAt: m.left_at as string | null,
+    });
+  }
+
+  return teamRows.map((t: Record<string, unknown>) => ({
+    id: t.id as number,
+    tag: t.tag as string,
+    displayName: t.display_name as string,
+    avatarUrl: (t.avatar_url as string | null) ?? null,
+    createdAt: t.created_at as string,
+    members: membersByTeam.get(t.id as number) ?? [],
+  }));
+}
+
+export async function createTeam(tag: string, displayName: string): Promise<number> {
+  tag = tag.trim().toUpperCase();
+  displayName = displayName.trim();
+  if (!tag) throw new Error("Team tag is required");
+  if (!displayName) throw new Error("Display name is required");
+  const { rows } = await query(
+    "INSERT INTO teams (tag, display_name, created_at) VALUES ($1, $2, $3) RETURNING id",
+    [tag, displayName, new Date().toISOString()]
+  );
+  return rows[0].id as number;
+}
+
+export async function deleteTeam(id: number): Promise<boolean> {
+  const { rowCount } = await query("DELETE FROM teams WHERE id = $1", [id]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function addTeamMember(teamId: number, playerId: string, joinedAt: string): Promise<void> {
+  playerId = playerId.toLowerCase().trim();
+  if (!playerId) throw new Error("Player ID is required");
+  if (!joinedAt) throw new Error("Joined date is required");
+
+  // Verify player exists
+  const { rows: playerRows } = await query("SELECT 1 FROM players WHERE id = $1", [playerId]);
+  if (playerRows.length === 0) throw new Error(`Player "${playerId}" not found`);
+
+  // Check no active membership on any team
+  const { rows: activeRows } = await query(
+    `SELECT t.tag FROM team_members tm JOIN teams t ON t.id = tm.team_id
+     WHERE tm.player_id = $1 AND tm.left_at IS NULL`,
+    [playerId]
+  );
+  if (activeRows.length > 0) {
+    throw new Error(`Player is already an active member of team ${(activeRows[0] as Record<string, unknown>).tag}`);
+  }
+
+  await query(
+    "INSERT INTO team_members (team_id, player_id, joined_at) VALUES ($1, $2, $3)",
+    [teamId, playerId, joinedAt]
+  );
+}
+
+export async function updateTeamAvatar(teamId: number, avatarUrl: string | null): Promise<boolean> {
+  const { rowCount } = await query("UPDATE teams SET avatar_url = $1 WHERE id = $2", [avatarUrl, teamId]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function removeTeamMember(membershipId: number): Promise<boolean> {
+  const today = new Date().toISOString().split("T")[0];
+  const { rowCount } = await query(
+    "UPDATE team_members SET left_at = $1 WHERE id = $2 AND left_at IS NULL",
+    [today, membershipId]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 export async function addAlias(alias: string, canonicalId: string): Promise<void> {
   alias = alias.toLowerCase().trim();
   canonicalId = canonicalId.toLowerCase().trim();
@@ -1370,6 +1481,8 @@ export interface TeamH2H {
 
 export interface Team {
   tag: string;
+  displayName: string;
+  avatarUrl: string | null;
   members: TeamMember[];
   avgRating: number;
   totalWins: number;
@@ -1493,6 +1606,219 @@ export async function getTeams(startDate?: string, endDate?: string, minEvents =
 
     teams.push({
       tag,
+      displayName: tag,
+      avatarUrl: null,
+      members: members.sort((a, b) => a.rank - b.rank),
+      avgRating,
+      totalWins,
+      totalLosses,
+      totalDraws,
+      totalTournamentWins,
+      h2h,
+    });
+  }
+
+  teams.sort((a, b) => b.avgRating - a.avgRating);
+  return teams;
+}
+
+// ── Managed teams (admin-defined, date-scoped) ──────────────────────
+
+interface MembershipWindow {
+  teamId: number;
+  teamTag: string;
+  teamDisplayName: string;
+  joinedAt: string;
+  leftAt: string | null;
+}
+
+function getTeamOnDate(playerId: string, date: string, membershipMap: Map<string, MembershipWindow[]>): MembershipWindow | null {
+  const windows = membershipMap.get(playerId);
+  if (!windows) return null;
+  for (const w of windows) {
+    if (date >= w.joinedAt && (w.leftAt === null || date < w.leftAt)) return w;
+  }
+  return null;
+}
+
+const MANAGED_YEAR2_START = "2026-07-28";
+const MANAGED_YEAR2_END = "2027-07-28";
+
+export async function getManagedTeams(): Promise<Team[]> {
+  // 1. Load teams and memberships
+  const { rows: teamRows } = await query("SELECT id, tag, display_name, avatar_url FROM teams ORDER BY tag");
+  const { rows: memberRows } = await query(
+    "SELECT team_id, player_id, joined_at, left_at FROM team_members ORDER BY joined_at"
+  );
+
+  const teamInfo = new Map<number, { tag: string; displayName: string; avatarUrl: string | null }>();
+  for (const t of teamRows as Record<string, unknown>[]) {
+    teamInfo.set(t.id as number, { tag: t.tag as string, displayName: t.display_name as string, avatarUrl: (t.avatar_url as string | null) ?? null });
+  }
+
+  // Build membership lookup: playerId -> MembershipWindow[]
+  const membershipMap = new Map<string, MembershipWindow[]>();
+  const teamPlayerIds = new Map<number, Set<string>>(); // teamId -> set of player IDs (all time)
+  for (const m of memberRows as Record<string, unknown>[]) {
+    const pid = m.player_id as string;
+    const tid = m.team_id as number;
+    const info = teamInfo.get(tid);
+    if (!info) continue;
+    if (!membershipMap.has(pid)) membershipMap.set(pid, []);
+    membershipMap.get(pid)!.push({
+      teamId: tid,
+      teamTag: info.tag,
+      teamDisplayName: info.displayName,
+      joinedAt: m.joined_at as string,
+      leftAt: m.left_at as string | null,
+    });
+    if (!teamPlayerIds.has(tid)) teamPlayerIds.set(tid, new Set());
+    teamPlayerIds.get(tid)!.add(pid);
+  }
+
+  if (teamInfo.size === 0) return [];
+
+  // 2. Load all Year 2 matches
+  const { rows: matchRows } = await query(`
+    SELECT m.player1_id, m.player2_id, m.player1_wins, m.player2_wins,
+           m.tournament_id, t.name as tournament_name, m.round_name, t.date
+    FROM matches m
+    JOIN tournaments t ON t.id = m.tournament_id
+    WHERE t.date >= $1 AND t.date < $2
+    ORDER BY t.date, m.id
+  `, [MANAGED_YEAR2_START, MANAGED_YEAR2_END]);
+
+  // 3. Compute per-member stats and H2H
+  // Member stats: teamId -> playerId -> { wins, losses, draws, tournaments }
+  const memberStats = new Map<number, Map<string, { wins: number; losses: number; draws: number; tournaments: Set<number> }>>();
+  const h2hMap = new Map<string, Map<string, { wins: number; losses: number; draws: number; matches: TeamMatchDetail[] }>>();
+
+  for (const m of matchRows as Record<string, unknown>[]) {
+    const p1 = m.player1_id as string;
+    const p2 = m.player2_id as string;
+    const date = m.date as string;
+    const p1w = m.player1_wins as number;
+    const p2w = m.player2_wins as number;
+    const tournamentId = m.tournament_id as number;
+    const tournamentName = m.tournament_name as string;
+    const roundName = m.round_name as string;
+
+    const t1 = getTeamOnDate(p1, date, membershipMap);
+    const t2 = getTeamOnDate(p2, date, membershipMap);
+
+    // Accumulate member stats for p1 if on a team
+    if (t1) {
+      if (!memberStats.has(t1.teamId)) memberStats.set(t1.teamId, new Map());
+      const teamMap = memberStats.get(t1.teamId)!;
+      if (!teamMap.has(p1)) teamMap.set(p1, { wins: 0, losses: 0, draws: 0, tournaments: new Set() });
+      const s = teamMap.get(p1)!;
+      s.tournaments.add(tournamentId);
+      if (p1w > p2w) s.wins++;
+      else if (p2w > p1w) s.losses++;
+      else s.draws++;
+    }
+
+    // Accumulate member stats for p2 if on a team
+    if (t2) {
+      if (!memberStats.has(t2.teamId)) memberStats.set(t2.teamId, new Map());
+      const teamMap = memberStats.get(t2.teamId)!;
+      if (!teamMap.has(p2)) teamMap.set(p2, { wins: 0, losses: 0, draws: 0, tournaments: new Set() });
+      const s = teamMap.get(p2)!;
+      s.tournaments.add(tournamentId);
+      if (p2w > p1w) s.wins++;
+      else if (p1w > p2w) s.losses++;
+      else s.draws++;
+    }
+
+    // H2H: only if both on different teams
+    if (t1 && t2 && t1.teamTag !== t2.teamTag) {
+      if (!h2hMap.has(t1.teamTag)) h2hMap.set(t1.teamTag, new Map());
+      if (!h2hMap.has(t2.teamTag)) h2hMap.set(t2.teamTag, new Map());
+      if (!h2hMap.get(t1.teamTag)!.has(t2.teamTag)) h2hMap.get(t1.teamTag)!.set(t2.teamTag, { wins: 0, losses: 0, draws: 0, matches: [] });
+      if (!h2hMap.get(t2.teamTag)!.has(t1.teamTag)) h2hMap.get(t2.teamTag)!.set(t1.teamTag, { wins: 0, losses: 0, draws: 0, matches: [] });
+
+      const r1 = h2hMap.get(t1.teamTag)!.get(t2.teamTag)!;
+      const r2 = h2hMap.get(t2.teamTag)!.get(t1.teamTag)!;
+
+      if (p1w > p2w) { r1.wins++; r2.losses++; }
+      else if (p2w > p1w) { r1.losses++; r2.wins++; }
+      else { r1.draws++; r2.draws++; }
+
+      r1.matches.push({ player: p1, opponent: p2, playerWins: p1w, opponentWins: p2w, tournament: tournamentName, round: roundName });
+      r2.matches.push({ player: p2, opponent: p1, playerWins: p2w, opponentWins: p1w, tournament: tournamentName, round: roundName });
+    }
+  }
+
+  // 4. Get ratings from season leaderboard
+  const leaderboard = await getSeasonLeaderboard(MANAGED_YEAR2_START, MANAGED_YEAR2_END, 1);
+  const ratingMap = new Map(leaderboard.map((p) => [p.id, { rating: p.rating, rank: p.rank, username: p.username, tournamentWins: p.tournamentWins }]));
+
+  // 5. Get title tiers filtered by membership windows
+  const { rows: titleRows } = await query(`
+    SELECT p.player_id, t.event_tier, t.date FROM placements p
+    JOIN tournaments t ON t.id = p.tournament_id
+    WHERE p.placement = 1 AND t.date >= $1 AND t.date < $2
+    ORDER BY t.date
+  `, [MANAGED_YEAR2_START, MANAGED_YEAR2_END]);
+
+  // 6. Assemble teams
+  const teams: Team[] = [];
+  for (const [teamId, info] of teamInfo) {
+    const playerIds = teamPlayerIds.get(teamId);
+    if (!playerIds || playerIds.size === 0) continue;
+
+    const stats = memberStats.get(teamId) ?? new Map();
+    const members: TeamMember[] = [];
+
+    for (const pid of playerIds) {
+      // Only include if they have stats (i.e., played during their membership window)
+      const s = stats.get(pid);
+      const rating = ratingMap.get(pid);
+      if (!s && !rating) continue;
+
+      // Filter title tiers by membership window
+      const playerTitles: EventTier[] = [];
+      for (const tr of titleRows as Record<string, unknown>[]) {
+        if ((tr.player_id as string) !== pid) continue;
+        const w = getTeamOnDate(pid, tr.date as string, membershipMap);
+        if (w && w.teamId === teamId) playerTitles.push(tr.event_tier as EventTier);
+      }
+
+      members.push({
+        id: pid,
+        username: rating?.username ?? pid,
+        rating: rating?.rating ?? 1500,
+        rank: rating?.rank ?? 0,
+        wins: s?.wins ?? 0,
+        losses: s?.losses ?? 0,
+        draws: s?.draws ?? 0,
+        tournamentCount: s?.tournaments.size ?? 0,
+        tournamentWins: playerTitles.length,
+        titleTiers: playerTitles,
+      });
+    }
+
+    if (members.length === 0) continue;
+
+    const totalWins = members.reduce((s, m) => s + m.wins, 0);
+    const totalLosses = members.reduce((s, m) => s + m.losses, 0);
+    const totalDraws = members.reduce((s, m) => s + m.draws, 0);
+    const totalTournamentWins = members.reduce((s, m) => s + m.tournamentWins, 0);
+    const avgRating = Math.round(members.reduce((s, m) => s + m.rating, 0) / members.length);
+
+    const h2h: TeamH2H[] = [];
+    const teamH2H = h2hMap.get(info.tag);
+    if (teamH2H) {
+      for (const [opp, record] of teamH2H) {
+        h2h.push({ opponentTag: opp, ...record });
+      }
+      h2h.sort((a, b) => (b.wins + b.losses + b.draws) - (a.wins + a.losses + a.draws));
+    }
+
+    teams.push({
+      tag: info.tag,
+      displayName: info.displayName,
+      avatarUrl: info.avatarUrl,
       members: members.sort((a, b) => a.rank - b.rank),
       avgRating,
       totalWins,

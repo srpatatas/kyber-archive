@@ -1,29 +1,37 @@
-import { getTeams, Team } from "@/lib/store";
-import { SeasonalTeams } from "@/components/seasonal-teams";
+import { getManagedTeams } from "@/lib/store";
+import { TeamsContent } from "@/components/teams-content";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Teams | The Kyber Archive",
 };
 
-const YEAR_2_START = "2026-07-28";
-const YEAR_2_END = "2027-07-28";
-const YEAR_1_START = "2025-07-28";
-const YEAR_1_END = "2026-07-28";
-const YEAR_0_END = "2025-07-28";
-const YEAR_0_START = "2000-01-01";
-
 export default async function TeamsPage() {
-  const [year2, year1, year0, allTime] = await Promise.all([
-    getTeams(YEAR_2_START, YEAR_2_END, 1),
-    getTeams(YEAR_1_START, YEAR_1_END),
-    getTeams(YEAR_0_START, YEAR_0_END, 1),
-    getTeams(),
-  ]);
+  const teams = await getManagedTeams();
 
   return (
     <main className="flex-1">
-      <SeasonalTeams year2={year2} year1={year1} year0={year0} allTime={allTime} />
+      <section className="relative overflow-hidden border-b border-border bg-surface/30">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--gold)_0%,_transparent_60%)] opacity-[0.03]" />
+        <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium text-gold">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold glow-pulse" />
+            {teams.length} team{teams.length === 1 ? "" : "s"}
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            Teams
+          </h2>
+          <p className="mt-2 max-w-lg text-sm text-muted">
+            Year 2 team standings based on combined member ratings.
+            Stats reflect each member&apos;s contributions during their
+            active roster period.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <TeamsContent teams={teams} />
+      </section>
     </main>
   );
 }

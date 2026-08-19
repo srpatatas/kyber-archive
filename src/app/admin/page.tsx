@@ -88,6 +88,14 @@ export default function AdminPage() {
   const [pendingAssignTargets, setPendingAssignTargets] = useState<Record<string, string>>({});
   const [pinError, setPinError] = useState(false);
 
+  // Teams state
+  const [adminTeams, setAdminTeams] = useState<{ id: number; tag: string; displayName: string; avatarUrl: string | null; createdAt: string; members: { id: number; playerId: string; playerName: string; playerUsername: string; joinedAt: string; leftAt: string | null }[] }[]>([]);
+  const [newTeamTag, setNewTeamTag] = useState("");
+  const [newTeamDisplayName, setNewTeamDisplayName] = useState("");
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [newMemberPlayerId, setNewMemberPlayerId] = useState<Record<number, string>>({});
+  const [newMemberJoinedAt, setNewMemberJoinedAt] = useState<Record<number, string>>({});
+
   function showToast(message: string, type: "success" | "error" = "success") {
     setToast({ message, type, timestamp: Date.now() });
     setTimeout(() => setToast(null), 3000);
@@ -138,13 +146,26 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin]);
 
+  const fetchTeams = useCallback(async () => {
+    try {
+      const res = await adminFetch("/api/admin/teams");
+      if (!res.ok) return;
+      const data = await res.json();
+      setAdminTeams(data.teams ?? []);
+    } catch {
+      // ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin]);
+
   useEffect(() => {
     if (authenticated) {
       fetchTournaments();
       fetchAliases();
       fetchPendingAliases();
+      fetchTeams();
     }
-  }, [authenticated, fetchTournaments, fetchAliases, fetchPendingAliases]);
+  }, [authenticated, fetchTournaments, fetchAliases, fetchPendingAliases, fetchTeams]);
 
   if (!authenticated) {
     return (
@@ -484,6 +505,85 @@ export default function AdminPage() {
     } catch {
       // ignore
     }
+  }
+
+  async function handleCreateTeam(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTeamTag.trim() || !newTeamDisplayName.trim()) return;
+    setTeamLoading(true);
+    try {
+      const res = await adminFetch("/api/admin/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag: newTeamTag.trim(), displayName: newTeamDisplayName.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, "error"); return; }
+      showToast(`Team ${newTeamTag.trim().toUpperCase()} created`);
+      setNewTeamTag("");
+      setNewTeamDisplayName("");
+      fetchTeams();
+    } catch { showToast("Failed to create team", "error"); }
+    finally { setTeamLoading(false); }
+  }
+
+  async function handleDeleteTeam(id: number, tag: string) {
+    if (!confirm(`Delete team ${tag}? This will remove all membership records.`)) return;
+    try {
+      const res = await adminFetch(`/api/admin/teams?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) { showToast(`Team ${tag} deleted`); fetchTeams(); }
+    } catch { showToast("Failed to delete team", "error"); }
+  }
+
+  async function handleAddMember(teamId: number) {
+    const playerId = newMemberPlayerId[teamId]?.trim();
+    const joinedAt = newMemberJoinedAt[teamId] || new Date().toISOString().split("T")[0];
+    if (!playerId) return;
+    try {
+      const res = await adminFetch("/api/admin/teams/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamId, playerId, joinedAt }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, "error"); return; }
+      showToast(`Added ${playerId} to team`);
+      setNewMemberPlayerId((prev) => ({ ...prev, [teamId]: "" }));
+      fetchTeams();
+    } catch { showToast("Failed to add member", "error"); }
+  }
+
+  async function handleAvatarUpload(teamId: number, oldUrl: string | null) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) { showToast("File must be under 2MB", "error"); return; }
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("teamId", teamId.toString());
+      if (oldUrl) formData.append("oldUrl", oldUrl);
+      try {
+        const res = await adminFetch("/api/admin/teams/avatar", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.error) { showToast(data.error, "error"); return; }
+        showToast("Avatar uploaded");
+        fetchTeams();
+      } catch { showToast("Failed to upload avatar", "error"); }
+    };
+    input.click();
+  }
+
+  async function handleRemoveMember(membershipId: number, username: string) {
+    if (!confirm(`Remove ${username} from team?`)) return;
+    try {
+      const res = await adminFetch(`/api/admin/teams/members?id=${membershipId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) { showToast(`${username} removed`); fetchTeams(); }
+    } catch { showToast("Failed to remove member", "error"); }
   }
 
   return (
@@ -838,6 +938,132 @@ export default function AdminPage() {
                       <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
                     </svg>
                   </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Teams Management */}
+        <div className="rounded-xl border border-border overflow-hidden">
+          <div className="border-b border-border bg-surface px-4 py-3">
+            <h2 className="text-sm font-bold text-foreground">Teams ({adminTeams.length})</h2>
+            <p className="text-xs text-muted mt-0.5">
+              Manage team rosters. Stats are computed from match data within each member&apos;s active period.
+            </p>
+          </div>
+          <div className="px-4 py-3 border-b border-border/50">
+            <form onSubmit={handleCreateTeam} className="flex gap-2">
+              <input
+                type="text"
+                value={newTeamTag}
+                onChange={(e) => setNewTeamTag(e.target.value)}
+                placeholder="Tag (e.g. NT)"
+                className="w-24 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30 uppercase"
+              />
+              <input
+                type="text"
+                value={newTeamDisplayName}
+                onChange={(e) => setNewTeamDisplayName(e.target.value)}
+                placeholder="Display name"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+              />
+              <button
+                type="submit"
+                disabled={teamLoading || !newTeamTag.trim() || !newTeamDisplayName.trim()}
+                className="rounded-lg bg-gold/10 border border-gold/20 px-4 py-1.5 text-xs font-medium text-gold hover:bg-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {teamLoading ? "Creating..." : "Create"}
+              </button>
+            </form>
+          </div>
+          {adminTeams.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-muted">
+              No teams created yet.
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {adminTeams.map((team) => (
+                <div key={team.id} className="px-4 py-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleAvatarUpload(team.id, team.avatarUrl)}
+                        className="relative h-8 w-8 shrink-0 rounded-full border border-border bg-surface overflow-hidden hover:border-gold/50 transition-colors group"
+                        title="Upload avatar"
+                      >
+                        {team.avatarUrl ? (
+                          <img src={team.avatarUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-[10px] text-muted group-hover:text-gold">+</span>
+                        )}
+                      </button>
+                      <span className="rounded bg-gold/10 px-1.5 py-0.5 text-xs font-bold text-gold">{team.tag}</span>
+                      <span className="text-sm font-medium text-foreground">{team.displayName}</span>
+                      <span className="text-xs text-muted">· {team.members.filter((m) => !m.leftAt).length} active</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTeam(team.id, team.tag)}
+                      className="rounded p-1 text-muted hover:text-red-400 transition-colors"
+                      title="Delete team"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Members */}
+                  {team.members.length > 0 && (
+                    <div className="ml-4 mb-2 space-y-1">
+                      {team.members.map((m) => (
+                        <div key={m.id} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className={m.leftAt ? "text-muted line-through" : "text-foreground font-medium"}>{m.playerUsername}</span>
+                            <span className="text-muted">
+                              {m.joinedAt}{m.leftAt ? ` → ${m.leftAt}` : ""}
+                            </span>
+                            {!m.leftAt && <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-400">active</span>}
+                          </div>
+                          {!m.leftAt && (
+                            <button
+                              onClick={() => handleRemoveMember(m.id, m.playerUsername)}
+                              className="rounded p-0.5 text-muted hover:text-red-400 transition-colors"
+                              title="Remove member"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add member form */}
+                  <div className="ml-4 flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={newMemberPlayerId[team.id] ?? ""}
+                      onChange={(e) => setNewMemberPlayerId((prev) => ({ ...prev, [team.id]: e.target.value }))}
+                      placeholder="Player username"
+                      className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+                    />
+                    <input
+                      type="date"
+                      value={newMemberJoinedAt[team.id] ?? new Date().toISOString().split("T")[0]}
+                      onChange={(e) => setNewMemberJoinedAt((prev) => ({ ...prev, [team.id]: e.target.value }))}
+                      className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+                    />
+                    <button
+                      onClick={() => handleAddMember(team.id)}
+                      disabled={!newMemberPlayerId[team.id]?.trim()}
+                      className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
