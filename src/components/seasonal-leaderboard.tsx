@@ -9,6 +9,7 @@ import { ASPECT_COLORS } from "@/lib/aspects";
 import { KyberCrystal } from "./kyber-crystal";
 import { getTierConfig } from "@/lib/tiers";
 import type { PlayerRating } from "@/lib/elo";
+import type { SiteStats } from "@/lib/store";
 
 type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; aspects?: string[]; kyberTiers?: { tier: string; name: string; id: number }[] };
 
@@ -23,6 +24,20 @@ const TABS: { key: Season; label: string; sublabel: string }[] = [
   { key: "allTime", label: "All-Time", sublabel: "All Tournaments" },
 ];
 
+function formatRelativeTime(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "1 day ago";
+  return `${diffDays} days ago`;
+}
+
 export function SeasonalLeaderboard({
   year2,
   year1,
@@ -30,6 +45,7 @@ export function SeasonalLeaderboard({
   allTime,
   tournamentCounts,
   previousRanks,
+  siteStats,
 }: {
   year2: RankedPlayer[];
   year1: RankedPlayer[];
@@ -37,6 +53,7 @@ export function SeasonalLeaderboard({
   allTime: RankedPlayer[];
   tournamentCounts: { year2: number; year1: number; year0: number; allTime: number };
   previousRanks?: Record<string, number>;
+  siteStats?: SiteStats;
 }) {
   const [season, setSeason] = useState<Season>("year2");
 
@@ -52,11 +69,28 @@ export function SeasonalLeaderboard({
       <section className="relative overflow-hidden border-b border-border bg-surface/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--gold)_0%,_transparent_60%)] opacity-[0.03]" />
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium text-gold">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold glow-pulse" />
-            {count > 0
-              ? `${count} tournament${count === 1 ? "" : "s"} tracked`
-              : "No tournaments ingested yet"}
+          <div className="mb-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium text-gold">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 glow-pulse" />
+            {siteStats?.lastSync ? (
+              <>
+                <span className="text-muted">LAST SYNC</span>
+                <span className="font-bold">
+                  {new Date(siteStats.lastSync).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+                <span className="text-muted">·</span>
+                <span className="text-muted">{formatRelativeTime(siteStats.lastSync)}</span>
+                <span className="text-muted">·</span>
+                <span>{siteStats.playerCount.toLocaleString()} players</span>
+                <span className="text-muted">·</span>
+                <span>{siteStats.tournamentCount.toLocaleString()} tournaments</span>
+                <span className="text-muted">·</span>
+                <span>{siteStats.matchCount.toLocaleString()} matches</span>
+              </>
+            ) : (
+              count > 0
+                ? `${count} tournament${count === 1 ? "" : "s"} tracked`
+                : "No tournaments ingested yet"
+            )}
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Competitive Rankings
