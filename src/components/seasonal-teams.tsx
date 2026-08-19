@@ -6,10 +6,11 @@ import { KyberCrystal } from "@/components/kyber-crystal";
 import { getTierConfig } from "@/lib/tiers";
 import type { Team, TeamH2H } from "@/lib/store";
 
-type Season = "year1" | "year0" | "allTime";
+type Season = "year2" | "year1" | "year0" | "allTime";
 
 const TABS: { key: Season; label: string; sublabel: string }[] = [
-  { key: "year1", label: "Year 1", sublabel: "Current Season" },
+  { key: "year2", label: "Year 2", sublabel: "Current Season" },
+  { key: "year1", label: "Year 1", sublabel: "Jul 2025 – Jul 2026" },
   { key: "year0", label: "Year 0", sublabel: "Jun 2025 – Jul 2025" },
   { key: "allTime", label: "All-Time", sublabel: "All Tournaments" },
 ];
@@ -245,17 +246,19 @@ function TeamsContent({ teams }: { teams: Team[] }) {
 }
 
 export function SeasonalTeams({
+  year2,
   year1,
   year0,
   allTime,
 }: {
+  year2: Team[];
   year1: Team[];
   year0: Team[];
   allTime: Team[];
 }) {
-  const [season, setSeason] = useState<Season>("year1");
+  const [season, setSeason] = useState<Season>("year2");
 
-  const data = { year1, year0, allTime };
+  const data = { year2, year1, year0, allTime };
   const teams = data[season];
 
   return (

@@ -14,30 +14,33 @@ type RankedPlayer = PlayerRating & { rank: number; mainLeader?: string | null; a
 
 const TIER_ORDER: Record<string, number> = { galactic: 0, sector: 1, planetary: 2, major: 3, showdown: 4, minor: 5 };
 
-type Season = "year1" | "year0" | "allTime";
+type Season = "year2" | "year1" | "year0" | "allTime";
 
 const TABS: { key: Season; label: string; sublabel: string }[] = [
+  { key: "year2", label: "Year 2", sublabel: "Jul 2026 – Present" },
   { key: "year1", label: "Year 1", sublabel: "Jul 2025 – Jul 2026" },
   { key: "year0", label: "Year 0", sublabel: "Jun 2025 – Jul 2025" },
   { key: "allTime", label: "All-Time", sublabel: "All Tournaments" },
 ];
 
 export function SeasonalLeaderboard({
+  year2,
   year1,
   year0,
   allTime,
   tournamentCounts,
   previousRanks,
 }: {
+  year2: RankedPlayer[];
   year1: RankedPlayer[];
   year0: RankedPlayer[];
   allTime: RankedPlayer[];
-  tournamentCounts: { year1: number; year0: number; allTime: number };
+  tournamentCounts: { year2: number; year1: number; year0: number; allTime: number };
   previousRanks?: Record<string, number>;
 }) {
-  const [season, setSeason] = useState<Season>("year1");
+  const [season, setSeason] = useState<Season>("year2");
 
-  const data = { year1, year0, allTime };
+  const data = { year2, year1, year0, allTime };
   const players = data[season];
   const count = tournamentCounts[season];
 
@@ -169,7 +172,7 @@ export function SeasonalLeaderboard({
         </div>
 
         {players.length > 0 ? (
-          <LiveLeaderboard players={players} previousRanks={season === "year1" ? previousRanks : undefined} />
+          <LiveLeaderboard players={players} previousRanks={season === "year2" ? previousRanks : undefined} />
         ) : (
           <div className="rounded-xl border border-border bg-surface p-12 text-center">
             <p className="text-sm text-muted">No ranked players in this season yet</p>
