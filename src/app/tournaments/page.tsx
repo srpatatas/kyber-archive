@@ -52,22 +52,46 @@ export default async function TournamentsPage() {
             {Array.from(grouped.entries()).map(([month, events], groupIdx, allGroups) => {
               const prevGroup = groupIdx > 0 ? allGroups[groupIdx - 1] : null;
               const prevEvents = prevGroup ? grouped.get(prevGroup[0]) : null;
-              const prevInYear1 = prevEvents ? prevEvents[0].date >= "2025-07-28" : false;
+
+              const prevInYear2 = prevEvents ? prevEvents[0].date >= "2026-07-28" : false;
+              const currentInYear1 = events[0].date >= "2025-07-28" && events[0].date < "2026-07-28";
+              const showYear2Separator = prevInYear2 && currentInYear1;
+
+              const prevInYear1 = prevEvents ? prevEvents[0].date >= "2025-07-28" && prevEvents[0].date < "2026-07-28" : false;
               const currentInYear0 = events[0].date < "2025-07-28";
-              const showSeparator = prevInYear1 && currentInYear0;
+              const showYear1Separator = prevInYear1 && currentInYear0;
 
               return (
               <div key={month}>
-                {showSeparator && (
+                {showYear2Separator && (
                   <div className="mb-8 rounded-lg border border-gold/20 bg-gold/5 px-4 py-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted">▲</span>
-                        <span className="text-xs font-bold text-gold">Year 1</span>
-                        <span className="text-[10px] text-muted">Current Season · Jul 28, 2025 onwards</span>
+                        <span className="text-xs font-bold text-gold">Year 2</span>
+                        <span className="text-[10px] text-muted">Current Season · Jul 28, 2026 onwards</span>
                       </div>
                     </div>
                     <div className="my-2 h-px bg-gold/20" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">▼</span>
+                        <span className="text-xs font-bold text-muted">Year 1</span>
+                        <span className="text-[10px] text-muted">Jul 28, 2025 – Jul 26, 2026</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {showYear1Separator && (
+                  <div className="mb-8 rounded-lg border border-border/50 bg-surface/50 px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">▲</span>
+                        <span className="text-xs font-bold text-muted">Year 1</span>
+                        <span className="text-[10px] text-muted">Jul 28, 2025 – Jul 26, 2026</span>
+                      </div>
+                    </div>
+                    <div className="my-2 h-px bg-border/50" />
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted">▼</span>

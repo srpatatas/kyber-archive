@@ -433,6 +433,28 @@ export async function getAliases(): Promise<{ alias: string; canonicalId: string
   return rows.map((r: Record<string, unknown>) => ({ alias: r.alias as string, canonicalId: r.canonical_id as string }));
 }
 
+export interface SiteStats {
+  tournamentCount: number;
+  playerCount: number;
+  matchCount: number;
+  lastSync: string | null;
+}
+
+export async function getSiteStats(): Promise<SiteStats> {
+  const [tournaments, players, matches, lastSync] = await Promise.all([
+    query("SELECT COUNT(*) as count FROM tournaments"),
+    query("SELECT COUNT(*) as count FROM players"),
+    query("SELECT COUNT(*) as count FROM matches"),
+    getLastRecalculated(),
+  ]);
+  return {
+    tournamentCount: Number(tournaments.rows[0].count),
+    playerCount: Number(players.rows[0].count),
+    matchCount: Number(matches.rows[0].count),
+    lastSync,
+  };
+}
+
 export async function addAlias(alias: string, canonicalId: string): Promise<void> {
   alias = alias.toLowerCase().trim();
   canonicalId = canonicalId.toLowerCase().trim();
