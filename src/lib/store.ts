@@ -379,16 +379,18 @@ export async function recalculateElo(): Promise<void> {
   });
 }
 
+const YEAR_2_START = "2026-07-28";
+const YEAR_2_END = "2027-07-28";
 const YEAR_1_START = "2025-07-28";
 const YEAR_1_END = "2026-07-28";
 
 export async function snapshotCurrentRanks(): Promise<void> {
-  const year1 = await getSeasonLeaderboard(YEAR_1_START, YEAR_1_END);
-  await query("DELETE FROM rank_snapshots WHERE snapshot_key = 'year1'");
-  for (const p of year1) {
+  const year2 = await getSeasonLeaderboard(YEAR_2_START, YEAR_2_END, 1);
+  await query("DELETE FROM rank_snapshots WHERE snapshot_key = 'year2'");
+  for (const p of year2) {
     await query(
       "INSERT INTO rank_snapshots (player_id, snapshot_key, rank) VALUES ($1, $2, $3)",
-      [p.id, "year1", p.rank]
+      [p.id, "year2", p.rank]
     );
   }
 }

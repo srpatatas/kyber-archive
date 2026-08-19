@@ -223,13 +223,24 @@ export default function AboutPage() {
             </p>
             <div className="mt-4 space-y-3">
               <div className="rounded-lg border border-border/50 bg-background p-4">
-                <p className="text-sm font-bold text-gold">Year 1 (Current Season)</p>
+                <p className="text-sm font-bold text-gold">Year 2 (Current Season)</p>
+                <p className="mt-1 text-xs text-muted">
+                  July 28, 2026 &ndash; Present
+                </p>
+                <p className="mt-1 text-xs text-sand-light">
+                  The current competitive season. No minimum event requirement
+                  &mdash; all players who have competed in at least one tournament
+                  appear on the leaderboard.
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-background p-4">
+                <p className="text-sm font-bold text-muted">Year 1</p>
                 <p className="mt-1 text-xs text-muted">
                   July 28, 2025 &ndash; July 26, 2026
                 </p>
                 <p className="mt-1 text-xs text-sand-light">
-                  Ends with the SWU Galactic Championship on July 26, 2026. Players
-                  need a minimum of 3 events to appear on the leaderboard.
+                  Ended with the SWU Galactic Championship on July 26, 2026. Players
+                  needed a minimum of 3 events to appear on the leaderboard.
                 </p>
               </div>
               <div className="rounded-lg border border-border/50 bg-background p-4">
