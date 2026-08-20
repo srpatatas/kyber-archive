@@ -552,9 +552,32 @@ export async function addTeamMember(teamId: number, playerId: string, joinedAt: 
   );
 }
 
+export async function updateTeam(teamId: number, tag: string, displayName: string): Promise<boolean> {
+  tag = tag.trim().toUpperCase();
+  displayName = displayName.trim();
+  if (!tag) throw new Error("Team tag is required");
+  if (!displayName) throw new Error("Display name is required");
+  const { rowCount } = await query("UPDATE teams SET tag = $1, display_name = $2 WHERE id = $3", [tag, displayName, teamId]);
+  return (rowCount ?? 0) > 0;
+}
+
 export async function updateTeamAvatar(teamId: number, avatarUrl: string | null): Promise<boolean> {
   const { rowCount } = await query("UPDATE teams SET avatar_url = $1 WHERE id = $2", [avatarUrl, teamId]);
   return (rowCount ?? 0) > 0;
+}
+
+export async function searchPlayers(term: string): Promise<{ id: string; username: string; name: string }[]> {
+  term = term.toLowerCase().trim();
+  if (!term || term.length < 2) return [];
+  const { rows } = await query(
+    "SELECT id, username, name FROM players WHERE LOWER(username) LIKE $1 OR LOWER(name) LIKE $1 ORDER BY username LIMIT 10",
+    [`%${term}%`]
+  );
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    username: r.username as string,
+    name: r.name as string,
+  }));
 }
 
 export async function removeTeamMember(membershipId: number): Promise<boolean> {

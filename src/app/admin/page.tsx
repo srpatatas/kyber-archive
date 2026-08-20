@@ -95,6 +95,11 @@ export default function AdminPage() {
   const [teamLoading, setTeamLoading] = useState(false);
   const [newMemberPlayerId, setNewMemberPlayerId] = useState<Record<number, string>>({});
   const [newMemberJoinedAt, setNewMemberJoinedAt] = useState<Record<number, string>>({});
+  const [editingTeam, setEditingTeam] = useState<number | null>(null);
+  const [editTag, setEditTag] = useState("");
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [playerSuggestions, setPlayerSuggestions] = useState<Record<number, { id: string; username: string; name: string }[]>>({});
+  const [activeAutocomplete, setActiveAutocomplete] = useState<number | null>(null);
 
   function showToast(message: string, type: "success" | "error" = "success") {
     setToast({ message, type, timestamp: Date.now() });
@@ -527,6 +532,28 @@ export default function AdminPage() {
     finally { setTeamLoading(false); }
   }
 
+  function startEditTeam(team: { id: number; tag: string; displayName: string }) {
+    setEditingTeam(team.id);
+    setEditTag(team.tag);
+    setEditDisplayName(team.displayName);
+  }
+
+  async function handleSaveTeam(id: number) {
+    if (!editTag.trim() || !editDisplayName.trim()) return;
+    try {
+      const res = await adminFetch("/api/admin/teams", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, tag: editTag.trim(), displayName: editDisplayName.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, "error"); return; }
+      showToast("Team updated");
+      setEditingTeam(null);
+      fetchTeams();
+    } catch { showToast("Failed to update team", "error"); }
+  }
+
   async function handleDeleteTeam(id: number, tag: string) {
     if (!confirm(`Delete team ${tag}? This will remove all membership records.`)) return;
     try {
@@ -534,6 +561,28 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.success) { showToast(`Team ${tag} deleted`); fetchTeams(); }
     } catch { showToast("Failed to delete team", "error"); }
+  }
+
+  async function handlePlayerSearch(teamId: number, term: string) {
+    setNewMemberPlayerId((prev) => ({ ...prev, [teamId]: term }));
+    if (term.trim().length < 2) {
+      setPlayerSuggestions((prev) => ({ ...prev, [teamId]: [] }));
+      setActiveAutocomplete(null);
+      return;
+    }
+    try {
+      const res = await adminFetch(`/api/admin/teams/members?q=${encodeURIComponent(term.trim())}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setPlayerSuggestions((prev) => ({ ...prev, [teamId]: data.players ?? [] }));
+      setActiveAutocomplete(teamId);
+    } catch { /* ignore */ }
+  }
+
+  function selectPlayer(teamId: number, playerId: string) {
+    setNewMemberPlayerId((prev) => ({ ...prev, [teamId]: playerId }));
+    setPlayerSuggestions((prev) => ({ ...prev, [teamId]: [] }));
+    setActiveAutocomplete(null);
   }
 
   async function handleAddMember(teamId: number) {
@@ -550,6 +599,7 @@ export default function AdminPage() {
       if (data.error) { showToast(data.error, "error"); return; }
       showToast(`Added ${playerId} to team`);
       setNewMemberPlayerId((prev) => ({ ...prev, [teamId]: "" }));
+      setPlayerSuggestions((prev) => ({ ...prev, [teamId]: [] }));
       fetchTeams();
     } catch { showToast("Failed to add member", "error"); }
   }
@@ -998,19 +1048,75 @@ export default function AdminPage() {
                           <span className="flex h-full w-full items-center justify-center text-[10px] text-muted group-hover:text-gold">+</span>
                         )}
                       </button>
-                      <span className="rounded bg-gold/10 px-1.5 py-0.5 text-xs font-bold text-gold">{team.tag}</span>
-                      <span className="text-sm font-medium text-foreground">{team.displayName}</span>
-                      <span className="text-xs text-muted">· {team.members.filter((m) => !m.leftAt).length} active</span>
+                      {editingTeam === team.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={editTag}
+                            onChange={(e) => setEditTag(e.target.value)}
+                            className="w-16 rounded border border-gold/30 bg-background px-1.5 py-0.5 text-xs font-bold text-gold uppercase focus:outline-none focus:ring-1 focus:ring-gold/30"
+                          />
+                          <input
+                            type="text"
+                            value={editDisplayName}
+                            onChange={(e) => setEditDisplayName(e.target.value)}
+                            className="flex-1 rounded border border-border bg-background px-2 py-0.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold/30"
+                            onKeyDown={(e) => e.key === "Enter" && handleSaveTeam(team.id)}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <span className="rounded bg-gold/10 px-1.5 py-0.5 text-xs font-bold text-gold">{team.tag}</span>
+                          <span className="text-sm font-medium text-foreground">{team.displayName}</span>
+                          <span className="text-xs text-muted">· {team.members.filter((m) => !m.leftAt).length} active</span>
+                        </>
+                      )}
                     </div>
-                    <button
-                      onClick={() => handleDeleteTeam(team.id, team.tag)}
-                      className="rounded p-1 text-muted hover:text-red-400 transition-colors"
-                      title="Delete team"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
-                      </svg>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {editingTeam === team.id ? (
+                        <>
+                          <button
+                            onClick={() => handleSaveTeam(team.id)}
+                            className="rounded p-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+                            title="Save"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M3 8L7 12L13 4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => setEditingTeam(null)}
+                            className="rounded p-1 text-muted hover:text-foreground transition-colors"
+                            title="Cancel"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditTeam(team)}
+                            className="rounded p-1 text-muted hover:text-gold transition-colors"
+                            title="Edit team"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <path d="M11 2L14 5L5 14H2V11L11 2Z" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTeam(team.id, team.tag)}
+                            className="rounded p-1 text-muted hover:text-red-400 transition-colors"
+                            title="Delete team"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Members */}
@@ -1043,13 +1149,31 @@ export default function AdminPage() {
 
                   {/* Add member form */}
                   <div className="ml-4 flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={newMemberPlayerId[team.id] ?? ""}
-                      onChange={(e) => setNewMemberPlayerId((prev) => ({ ...prev, [team.id]: e.target.value }))}
-                      placeholder="Player username"
-                      className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
-                    />
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={newMemberPlayerId[team.id] ?? ""}
+                        onChange={(e) => handlePlayerSearch(team.id, e.target.value)}
+                        onFocus={() => { if ((playerSuggestions[team.id]?.length ?? 0) > 0) setActiveAutocomplete(team.id); }}
+                        onBlur={() => setTimeout(() => setActiveAutocomplete(null), 150)}
+                        placeholder="Search player..."
+                        className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+                      />
+                      {activeAutocomplete === team.id && (playerSuggestions[team.id]?.length ?? 0) > 0 && (
+                        <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-lg border border-border bg-surface shadow-lg max-h-40 overflow-y-auto">
+                          {playerSuggestions[team.id].map((p) => (
+                            <button
+                              key={p.id}
+                              onMouseDown={() => selectPlayer(team.id, p.id)}
+                              className="w-full px-2 py-1.5 text-left text-xs hover:bg-gold/10 transition-colors flex items-center justify-between"
+                            >
+                              <span className="font-medium text-foreground">{p.username}</span>
+                              {p.name !== p.username && <span className="text-muted truncate ml-2">{p.name}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <input
                       type="date"
                       value={newMemberJoinedAt[team.id] ?? new Date().toISOString().split("T")[0]}

@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminPin } from "@/lib/admin-auth";
-import { addTeamMember, removeTeamMember } from "@/lib/store";
+import { addTeamMember, removeTeamMember, searchPlayers } from "@/lib/store";
 import { revalidateAllData } from "@/lib/revalidate";
+
+export async function GET(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
+  const q = new URL(request.url).searchParams.get("q") ?? "";
+  const players = await searchPlayers(q);
+  return NextResponse.json({ players });
+}
 
 export async function POST(request: NextRequest) {
   const denied = requireAdminPin(request);

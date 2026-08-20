@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminPin } from "@/lib/admin-auth";
-import { getAdminTeams, createTeam, deleteTeam } from "@/lib/store";
+import { getAdminTeams, createTeam, deleteTeam, updateTeam } from "@/lib/store";
 import { revalidateAllData } from "@/lib/revalidate";
 
 export async function GET(request: NextRequest) {
@@ -21,6 +21,23 @@ export async function POST(request: NextRequest) {
     const id = await createTeam(tag, displayName);
     revalidateAllData();
     return NextResponse.json({ success: true, id });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const denied = requireAdminPin(request);
+  if (denied) return denied;
+  try {
+    const { id, tag, displayName } = await request.json();
+    if (!id || !tag || !displayName) {
+      return NextResponse.json({ error: "id, tag, and displayName are required" }, { status: 400 });
+    }
+    await updateTeam(id, tag, displayName);
+    revalidateAllData();
+    return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 400 });
