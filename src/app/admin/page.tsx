@@ -1133,7 +1133,7 @@ export default function AdminPage() {
                           </div>
                           {!m.leftAt && (
                             <button
-                              onClick={() => handleRemoveMember(m.id, m.playerUsername)}
+                              onClick={() => handleRemoveMember(m.id, `${m.playerUsername} from ${team.displayName}`)}
                               className="rounded p-0.5 text-muted hover:text-red-400 transition-colors"
                               title="Remove member"
                             >
