@@ -995,7 +995,7 @@ export default function AdminPage() {
         </div>
 
         {/* Teams Management */}
-        <div className="mt-10 rounded-xl border border-border overflow-hidden">
+        <div className="mt-10 rounded-xl border border-border">
           <div className="border-b border-border bg-surface px-4 py-3">
             <h2 className="text-sm font-bold text-foreground">Teams ({adminTeams.length})</h2>
             <p className="text-xs text-muted mt-0.5">
