@@ -618,7 +618,15 @@ export async function mergePlayerAlias(alias: string, canonicalId: string): Prom
     await client.query("UPDATE placements SET player_id = $2 WHERE player_id = $1", [alias, canonicalId]);
     await client.query("UPDATE decklists SET player_id = $2 WHERE player_id = $1", [alias, canonicalId]);
     await client.query("DELETE FROM ratings WHERE player_id = $1", [alias]);
-    await client.query("DELETE FROM players WHERE id = $1", [alias]);
+    // Rename the player record to the canonical ID, or merge into existing
+    const { rows: canonicalExists } = await client.query("SELECT 1 FROM players WHERE id = $1", [canonicalId]);
+    if (canonicalExists.length > 0) {
+      // Canonical player already exists — just delete the old one
+      await client.query("DELETE FROM players WHERE id = $1", [alias]);
+    } else {
+      // Rename old player to canonical ID
+      await client.query("UPDATE players SET id = $2, username = $3 WHERE id = $1", [alias, canonicalId, canonicalId]);
+    }
     await recomputeRatings(client);
   });
 }

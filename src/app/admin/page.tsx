@@ -459,20 +459,21 @@ export default function AdminPage() {
   }
 
   async function handleConfirmPending(username: string) {
-    const canonicalId = pendingAssignTargets[username]?.trim();
-    if (!canonicalId) {
+    const existingPlayer = pendingAssignTargets[username]?.trim();
+    if (!existingPlayer) {
       showToast("Enter the current username to assign", "error");
       return;
     }
     try {
+      // username = new name (pending, canonical), existingPlayer = old name (becomes alias)
       const res = await adminFetch("/api/admin/pending-aliases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, canonicalId }),
+        body: JSON.stringify({ username: existingPlayer, canonicalId: username }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Alias created: ${username} → ${canonicalId}`);
+        showToast(`Alias created: ${existingPlayer} → ${username}`);
         setPendingAssignTargets((prev) => { const next = { ...prev }; delete next[username]; return next; });
         fetchPendingAliases();
         fetchAliases();
