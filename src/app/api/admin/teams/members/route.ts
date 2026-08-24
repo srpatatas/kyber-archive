@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminPin } from "@/lib/admin-auth";
-import { addTeamMember, removeTeamMember, searchPlayers } from "@/lib/store";
+import { addTeamMember, removeTeamMember, deleteTeamMember, searchPlayers } from "@/lib/store";
 import { revalidateAllData } from "@/lib/revalidate";
 
 export async function GET(request: NextRequest) {
@@ -35,7 +35,8 @@ export async function DELETE(request: NextRequest) {
   if (isNaN(id)) {
     return NextResponse.json({ error: "id query param is required" }, { status: 400 });
   }
-  const removed = await removeTeamMember(id);
+  const hard = new URL(request.url).searchParams.get("hard") === "true";
+  const removed = hard ? await deleteTeamMember(id) : await removeTeamMember(id);
   revalidateAllData();
   return NextResponse.json({ success: true, removed });
 }

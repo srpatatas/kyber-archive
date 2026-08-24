@@ -589,6 +589,11 @@ export async function removeTeamMember(membershipId: number): Promise<boolean> {
   return (rowCount ?? 0) > 0;
 }
 
+export async function deleteTeamMember(membershipId: number): Promise<boolean> {
+  const { rowCount } = await query("DELETE FROM team_members WHERE id = $1", [membershipId]);
+  return (rowCount ?? 0) > 0;
+}
+
 export async function addAlias(alias: string, canonicalId: string): Promise<void> {
   alias = alias.toLowerCase().trim();
   canonicalId = canonicalId.toLowerCase().trim();
@@ -617,6 +622,7 @@ export async function mergePlayerAlias(alias: string, canonicalId: string): Prom
     await client.query("UPDATE matches SET player2_id = $2 WHERE player2_id = $1", [alias, canonicalId]);
     await client.query("UPDATE placements SET player_id = $2 WHERE player_id = $1", [alias, canonicalId]);
     await client.query("UPDATE decklists SET player_id = $2 WHERE player_id = $1", [alias, canonicalId]);
+    await client.query("UPDATE team_members SET player_id = $2 WHERE player_id = $1", [alias, canonicalId]);
     await client.query("DELETE FROM ratings WHERE player_id = $1", [alias]);
     // Rename the player record to the canonical ID, or merge into existing
     const { rows: canonicalExists } = await client.query("SELECT 1 FROM players WHERE id = $1", [canonicalId]);

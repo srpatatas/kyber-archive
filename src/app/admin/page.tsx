@@ -661,6 +661,15 @@ export default function AdminPage() {
     } catch { showToast("Failed to remove member", "error"); }
   }
 
+  async function handleDeleteMember(membershipId: number, username: string) {
+    if (!confirm(`Permanently delete ${username} record?`)) return;
+    try {
+      const res = await adminFetch(`/api/admin/teams/members?id=${membershipId}&hard=true`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) { showToast(`${username} deleted`); fetchTeams(); }
+    } catch { showToast("Failed to delete member", "error"); }
+  }
+
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
@@ -1174,7 +1183,7 @@ export default function AdminPage() {
                             </span>
                             {!m.leftAt && <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-400">active</span>}
                           </div>
-                          {!m.leftAt && (
+                          {!m.leftAt ? (
                             <button
                               onClick={() => handleRemoveMember(m.id, `${m.playerUsername} from ${team.displayName}`)}
                               className="rounded p-0.5 text-muted hover:text-red-400 transition-colors"
@@ -1183,6 +1192,14 @@ export default function AdminPage() {
                               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <path d="M4 4L12 12M12 4L4 12" strokeLinecap="round" />
                               </svg>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDeleteMember(m.id, m.playerUsername)}
+                              className="rounded px-1.5 py-0.5 text-[10px] text-muted hover:text-red-400 transition-colors"
+                              title="Permanently delete record"
+                            >
+                              delete
                             </button>
                           )}
                         </div>
