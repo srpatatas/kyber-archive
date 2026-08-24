@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       cwd: process.cwd(),
       stdio: ["ignore", "pipe", "pipe"],
       detached: false,
+      env: { ...process.env, PORT: String(process.env.PORT || 3000) },
     });
 
     let output = "";

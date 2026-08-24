@@ -28,6 +28,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const DEV_PORT = process.env.PORT || 3000;
 
 const args = process.argv.slice(2);
 const tournamentUrl = args[0];
@@ -264,7 +265,7 @@ try {
   // Snapshot current rankings BEFORE inserting new data
   console.log("Taking rank snapshot...");
   try {
-    await fetch("http://localhost:3001/api/admin/recalculate?step=snapshot", {
+    await fetch(`http://localhost:${DEV_PORT}/api/admin/recalculate?step=snapshot`, {
       method: "POST",
       headers: { "x-admin-pin": process.env.ADMIN_PIN || "" },
     });
@@ -351,7 +352,7 @@ try {
 // Trigger rating recalculation via the API
 console.log("Recalculating ratings...");
 try {
-  await fetch("http://localhost:3001/api/admin/recalculate", {
+  await fetch(`http://localhost:${DEV_PORT}/api/admin/recalculate`, {
     method: "POST",
     headers: { "x-admin-pin": process.env.ADMIN_PIN || "" },
   });
