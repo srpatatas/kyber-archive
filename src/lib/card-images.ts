@@ -661,6 +661,10 @@ const LEADER_CROP_POSITION: Record<string, string> = {
   "Kazuda Xiono, Best Pilot in the Galaxy": "35% center",
   "Poe Dameron, I Can Fly Anything": "35% center",
   "Qui-Gon Jinn, Student of the Living Force": "40% center",
+  "Fennec Shand, Ready for War": "60% center",
+  "Grand Admiral Sloane, Holding the Empire Together": "35% center",
+  "Moff Gideon, Indomitable Warlord": "60% center",
+  "Shin Hati, Eager Adversary": "35% center",
   "Tobias Beckett, People are Predictable": "65% center",
   "Wedge Antilles, Leader of Red Squadron": "35% center",
 };
