@@ -77,7 +77,7 @@ page.on("response", async (response) => {
     }
 
     if (reqUrl.includes("GetRoundStandings")) {
-      latestStandings = json.data;
+      latestStandings = latestStandings.concat(json.data);
     }
   } catch {}
 });
@@ -102,6 +102,7 @@ console.log(`Organization: ${orgName?.trim() || "Unknown"}`);
 // Click last standings round for final standings
 const standingsButtons = await page.locator("#standings-round-selector-container .round-selector").all();
 if (standingsButtons.length > 0) {
+  latestStandings = []; // Reset before loading the final round
   await standingsButtons[standingsButtons.length - 1].scrollIntoViewIfNeeded();
   await standingsButtons[standingsButtons.length - 1].click();
   await page.waitForResponse(
@@ -110,6 +111,31 @@ if (standingsButtons.length > 0) {
   ).catch(() => null);
   await page.waitForTimeout(500);
 }
+
+// Load all standings pages — Melee uses DataTables with 25 per page
+// Click the DataTables "Next" button until it's disabled
+for (let attempt = 0; attempt < 20; attempt++) {
+  const nextBtn = page.locator('#tournament-standings-table_next:not(.disabled)');
+  const isVisible = await nextBtn.isVisible().catch(() => false);
+  if (!isVisible) break;
+  await nextBtn.click();
+  const gotMore = await page.waitForResponse(
+    (r) => r.url().includes("GetRoundStandings") && r.request().method() === "POST",
+    { timeout: 5000 },
+  ).catch(() => null);
+  if (!gotMore) break;
+  await page.waitForTimeout(500);
+}
+
+// Deduplicate standings by player ID (in case of overlapping pages)
+const seenStandingIds = new Set();
+latestStandings = latestStandings.filter((s) => {
+  const pid = s.Team?.Players?.[0]?.ID;
+  if (!pid || seenStandingIds.has(pid)) return false;
+  seenStandingIds.add(pid);
+  return true;
+});
+console.log(`Standings: ${latestStandings.length}`);
 
 // Click each pairings round button
 const roundButtonNames = new Map();
@@ -227,7 +253,12 @@ const playerCount = Object.keys(players).length;
 if (topCutSize === 0) topCutSize = 1;
 else if (playerCount <= 16) topCutSize = Math.min(topCutSize, 4);
 
+const standingsWithDecks = latestStandings.filter(s => s.Decklists?.length > 0).length;
 console.log(`Players: ${playerCount}, Matches: ${allMatches.length}, Top cut: ${topCutSize}`);
+console.log(`Standings: ${latestStandings.length}, with decklists: ${standingsWithDecks}`);
+if (latestStandings.length < playerCount) {
+  console.log(`⚠️  Warning: only ${latestStandings.length} standings captured for ${playerCount} players — some decklists may be missing`);
+}
 
 // Write to database
 const client = await pool.connect();

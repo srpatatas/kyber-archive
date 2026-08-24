@@ -86,6 +86,8 @@ export default function AdminPage() {
   const [recalcStep, setRecalcStep] = useState("");
   const [pendingAliases, setPendingAliases] = useState<{ username: string; tournamentName: string; createdAt: string }[]>([]);
   const [pendingAssignTargets, setPendingAssignTargets] = useState<Record<string, string>>({});
+  const [pendingSuggestions, setPendingSuggestions] = useState<Record<string, { id: string; username: string; name: string }[]>>({});
+  const [activePendingAutocomplete, setActivePendingAutocomplete] = useState<string | null>(null);
   const [pinError, setPinError] = useState(false);
 
   // Teams state
@@ -494,6 +496,28 @@ export default function AdminPage() {
     } catch {
       // ignore
     }
+  }
+
+  async function handlePendingPlayerSearch(username: string, term: string) {
+    setPendingAssignTargets((prev) => ({ ...prev, [username]: term }));
+    if (term.trim().length < 2) {
+      setPendingSuggestions((prev) => ({ ...prev, [username]: [] }));
+      setActivePendingAutocomplete(null);
+      return;
+    }
+    try {
+      const res = await adminFetch(`/api/admin/teams/members?q=${encodeURIComponent(term.trim())}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setPendingSuggestions((prev) => ({ ...prev, [username]: data.players ?? [] }));
+      setActivePendingAutocomplete(username);
+    } catch { /* ignore */ }
+  }
+
+  function selectPendingPlayer(username: string, playerId: string) {
+    setPendingAssignTargets((prev) => ({ ...prev, [username]: playerId }));
+    setPendingSuggestions((prev) => ({ ...prev, [username]: [] }));
+    setActivePendingAutocomplete(null);
   }
 
   async function handleDelete(id: number) {
@@ -910,13 +934,31 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <div className="mt-2 flex gap-2">
-                    <input
-                      type="text"
-                      value={pendingAssignTargets[p.username] ?? ""}
-                      onChange={(e) => setPendingAssignTargets((prev) => ({ ...prev, [p.username]: e.target.value }))}
-                      placeholder="Assign to existing player..."
-                      className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
-                    />
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={pendingAssignTargets[p.username] ?? ""}
+                        onChange={(e) => handlePendingPlayerSearch(p.username, e.target.value)}
+                        onFocus={() => { if ((pendingSuggestions[p.username]?.length ?? 0) > 0) setActivePendingAutocomplete(p.username); }}
+                        onBlur={() => setTimeout(() => setActivePendingAutocomplete(null), 150)}
+                        placeholder="Assign to existing player..."
+                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/30"
+                      />
+                      {activePendingAutocomplete === p.username && (pendingSuggestions[p.username]?.length ?? 0) > 0 && (
+                        <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-lg border border-border bg-surface shadow-lg max-h-40 overflow-y-auto">
+                          {pendingSuggestions[p.username].map((s) => (
+                            <button
+                              key={s.id}
+                              onMouseDown={() => selectPendingPlayer(p.username, s.id)}
+                              className="w-full px-3 py-1.5 text-left text-sm hover:bg-gold/10 transition-colors flex items-center justify-between"
+                            >
+                              <span className="font-medium text-foreground">{s.username}</span>
+                              {s.name !== s.username && <span className="text-muted truncate ml-2">{s.name}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleConfirmPending(p.username)}
                       disabled={!pendingAssignTargets[p.username]?.trim()}
