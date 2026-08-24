@@ -20,7 +20,7 @@ import { ASPECT_COLORS } from "@/lib/aspects";
 const SET_CODE = "ASH";
 const SET_NAME = "Ashes of the Empire";
 
-const LEADERS = [
+const LEADERS: string[] = [
   // Paste leader names here, e.g.:
   // "Ahsoka Tano, Trust in the Force",
   // "Baylan Skoll, Power Beyond Dream",
