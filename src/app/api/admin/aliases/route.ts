@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
     }
     await addAlias(alias, canonicalId);
     await mergePlayerAlias(alias.toLowerCase().trim(), canonicalId.toLowerCase().trim());
+    // Clean up pending_aliases for both the alias and canonical ID
+    const { query: dbQuery } = await import("@/lib/db");
+    await dbQuery("DELETE FROM pending_aliases WHERE username = $1 OR username = $2",
+      [alias.toLowerCase().trim(), canonicalId.toLowerCase().trim()]);
     revalidateAllData();
     return NextResponse.json({ success: true });
   } catch (error) {
