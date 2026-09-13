@@ -59,6 +59,7 @@ const page = await context.newPage();
 const matchesByRound = new Map();
 let latestStandings = [];
 
+// Only intercept standings responses (matches are fetched via direct HTTP below)
 page.on("response", async (response) => {
   if (response.request().method() !== "POST") return;
   const reqUrl = response.url();
@@ -68,13 +69,6 @@ page.on("response", async (response) => {
   try {
     const json = await response.json();
     if (!json.data) return;
-
-    if (reqUrl.includes("GetRoundMatches")) {
-      const roundId = reqUrl.match(/GetRoundMatches\/(\d+)/)?.[1];
-      if (roundId && !matchesByRound.has(roundId)) {
-        matchesByRound.set(roundId, json.data);
-      }
-    }
 
     if (reqUrl.includes("GetRoundStandings")) {
       latestStandings = latestStandings.concat(json.data);
@@ -137,46 +131,80 @@ latestStandings = latestStandings.filter((s) => {
 });
 console.log(`Standings: ${latestStandings.length}`);
 
-// Click each pairings round button
+// Discover round IDs: click each pairings button once, intercept the round ID from the response URL
 const roundButtonNames = new Map();
 const pairingsButtons = await page.locator("#pairings-round-selector-container .round-selector").all();
 console.log(`Found ${pairingsButtons.length} rounds`);
 
-// Collect button texts first
+// Collect button texts
 const buttonTexts = [];
 for (const btn of pairingsButtons) {
   buttonTexts.push((await btn.textContent().catch(() => ""))?.trim() || "");
 }
 
-// Click each button and track which round ID it loads
+// Click each button to discover its round ID from the network request
 for (let i = 0; i < pairingsButtons.length; i++) {
   const btn = pairingsButtons[i];
   const text = buttonTexts[i];
-  const sizesBefore = new Set(matchesByRound.keys());
 
   await btn.scrollIntoViewIfNeeded();
-  await btn.click();
-  await page.waitForResponse(
-    (r) => r.url().includes("GetRoundMatches") && r.request().method() === "POST",
-    { timeout: 5000 },
-  ).catch(() => null);
-  await page.waitForTimeout(500);
+  const [resp] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("GetRoundMatches") && r.request().method() === "POST",
+      { timeout: 5000 },
+    ).catch(() => null),
+    btn.click(),
+  ]);
 
-  // Find the newly added round ID
-  for (const roundId of matchesByRound.keys()) {
-    if (!sizesBefore.has(roundId) && text) {
+  if (resp) {
+    const roundId = resp.url().match(/GetRoundMatches\/(\d+)/)?.[1];
+    if (roundId && text) {
       roundButtonNames.set(roundId, text);
     }
   }
-  // If no new round was added (already cached from page load), find the unmatched one
-  if (matchesByRound.size === sizesBefore.size) {
-    for (const roundId of matchesByRound.keys()) {
-      if (!roundButtonNames.has(roundId) && text) {
-        roundButtonNames.set(roundId, text);
-      }
+  await page.waitForTimeout(300);
+}
+
+console.log(`Mapped ${roundButtonNames.size} rounds`);
+
+// Fetch ALL matches per round via Playwright's request API (carries full browser session)
+// Uses length=1000 to bypass DataTables 25-per-page pagination
+for (const [roundId, roundName] of roundButtonNames) {
+  try {
+    const json = await page.evaluate(async (rid) => {
+      const resp = await fetch(`/Match/GetRoundMatches/${rid}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: new URLSearchParams({
+          draw: "1",
+          "columns[0][data]": "0",
+          "columns[0][name]": "",
+          "columns[0][searchable]": "true",
+          "columns[0][orderable]": "false",
+          "columns[0][search][value]": "",
+          "columns[0][search][regex]": "false",
+          start: "0",
+          length: "1000",
+          "search[value]": "",
+          "search[regex]": "false",
+        }).toString(),
+      });
+      return resp.json();
+    }, roundId);
+
+    if (json.data) {
+      matchesByRound.set(roundId, json.data);
+      process.stdout.write(".");
+    } else {
+      process.stdout.write("x");
     }
+  } catch (err) {
+    console.error(`\nFailed to fetch ${roundName} (${roundId}):`, err.message);
+    process.stdout.write("x");
   }
-  process.stdout.write(".");
 }
 console.log("");
 
@@ -258,6 +286,20 @@ console.log(`Players: ${playerCount}, Matches: ${allMatches.length}, Top cut: ${
 console.log(`Standings: ${latestStandings.length}, with decklists: ${standingsWithDecks}`);
 if (latestStandings.length < playerCount) {
   console.log(`⚠️  Warning: only ${latestStandings.length} standings captured for ${playerCount} players — some decklists may be missing`);
+}
+
+// Safety check: verify we scraped a reasonable number of matches
+// Each swiss round should have roughly ceil(playerCount/2) matches
+const swissRounds = allMatches.filter(m => m.roundName.startsWith("Round"));
+const swissRoundNames = [...new Set(swissRounds.map(m => m.roundName))];
+const expectedPerRound = Math.ceil(playerCount / 2);
+if (swissRoundNames.length > 0) {
+  const minPerRound = Math.min(...swissRoundNames.map(rn => swissRounds.filter(m => m.roundName === rn).length));
+  if (minPerRound < expectedPerRound * 0.7) {
+    console.error(`\n❌ ABORTING: Round "${swissRoundNames.find(rn => swissRounds.filter(m => m.roundName === rn).length === minPerRound)}" only has ${minPerRound} matches (expected ~${expectedPerRound} for ${playerCount} players). Scrape may be incomplete.`);
+    await pool.end();
+    process.exit(1);
+  }
 }
 
 // Write to database

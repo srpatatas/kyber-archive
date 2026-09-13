@@ -1288,9 +1288,43 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
   }
 
   const top8Ids = new Set((standingRows as Record<string, unknown>[]).map((s) => s.player_id as string));
+
+  // Load melee.gg standings from scraped_data for accurate tiebreaker ordering
+  const { rows: scrapedRows } = await query(
+    "SELECT raw_json FROM scraped_data WHERE tournament_id = $1", [id]
+  );
+  const meleeRankMap = new Map<string, number>();
+  if (scrapedRows.length > 0) {
+    try {
+      const raw = JSON.parse((scrapedRows[0] as Record<string, unknown>).raw_json as string);
+      const scrapedStandings = (raw.standings || []) as Record<string, unknown>[];
+      // Load alias map to resolve player IDs consistently
+      const { rows: aliasRows } = await query("SELECT alias, canonical_id FROM player_aliases");
+      const aliasMap = new Map(aliasRows.map((r: Record<string, unknown>) => [r.alias as string, r.canonical_id as string]));
+      const resolve = (key: string) => aliasMap.get(key) ?? key;
+      for (const s of scrapedStandings) {
+        const team = s.Team as Record<string, unknown> | undefined;
+        const players = team?.Players as Record<string, unknown>[] | undefined;
+        const player = players?.[0];
+        if (player && s.Rank != null) {
+          const username = ((player.Username as string) || (player.DisplayName as string) || "").toLowerCase();
+          const pid = resolve(username);
+          meleeRankMap.set(pid, s.Rank as number);
+        }
+      }
+    } catch {}
+  }
+
   const restPlayers = allPlayerIds
     .filter((pid) => !top8Ids.has(pid))
     .sort((a, b) => {
+      // Use melee.gg rank when available (has proper tiebreakers)
+      const meleeA = meleeRankMap.get(a);
+      const meleeB = meleeRankMap.get(b);
+      if (meleeA != null && meleeB != null) return meleeA - meleeB;
+      if (meleeA != null) return -1;
+      if (meleeB != null) return 1;
+      // Fall back to win differential for tournaments without scraped data
       const sa = playerStats.get(a)!;
       const sb = playerStats.get(b)!;
       return (sb.wins - sb.losses) - (sa.wins - sa.losses);
@@ -1317,8 +1351,10 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
     const stats = playerStats.get(pid)!;
     const deck = decklistMap.get(pid) as Record<string, unknown> | undefined;
     if (info) {
+      // Use melee.gg rank if available, otherwise sequential
+      const meleeRank = meleeRankMap.get(pid);
       standings.push({
-        rank: rank++,
+        rank: meleeRank ?? rank++,
         playerId: pid,
         username: info.username,
         name: info.name,
@@ -1328,6 +1364,7 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
         matchLosses: stats.losses,
         matchDraws: stats.draws,
       });
+      if (meleeRank != null) rank++; // keep rank counter in sync
     }
   }
 

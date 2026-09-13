@@ -23,6 +23,7 @@ export async function scrapeTournament(tournamentId: number): Promise<ScrapeResu
   const roundButtonNames = new Map<string, string>();
   let latestStandings: MeleeStanding[] = [];
 
+  // Only intercept standings responses (matches are fetched via direct HTTP below)
   page.on("response", async (response) => {
     if (response.request().method() !== "POST") return;
     const reqUrl = response.url();
@@ -32,13 +33,6 @@ export async function scrapeTournament(tournamentId: number): Promise<ScrapeResu
     try {
       const json = await response.json();
       if (!json.data) return;
-
-      if (reqUrl.includes("GetRoundMatches")) {
-        const roundId = reqUrl.match(/GetRoundMatches\/(\d+)/)?.[1];
-        if (roundId && !matchesByRound.has(roundId)) {
-          matchesByRound.set(roundId, json.data);
-        }
-      }
 
       if (reqUrl.includes("GetRoundStandings")) {
         latestStandings = json.data;
@@ -73,23 +67,64 @@ export async function scrapeTournament(tournamentId: number): Promise<ScrapeResu
       await page.waitForTimeout(500);
     }
 
-    // Click each pairings round button to collect all match data
+    // Discover round IDs: click each pairings button once, intercept the round ID from the response URL
     const pairingsButtons = await page.locator("#pairings-round-selector-container .round-selector").all();
     for (const btn of pairingsButtons) {
       const text = (await btn.textContent().catch(() => ""))?.trim() || "";
       await btn.scrollIntoViewIfNeeded();
-      await btn.click();
-      await page.waitForResponse(
-        (r) => r.url().includes("GetRoundMatches") && r.request().method() === "POST",
-        { timeout: 5000 },
-      ).catch(() => null);
-      await page.waitForTimeout(500);
+      const [resp] = await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes("GetRoundMatches") && r.request().method() === "POST",
+          { timeout: 5000 },
+        ).catch(() => null),
+        btn.click(),
+      ]);
 
-      // Map the last captured round ID to this button's text
-      const lastRoundId = [...matchesByRound.keys()].pop();
-      if (lastRoundId && text) {
-        roundButtonNames.set(lastRoundId, text);
+      if (resp) {
+        const roundId = resp.url().match(/GetRoundMatches\/(\d+)/)?.[1];
+        if (roundId && text) {
+          roundButtonNames.set(roundId, text);
+        }
       }
+      await page.waitForTimeout(300);
+    }
+
+    // Fetch ALL matches per round via direct HTTP with length=1000
+    // This bypasses DataTables 25-per-page pagination entirely
+    const cookies = await context.cookies();
+    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join("; ");
+
+    for (const [roundId, roundName] of roundButtonNames) {
+      const fetchUrl = `https://melee.gg/Match/GetRoundMatches/${roundId}`;
+      const body = new URLSearchParams({
+        draw: "1",
+        "columns[0][data]": "0",
+        "columns[0][name]": "",
+        "columns[0][searchable]": "true",
+        "columns[0][orderable]": "false",
+        "columns[0][search][value]": "",
+        "columns[0][search][regex]": "false",
+        start: "0",
+        length: "1000",
+        "search[value]": "",
+        "search[regex]": "false",
+      });
+
+      try {
+        const resp = await globalThis.fetch(fetchUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
+            Cookie: cookieHeader,
+          },
+          body: body.toString(),
+        });
+        const json = await resp.json();
+        if (json.data) {
+          matchesByRound.set(roundId, json.data);
+        }
+      } catch {}
     }
 
     // Flatten all matches and attach round names
