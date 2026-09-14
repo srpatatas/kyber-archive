@@ -1173,6 +1173,22 @@ export async function getPlayerLeaders(playerId: string): Promise<PlayerLeaderEn
   return Array.from(grouped.values()).sort((a, b) => b.count - a.count);
 }
 
+export interface TournamentDeckStats {
+  leader: string;
+  base: string;
+  baseDisplay: string;
+  baseAspect: string | null;
+  aspects: string[];
+  count: number;
+  playRate: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  topCutCount: number;
+  conversionRate: number;
+}
+
 export interface TournamentDetail {
   id: number;
   name: string;
@@ -1182,6 +1198,8 @@ export interface TournamentDetail {
   playerCount: number;
   matchCount: number;
   topCutSize: number;
+  deckStats: TournamentDeckStats[];
+  matchups: { leader1: string; base1: string; leader2: string; base2: string; leader1Wins: number; leader2Wins: number; draws: number; total: number; leader1WinRate: number }[];
   standings: {
     rank: number;
     playerId: string;
@@ -1189,6 +1207,8 @@ export interface TournamentDetail {
     name: string;
     leader: string | null;
     base: string | null;
+    baseDisplay: string | null;
+    decklistGuid: string | null;
     matchWins: number;
     matchLosses: number;
     matchDraws: number;
@@ -1223,7 +1243,8 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
       p.username,
       p.name,
       d.leader,
-      d.base
+      d.base,
+      d.decklist_guid
     FROM placements pl
     JOIN players p ON p.id = pl.player_id
     LEFT JOIN decklists d ON d.player_id = pl.player_id AND d.tournament_id = pl.tournament_id
@@ -1232,7 +1253,7 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
   `, [id]);
 
   const { rows: allDecklists } = await query(
-    "SELECT player_id, leader, base FROM decklists WHERE tournament_id = $1", [id]
+    "SELECT player_id, leader, base, decklist_guid FROM decklists WHERE tournament_id = $1", [id]
   );
   const decklistMap = new Map((allDecklists as Record<string, unknown>[]).map((d) => [d.player_id as string, d]));
 
@@ -1333,13 +1354,17 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
   const standings: TournamentDetail["standings"] = [];
   for (const s of standingRows as Record<string, unknown>[]) {
     const stats = playerStats.get(s.player_id as string) ?? { wins: 0, losses: 0, draws: 0 };
+    const base = s.base as string | null;
+    const normalized = base ? normalizeBase(base) : null;
     standings.push({
       rank: s.rank as number,
       playerId: s.player_id as string,
       username: s.username as string,
       name: s.name as string,
       leader: s.leader as string | null,
-      base: s.base as string | null,
+      base,
+      baseDisplay: normalized?.display ?? null,
+      decklistGuid: (s.decklist_guid as string) ?? null,
       matchWins: stats.wins,
       matchLosses: stats.losses,
       matchDraws: stats.draws,
@@ -1353,13 +1378,17 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
     if (info) {
       // Use melee.gg rank if available, otherwise sequential
       const meleeRank = meleeRankMap.get(pid);
+      const base = (deck?.base as string) ?? null;
+      const normalized = base ? normalizeBase(base) : null;
       standings.push({
         rank: meleeRank ?? rank++,
         playerId: pid,
         username: info.username,
         name: info.name,
         leader: (deck?.leader as string) ?? null,
-        base: (deck?.base as string) ?? null,
+        base,
+        baseDisplay: normalized?.display ?? null,
+        decklistGuid: (deck?.decklist_guid as string) ?? null,
         matchWins: stats.wins,
         matchLosses: stats.losses,
         matchDraws: stats.draws,
@@ -1367,6 +1396,121 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
       if (meleeRank != null) rank++; // keep rank counter in sync
     }
   }
+
+  // Compute per-deck meta stats for this tournament
+  const deckAgg = new Map<string, { leader: string; baseDisplay: string; baseAspect: string | null; rawKeys: Set<string>; players: Set<string>; wins: number; losses: number; draws: number; topCut: number }>();
+  for (const s of standings) {
+    if (!s.leader) continue;
+    const base = s.base || "Unknown";
+    const normalized = normalizeBase(base);
+    // Group by leader + normalized base so "Nevarro City" and "Fortress of the Great Mothers" both become "Blue 30HP"
+    const key = `${s.leader}||${normalized.display}`;
+    const rawKey = `${s.leader}||${base}`;
+    const entry = deckAgg.get(key) ?? { leader: s.leader, baseDisplay: normalized.display, baseAspect: normalized.aspect, rawKeys: new Set(), players: new Set(), wins: 0, losses: 0, draws: 0, topCut: 0 };
+    entry.rawKeys.add(rawKey);
+    entry.players.add(s.playerId);
+    entry.wins += s.matchWins;
+    entry.losses += s.matchLosses;
+    entry.draws += s.matchDraws;
+    if (s.rank <= topCutSize) entry.topCut++;
+    deckAgg.set(key, entry);
+  }
+
+  const totalWithDecks = standings.filter(s => s.leader).length;
+  // Look up aspects using raw deck keys (leader||base as stored in aspect_cache)
+  const allRawKeys = Array.from(new Set([...deckAgg.values()].flatMap(d => [...d.rawKeys])));
+  const { rows: aspectRows } = await query(
+    "SELECT deck_key, aspects FROM aspect_cache WHERE deck_key = ANY($1)",
+    [allRawKeys]
+  );
+  const aspectMap = new Map<string, string[]>();
+  for (const r of aspectRows as Record<string, unknown>[]) {
+    const aspects = (r.aspects as string)?.split(",").map(a => a.trim()).filter(Boolean) ?? [];
+    aspectMap.set(r.deck_key as string, aspects);
+  }
+
+  const deckStats: TournamentDeckStats[] = Array.from(deckAgg.entries()).map(([, d]) => {
+    // Find aspects from any of the raw keys
+    const aspects = [...d.rawKeys].map(k => aspectMap.get(k)).find(a => a && a.length > 0) ?? [];
+    const totalGames = d.wins + d.losses + d.draws;
+    return {
+      leader: d.leader,
+      base: d.baseDisplay,
+      baseDisplay: d.baseDisplay,
+      baseAspect: d.baseAspect,
+      aspects,
+      count: d.players.size,
+      playRate: totalWithDecks > 0 ? (d.players.size / totalWithDecks) * 100 : 0,
+      wins: d.wins,
+      losses: d.losses,
+      draws: d.draws,
+      winRate: totalGames > 0 ? (d.wins / totalGames) * 100 : 0,
+      topCutCount: d.topCut,
+      conversionRate: d.players.size > 0 ? (d.topCut / d.players.size) * 100 : 0,
+    };
+  }).sort((a, b) => b.count - a.count || b.winRate - a.winRate);
+
+  // Compute matchup matrix: deck vs deck win rates from match data
+  // Build a map from playerId to their normalized deck key
+  const playerDeckKey = new Map<string, { leader: string; base: string }>();
+  for (const s of standings) {
+    if (!s.leader) continue;
+    const base = s.base || "Unknown";
+    const normalized = normalizeBase(base);
+    playerDeckKey.set(s.playerId, { leader: s.leader, base: normalized.display });
+  }
+
+  const matchupAgg = new Map<string, { leader1: string; base1: string; leader2: string; base2: string; l1Wins: number; l2Wins: number; draws: number }>();
+  for (const m of matchRows as Record<string, unknown>[]) {
+    const p1 = m.player1_id as string;
+    const p2 = m.player2_id as string;
+    if (p1 === "__bye__" || p2 === "__bye__") continue;
+    const d1 = playerDeckKey.get(p1);
+    const d2 = playerDeckKey.get(p2);
+    if (!d1 || !d2) continue;
+    // Consistent key ordering so A vs B and B vs A are the same entry
+    const k1 = `${d1.leader}||${d1.base}`;
+    const k2 = `${d2.leader}||${d2.base}`;
+    if (k1 === k2) continue; // skip mirror matches
+    const isForward = k1 < k2;
+    const key = isForward ? `${k1}|||${k2}` : `${k2}|||${k1}`;
+    const entry = matchupAgg.get(key) ?? {
+      leader1: isForward ? d1.leader : d2.leader,
+      base1: isForward ? d1.base : d2.base,
+      leader2: isForward ? d2.leader : d1.leader,
+      base2: isForward ? d1.base : d2.base, // placeholder, fixed below
+      l1Wins: 0, l2Wins: 0, draws: 0,
+    };
+    if (!matchupAgg.has(key)) {
+      entry.leader1 = isForward ? d1.leader : d2.leader;
+      entry.base1 = isForward ? d1.base : d2.base;
+      entry.leader2 = isForward ? d2.leader : d1.leader;
+      entry.base2 = isForward ? d2.base : d1.base;
+    }
+    const p1w = m.player1_wins as number;
+    const p2w = m.player2_wins as number;
+    if (p1w > p2w) {
+      if (isForward) entry.l1Wins++; else entry.l2Wins++;
+    } else if (p2w > p1w) {
+      if (isForward) entry.l2Wins++; else entry.l1Wins++;
+    } else {
+      entry.draws++;
+    }
+    matchupAgg.set(key, entry);
+  }
+
+  const matchups: TournamentDetail["matchups"] = Array.from(matchupAgg.values())
+    .filter(m => (m.l1Wins + m.l2Wins + m.draws) >= 2) // need at least 2 encounters
+    .map(m => {
+      const total = m.l1Wins + m.l2Wins + m.draws;
+      return {
+        leader1: m.leader1, base1: m.base1,
+        leader2: m.leader2, base2: m.base2,
+        leader1Wins: m.l1Wins, leader2Wins: m.l2Wins,
+        draws: m.draws, total,
+        leader1WinRate: total > 0 ? (m.l1Wins / total) * 100 : 50,
+      };
+    });
 
   return {
     id: tournament.id as number,
@@ -1377,6 +1521,8 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
     playerCount: tournament.player_count as number,
     matchCount: tournament.match_count as number,
     topCutSize,
+    deckStats,
+    matchups,
     standings,
     rounds: Array.from(roundsMap.values()).sort((a, b) => {
       const order = (name: string): number => {

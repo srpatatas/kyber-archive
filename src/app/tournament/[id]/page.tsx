@@ -6,6 +6,10 @@ import { getTierConfig } from "@/lib/tiers";
 import { KyberCrystal } from "@/components/kyber-crystal";
 import { BracketView } from "@/components/bracket-view";
 import { TournamentRounds } from "@/components/tournament-rounds";
+import { TournamentMeta } from "@/components/tournament-meta";
+import { MatchupMatrix } from "@/components/matchup-matrix";
+import { getLeaderThumbnailUrl, getLeaderAspects } from "@/lib/card-images";
+import { ASPECT_COLORS } from "@/lib/aspects";
 
 export default async function TournamentPage({
   params,
@@ -167,6 +171,14 @@ export default async function TournamentPage({
 
             <BracketView rounds={data.rounds} tierColor={tierColor} />
 
+            <TournamentMeta decks={data.deckStats} />
+
+            {data.matchups.length > 0 && (
+              <div className="mt-8">
+                <MatchupMatrix matchups={data.matchups} />
+              </div>
+            )}
+
             <div className="mt-8">
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-3">
                 Full Standings ({data.standings.length} players)
@@ -177,42 +189,79 @@ export default async function TournamentPage({
                     <tr className="border-b border-border bg-surface">
                       <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted w-12">#</th>
                       <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">Player</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">Leader</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">Deck</th>
                       <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wider text-muted">Record</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {data.standings.map((s) => (
-                      <tr key={s.playerId} className="hover:bg-surface-light/50 transition-colors">
-                        <td className="px-3 py-2 tabular-nums text-muted">{s.rank}</td>
-                        <td className="px-3 py-2">
-                          <Link href={`/player/${s.playerId}`} className="hover:text-gold transition-colors">
-                            <span className="font-medium">{s.username}</span>
-                            <span className="ml-2 text-xs text-muted">{s.name}</span>
-                          </Link>
-                        </td>
-                        <td className="px-3 py-2 text-xs text-sand">
-                          {s.leader ? (
-                            <span title={s.base ? `${s.leader} - ${s.base}` : s.leader}>
-                              {s.leader}
-                            </span>
+                    {data.standings.map((s) => {
+                      const imgUrl = s.leader ? getLeaderThumbnailUrl(s.leader) : null;
+                      const aspects = s.leader ? getLeaderAspects(s.leader) : [];
+                      const colorAspect = aspects.find(a => a.toLowerCase() !== "heroism" && a.toLowerCase() !== "villainy");
+                      const rawColor = colorAspect ? ASPECT_COLORS[colorAspect.toLowerCase()] : (aspects[0] ? ASPECT_COLORS[aspects[0].toLowerCase()] : undefined);
+                      const borderColor = rawColor === "#040004" ? "#4a3060" : rawColor ?? "#666";
+                      const shortLeader = s.leader?.split(",")[0].trim() ?? null;
+
+                      const deckContent = s.leader ? (
+                        <div className="flex items-center gap-2">
+                          {imgUrl ? (
+                            <div
+                              className="h-7 w-7 shrink-0 rounded-full bg-cover bg-center border-2"
+                              style={{ backgroundImage: `url(${imgUrl})`, borderColor }}
+                            />
                           ) : (
+                            <div
+                              className="h-7 w-7 shrink-0 rounded-full border-2"
+                              style={{ borderColor, backgroundColor: `${borderColor}20` }}
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground truncate text-xs">{shortLeader}</p>
+                            <p className="text-[10px] text-muted truncate">{s.baseDisplay ?? s.base}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      );
+
+                      return (
+                        <tr key={s.playerId} className="hover:bg-surface-light/50 transition-colors">
+                          <td className="px-3 py-2 tabular-nums text-muted">{s.rank}</td>
+                          <td className="px-3 py-2">
+                            <Link href={`/player/${s.playerId}`} className="hover:text-gold transition-colors">
+                              <span className="font-medium">{s.username}</span>
+                              <span className="ml-2 text-xs text-muted hidden sm:inline">{s.name}</span>
+                            </Link>
+                          </td>
+                          <td className="px-3 py-2">
+                            {s.decklistGuid ? (
+                              <a
+                                href={`https://melee.gg/Decklist/View/${s.decklistGuid}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:opacity-80 transition-opacity"
+                                title="View decklist on melee.gg"
+                              >
+                                {deckContent}
+                              </a>
+                            ) : (
+                              deckContent
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center tabular-nums">
+                            <span className="text-emerald-400">{s.matchWins}</span>
                             <span className="text-muted">-</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums">
-                          <span className="text-emerald-400">{s.matchWins}</span>
-                          <span className="text-muted">-</span>
-                          <span className="text-red-400">{s.matchLosses}</span>
-                          {s.matchDraws > 0 && (
-                            <>
-                              <span className="text-muted">-</span>
-                              <span className="text-muted">{s.matchDraws}</span>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                            <span className="text-red-400">{s.matchLosses}</span>
+                            {s.matchDraws > 0 && (
+                              <>
+                                <span className="text-muted">-</span>
+                                <span className="text-muted">{s.matchDraws}</span>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
