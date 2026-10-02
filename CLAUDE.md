@@ -35,6 +35,11 @@ Use community terms, not game aspect names:
 - Two-phase approach: Phase 1 clicks round buttons to discover round IDs, Phase 2 uses `page.evaluate(fetch)` with `length=1000` to get all matches
 - Safety check: abort if any swiss round has <70% expected matches
 - Standings use melee.gg `Rank` from `scraped_data`, not raw win-diff
+- Usage: `node scrape.mjs <melee-url-or-id> <tier>` — needs sandbox disabled (Neon WebSocket + Playwright). Re-running replaces the tournament's matches/placements/decklists and recalculates ratings; Nacional → Meta → Stamp still run from Admin
+- **Missing Finals standings:** melee sometimes publishes no standings for the last round. The scraper falls back to the last non-empty standings tab (e.g. Semifinals) and applies later rounds' match results (winner takes the better rank, records + 3 pts/win updated). Before this fix it was done by hand in the DB (LUDUS 466082, LAW 469777)
+- Tournament date comes from the page header (`MM/DD/YYYY h:mm AM -03`), falling back to standings `DateCreated` — not ingestion time
+- Some events have no decklists submitted on melee (e.g. 469777) — "0 with decklists" is not necessarily a scrape bug
+- To verify a scraper change, snapshot the tournament's DB rows (tournament, matches, placements, decklists, `scraped_data` standings), re-scrape, and diff
 
 ## Git & deploy workflow
 
