@@ -97,7 +97,7 @@ export default async function TournamentPage({
                           <p className="text-sm text-sand mt-1">{topCut[0].leader}</p>
                         )}
                         {topCut[0].base && (
-                          <p className="text-xs text-muted">{topCut[0].base}</p>
+                          <p className="text-xs text-muted">{topCut[0].baseDisplay ?? topCut[0].base}</p>
                         )}
                       </div>
                     </div>
@@ -133,7 +133,7 @@ export default async function TournamentPage({
                         <p className="truncate text-xs text-sand mt-1">{s.leader}</p>
                       )}
                       {s.base && (
-                        <p className="truncate text-[10px] text-muted">{s.base}</p>
+                        <p className="truncate text-[10px] text-muted">{s.baseDisplay ?? s.base}</p>
                       )}
                     </Link>
                   ))}
@@ -160,7 +160,7 @@ export default async function TournamentPage({
                           <p className="truncate text-[10px] text-sand mt-0.5">{s.leader}</p>
                         )}
                         {s.base && (
-                          <p className="truncate text-[10px] text-muted">{s.base}</p>
+                          <p className="truncate text-[10px] text-muted">{s.baseDisplay ?? s.base}</p>
                         )}
                       </Link>
                     ))}
