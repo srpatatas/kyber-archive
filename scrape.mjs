@@ -93,32 +93,55 @@ const orgName = await page.locator(".tournament-organizer-name, a[href*='/Hub/Or
 console.log(`Tournament: ${name}`);
 console.log(`Organization: ${orgName?.trim() || "Unknown"}`);
 
-// Click last standings round for final standings
-const standingsButtons = await page.locator("#standings-round-selector-container .round-selector").all();
-if (standingsButtons.length > 0) {
-  latestStandings = []; // Reset before loading the final round
-  await standingsButtons[standingsButtons.length - 1].scrollIntoViewIfNeeded();
-  await standingsButtons[standingsButtons.length - 1].click();
+// Tournament start date from the page header, e.g. "09/24/2026 5:00 PM -03"
+const headerTexts = await page.locator(".tournament-headline, #tournament-headline-registration, [data-toggle='datetime']").allTextContents().catch(() => []);
+let pageDate = null;
+for (const t of headerTexts) {
+  const m = t.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)\s*([+-]\d{2})(?::?(\d{2}))?/i);
+  if (!m) continue;
+  const [, mo, d, y, h, mi, ampm, tzH, tzM = "00"] = m;
+  const hour24 = (parseInt(h, 10) % 12) + (ampm.toUpperCase() === "PM" ? 12 : 0);
+  const parsed = new Date(`${y}-${mo}-${d}T${String(hour24).padStart(2, "0")}:${mi}:00${tzH}:${tzM}`);
+  if (!isNaN(parsed)) { pageDate = parsed.toISOString(); break; }
+}
+
+// Load every page of the currently selected standings round
+async function loadStandingsRound(button) {
+  latestStandings = [];
+  await button.scrollIntoViewIfNeeded();
+  await button.click();
   await page.waitForResponse(
     (r) => r.url().includes("GetRoundStandings") && r.request().method() === "POST",
     { timeout: 5000 },
   ).catch(() => null);
   await page.waitForTimeout(500);
+
+  // Melee uses DataTables with 25 per page — click "Next" until it's disabled
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const nextBtn = page.locator('#tournament-standings-table_next:not(.disabled)');
+    const isVisible = await nextBtn.isVisible().catch(() => false);
+    if (!isVisible) break;
+    await nextBtn.click();
+    const gotMore = await page.waitForResponse(
+      (r) => r.url().includes("GetRoundStandings") && r.request().method() === "POST",
+      { timeout: 5000 },
+    ).catch(() => null);
+    if (!gotMore) break;
+    await page.waitForTimeout(500);
+  }
 }
 
-// Load all standings pages — Melee uses DataTables with 25 per page
-// Click the DataTables "Next" button until it's disabled
-for (let attempt = 0; attempt < 20; attempt++) {
-  const nextBtn = page.locator('#tournament-standings-table_next:not(.disabled)');
-  const isVisible = await nextBtn.isVisible().catch(() => false);
-  if (!isVisible) break;
-  await nextBtn.click();
-  const gotMore = await page.waitForResponse(
-    (r) => r.url().includes("GetRoundStandings") && r.request().method() === "POST",
-    { timeout: 5000 },
-  ).catch(() => null);
-  if (!gotMore) break;
-  await page.waitForTimeout(500);
+// Use the last standings round that has data. Melee sometimes publishes no
+// Finals standings; later rounds are applied from match results further down.
+const standingsButtons = await page.locator("#standings-round-selector-container .round-selector").all();
+let standingsRoundName = null;
+for (let i = standingsButtons.length - 1; i >= 0; i--) {
+  await loadStandingsRound(standingsButtons[i]);
+  if (latestStandings.length > 0) {
+    standingsRoundName = (await standingsButtons[i].textContent().catch(() => ""))?.trim() || null;
+    if (i < standingsButtons.length - 1) console.log(`⚠️  Last standings round is empty — falling back to "${standingsRoundName}"`);
+    break;
+  }
 }
 
 // Deduplicate standings by player ID (in case of overlapping pages)
@@ -214,7 +237,7 @@ await context.close();
 const allMatches = [];
 const players = {};
 const eventTier = tierArg;
-const tournamentDate = latestStandings[0]?.DateCreated || new Date().toISOString();
+const tournamentDate = pageDate || latestStandings[0]?.DateCreated || new Date().toISOString();
 
 // Load player aliases
 const { rows: aliasRows } = await pool.query("SELECT alias, canonical_id FROM player_aliases");
@@ -260,6 +283,39 @@ for (const [roundId, matches] of matchesByRound) {
 
 // Detect top cut
 const roundOrder = [...roundButtonNames.values()];
+
+// If standings came from an earlier round, apply later rounds' results:
+// each winner takes the better rank of the pair, and records are updated.
+const standingsRoundIdx = standingsRoundName ? roundOrder.indexOf(standingsRoundName) : -1;
+if (standingsRoundIdx >= 0 && standingsRoundIdx < roundOrder.length - 1) {
+  const standingByKey = new Map(latestStandings
+    .filter(s => s.Team?.Players?.length)
+    .map(s => [resolve((s.Team.Players[0].Username || s.Team.Players[0].DisplayName).toLowerCase()), s]));
+  for (const roundName of roundOrder.slice(standingsRoundIdx + 1)) {
+    for (const m of allMatches.filter(m => m.roundName === roundName && m.p2Key !== "__bye__")) {
+      const s1 = standingByKey.get(m.p1Key);
+      const s2 = standingByKey.get(m.p2Key);
+      if (!s1 || !s2 || m.p1Wins === m.p2Wins) continue;
+      const [winner, loser, wGames, lGames] = m.p1Wins > m.p2Wins ? [s1, s2, m.p1Wins, m.p2Wins] : [s2, s1, m.p2Wins, m.p1Wins];
+      const [bestRank, worstRank] = [Math.min(s1.Rank, s2.Rank), Math.max(s1.Rank, s2.Rank)];
+      winner.Rank = bestRank;
+      loser.Rank = worstRank;
+      for (const [s, won, gw, gl] of [[winner, true, wGames, lGames], [loser, false, lGames, wGames]]) {
+        s.MatchCount = (s.MatchCount || 0) + 1;
+        if (won) { s.MatchWins = (s.MatchWins || 0) + 1; s.Points = (s.Points || 0) + 3; }
+        else s.MatchLosses = (s.MatchLosses || 0) + 1;
+        s.GameWins = (s.GameWins || 0) + gw;
+        s.GameLosses = (s.GameLosses || 0) + gl;
+        s.GameCount = (s.GameCount || 0) + gw + gl;
+        s.MatchRecord = `${s.MatchWins || 0}-${s.MatchLosses || 0}-${s.MatchDraws || 0}`;
+        s.GameRecord = `${s.GameWins}-${s.GameLosses}-${s.GameDraws || 0}`;
+        s.Round = roundName;
+      }
+      console.log(`Applied ${roundName}: ${m.p1Key} ${m.p1Wins}-${m.p2Wins} ${m.p2Key}`);
+    }
+  }
+  latestStandings.sort((a, b) => a.Rank - b.Rank);
+}
 const allRoundNamesLower = roundOrder.map(n => n.toLowerCase());
 const hasQuarters = allRoundNamesLower.some(n => n.includes("quarter"));
 const hasSemis = allRoundNamesLower.some(n => n.includes("semi"));
