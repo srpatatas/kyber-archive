@@ -1425,7 +1425,7 @@ export async function getTournamentDetail(id: number): Promise<TournamentDetail 
   );
   const aspectMap = new Map<string, string[]>();
   for (const r of aspectRows as Record<string, unknown>[]) {
-    const aspects = (r.aspects as string)?.split(",").map(a => a.trim()).filter(Boolean) ?? [];
+    const aspects = r.aspects ? JSON.parse(r.aspects as string) as string[] : [];
     aspectMap.set(r.deck_key as string, aspects);
   }
 
