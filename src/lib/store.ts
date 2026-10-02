@@ -681,7 +681,7 @@ export async function confirmPendingAlias(username: string, canonicalId: string)
   canonicalId = canonicalId.toLowerCase().trim();
   await addAlias(username, canonicalId);
   await mergePlayerAlias(username, canonicalId);
-  await query("DELETE FROM pending_aliases WHERE username = $1", [username]);
+  await query("DELETE FROM pending_aliases WHERE username = $1 OR username = $2", [username, canonicalId]);
 }
 
 export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] })[]> {
