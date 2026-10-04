@@ -1864,7 +1864,7 @@ function getTeamOnDate(playerId: string, date: string, membershipMap: Map<string
 const MANAGED_YEAR2_START = "2026-07-28";
 const MANAGED_YEAR2_END = "2027-07-28";
 
-export async function getManagedTeams(): Promise<Team[]> {
+export async function getManagedTeams(startDate = MANAGED_YEAR2_START, endDate = MANAGED_YEAR2_END): Promise<Team[]> {
   // 1. Load teams and memberships
   const { rows: teamRows } = await query("SELECT id, tag, display_name, avatar_url FROM teams ORDER BY tag");
   const { rows: memberRows } = await query(
@@ -1898,7 +1898,7 @@ export async function getManagedTeams(): Promise<Team[]> {
 
   if (teamInfo.size === 0) return [];
 
-  // 2. Load all Year 2 matches
+  // 2. Load all matches in the date range
   const { rows: matchRows } = await query(`
     SELECT m.player1_id, m.player2_id, m.player1_wins, m.player2_wins,
            m.tournament_id, t.name as tournament_name, m.round_name, t.date
@@ -1906,7 +1906,7 @@ export async function getManagedTeams(): Promise<Team[]> {
     JOIN tournaments t ON t.id = m.tournament_id
     WHERE t.date >= $1 AND t.date < $2
     ORDER BY t.date, m.id
-  `, [MANAGED_YEAR2_START, MANAGED_YEAR2_END]);
+  `, [startDate, endDate]);
 
   // 3. Compute per-member stats and H2H
   // Member stats: teamId -> playerId -> { wins, losses, draws, tournaments }
@@ -1970,7 +1970,7 @@ export async function getManagedTeams(): Promise<Team[]> {
   }
 
   // 4. Get ratings from season leaderboard
-  const leaderboard = await getSeasonLeaderboard(MANAGED_YEAR2_START, MANAGED_YEAR2_END, 1);
+  const leaderboard = await getSeasonLeaderboard(startDate, endDate, 1);
   const ratingMap = new Map(leaderboard.map((p) => [p.id, { rating: p.rating, rank: p.rank, username: p.username, tournamentWins: p.tournamentWins }]));
 
   // 5. Get title tiers filtered by membership windows
@@ -1979,7 +1979,7 @@ export async function getManagedTeams(): Promise<Team[]> {
     JOIN tournaments t ON t.id = p.tournament_id
     WHERE p.placement = 1 AND t.date >= $1 AND t.date < $2
     ORDER BY t.date
-  `, [MANAGED_YEAR2_START, MANAGED_YEAR2_END]);
+  `, [startDate, endDate]);
 
   // 6. Assemble teams
   const teams: Team[] = [];
