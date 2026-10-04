@@ -1,6 +1,6 @@
 import { query, withTransaction } from "./db";
 import type { PoolClient } from "@neondatabase/serverless";
-import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings, computePureElo, computeEloWithPlacements, computeEloTrialWithPlacements, computeEloTrial, computeEloTrialScaledPlacements, computeEloTrialSizePlacements } from "./elo";
+import { MatchResult, PlacementResult, PlayerRating, EventTier, computeRatings, computePureElo, computeEloWithPlacements, computeEloTrialWithPlacements, computeEloTrial, computeEloTrialScaledPlacements, computeEloTrialSizePlacements, computeRatingHistory, type RatingHistoryPoint } from "./elo";
 import { normalizeBase } from "./base-normalization";
 import { recomputeMetaStats } from "./meta";
 
@@ -775,7 +775,7 @@ export async function getLeaderboard(): Promise<(PlayerRating & { rank: number; 
 
 export type SeasonPlayer = PlayerRating & { rank: number; mainLeader: string | null; aspects: string[] };
 
-export async function getSeasonLeaderboard(startDate: string, endDate: string, minEvents = 3): Promise<SeasonPlayer[]> {
+async function loadRatingInputs(startDate: string, endDate: string): Promise<{ matches: MatchResult[]; placements: PlacementResult[] }> {
   const { rows: matchRows } = await query(`
     SELECT player1_id, player2_id, player1_wins, player2_wins, tournament_id,
            t.name as tournament_name, round_name, matches.date, matches.event_tier, t.player_count
@@ -812,6 +812,17 @@ export async function getSeasonLeaderboard(startDate: string, endDate: string, m
     eventTier: r.event_tier as EventTier,
     date: r.date as string,
   }));
+
+  return { matches, placements };
+}
+
+export async function getPlayerRatingHistory(playerId: string, range: DateRange): Promise<RatingHistoryPoint[]> {
+  const { matches, placements } = await loadRatingInputs(range.start, range.end);
+  return computeRatingHistory(matches, placements, playerId);
+}
+
+export async function getSeasonLeaderboard(startDate: string, endDate: string, minEvents = 3): Promise<SeasonPlayer[]> {
+  const { matches, placements } = await loadRatingInputs(startDate, endDate);
 
   const ratings = computeEloTrialScaledPlacements(matches, placements);
 
@@ -998,7 +1009,15 @@ export interface PlayerTournament {
   placement: number | null;
 }
 
-export async function getPlayerTournaments(playerId: string): Promise<PlayerTournament[]> {
+export interface DateRange {
+  start: string;
+  end: string;
+}
+
+// Unbounded range so optional-range queries can always bind $2/$3
+const ALL_DATES: DateRange = { start: "0000-01-01", end: "9999-12-31" };
+
+export async function getPlayerTournaments(playerId: string, range: DateRange = ALL_DATES): Promise<PlayerTournament[]> {
   const { rows } = await query(`
     SELECT
       t.id, t.name, t.date, t.event_tier,
@@ -1015,10 +1034,10 @@ export async function getPlayerTournaments(playerId: string): Promise<PlayerTour
     FROM matches m
     JOIN tournaments t ON t.id = m.tournament_id
     LEFT JOIN placements p ON p.tournament_id = t.id AND p.player_id = $1
-    WHERE m.player1_id = $1 OR m.player2_id = $1
+    WHERE (m.player1_id = $1 OR m.player2_id = $1) AND t.date >= $2 AND t.date < $3
     GROUP BY t.id, t.name, t.date, t.event_tier, p.placement
     ORDER BY t.date DESC
-  `, [playerId]);
+  `, [playerId, range.start, range.end]);
 
   return rows.map((r: Record<string, unknown>) => ({
     id: r.id as number,
@@ -1032,21 +1051,23 @@ export async function getPlayerTournaments(playerId: string): Promise<PlayerTour
   }));
 }
 
-export async function getPlayerTitleTiers(playerId: string): Promise<EventTier[]> {
+export async function getPlayerTitleTiers(playerId: string, range: DateRange = ALL_DATES): Promise<EventTier[]> {
   const { rows } = await query(`
     SELECT t.event_tier
     FROM placements p
     JOIN tournaments t ON t.id = p.tournament_id
-    WHERE p.player_id = $1 AND p.placement = 1
+    WHERE p.player_id = $1 AND p.placement = 1 AND t.date >= $2 AND t.date < $3
     ORDER BY t.date
-  `, [playerId]);
+  `, [playerId, range.start, range.end]);
   return rows.map((r: Record<string, unknown>) => r.event_tier as EventTier);
 }
 
-export async function getPlayerBestFinish(playerId: string): Promise<number | null> {
-  const { rows } = await query(
-    "SELECT MIN(placement) as best FROM placements WHERE player_id = $1", [playerId]
-  );
+export async function getPlayerBestFinish(playerId: string, range: DateRange = ALL_DATES): Promise<number | null> {
+  const { rows } = await query(`
+    SELECT MIN(p.placement) as best FROM placements p
+    JOIN tournaments t ON t.id = p.tournament_id
+    WHERE p.player_id = $1 AND t.date >= $2 AND t.date < $3
+  `, [playerId, range.start, range.end]);
   return rows[0]?.best ?? null;
 }
 
@@ -1072,7 +1093,7 @@ export interface PlayerRivalries {
   allMatchups: HeadToHead[];
 }
 
-export async function getPlayerRivalries(playerId: string): Promise<PlayerRivalries> {
+export async function getPlayerRivalries(playerId: string, range: DateRange = ALL_DATES): Promise<PlayerRivalries> {
   const { rows } = await query(`
     SELECT
       opponent_id,
@@ -1088,19 +1109,21 @@ export async function getPlayerRivalries(playerId: string): Promise<PlayerRivalr
         CASE WHEN player1_wins > player2_wins THEN 1 ELSE 0 END as won,
         CASE WHEN player2_wins > player1_wins THEN 1 ELSE 0 END as lost,
         CASE WHEN player1_wins = player2_wins THEN 1 ELSE 0 END as drew
-      FROM matches WHERE player1_id = $1
+      FROM matches JOIN tournaments t ON t.id = matches.tournament_id
+      WHERE player1_id = $1 AND t.date >= $2 AND t.date < $3
       UNION ALL
       SELECT
         player1_id as opponent_id,
         CASE WHEN player2_wins > player1_wins THEN 1 ELSE 0 END as won,
         CASE WHEN player1_wins > player2_wins THEN 1 ELSE 0 END as lost,
         CASE WHEN player1_wins = player2_wins THEN 1 ELSE 0 END as drew
-      FROM matches WHERE player2_id = $1
+      FROM matches JOIN tournaments t ON t.id = matches.tournament_id
+      WHERE player2_id = $1 AND t.date >= $2 AND t.date < $3
     ) h2h
     JOIN players p ON p.id = h2h.opponent_id
     GROUP BY opponent_id, p.name, p.username
     ORDER BY total_matches DESC
-  `, [playerId]);
+  `, [playerId, range.start, range.end]);
 
   const matchups: HeadToHead[] = rows.map((r: Record<string, unknown>) => ({
     opponentId: r.opponent_id as string,
@@ -1148,14 +1171,14 @@ export interface PlayerLeaderEntry {
   events: { tournamentName: string; tournamentId: number; decklistGuid: string | null }[];
 }
 
-export async function getPlayerLeaders(playerId: string): Promise<PlayerLeaderEntry[]> {
+export async function getPlayerLeaders(playerId: string, range: DateRange = ALL_DATES): Promise<PlayerLeaderEntry[]> {
   const { rows } = await query(`
     SELECT d.leader, d.base, d.full_name, d.decklist_guid, d.tournament_id, t.name as tournament_name
     FROM decklists d
     JOIN tournaments t ON t.id = d.tournament_id
-    WHERE d.player_id = $1
+    WHERE d.player_id = $1 AND t.date >= $2 AND t.date < $3
     ORDER BY t.date
-  `, [playerId]);
+  `, [playerId, range.start, range.end]);
 
   const grouped = new Map<string, PlayerLeaderEntry>();
   for (const r of rows as Record<string, unknown>[]) {

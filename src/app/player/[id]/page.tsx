@@ -1,22 +1,59 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, getPlayerBestFinish, getPlayerTitleTiers, HeadToHead } from "@/lib/store";
+import { getLeaderboard, getSeasonLeaderboard, getPlayerRivalries, getPlayerLeaders, getPlayerTournaments, getPlayerBestFinish, getPlayerTitleTiers, getPlayerRatingHistory, HeadToHead } from "@/lib/store";
 import { getTierConfig } from "@/lib/tiers";
+import { SEASON_RANGES, SEASON_TABS, isSeason, seasonOf, type Season } from "@/lib/seasons";
 import { StatCard } from "@/components/stat-card";
 import { BackButton } from "@/components/back-button";
 import { LeadersSection } from "@/components/leaders-section";
 import { PlayerEvents } from "@/components/player-events";
 import { KyberCrystal } from "@/components/kyber-crystal";
+import { RatingChart } from "@/components/rating-chart";
 
+// Minimum events to get a rank, matching the leaderboard tabs
+const RANKED_MIN_EVENTS: Record<Season, number> = { year2: 1, year1: 3, year0: 1, allTime: 3 };
+
+async function getSeasonStats(id: string, season: Season) {
+  const { start, end } = SEASON_RANGES[season];
+  const players = season === "allTime" ? await getLeaderboard() : await getSeasonLeaderboard(start, end, 1);
+  const ranked = players.filter((p) => p.tournamentCount >= RANKED_MIN_EVENTS[season]);
+  const rankIndex = ranked.findIndex((p) => p.id === id);
+  const player = players.find((p) => p.id === id)
+    // All-time ratings table only holds 3+ event players; compute the rest on the fly
+    ?? (season === "allTime" ? (await getSeasonLeaderboard(start, end, 1)).find((p) => p.id === id) : undefined);
+  if (!player) return null;
+  return { ...player, rank: rankIndex >= 0 ? rankIndex + 1 : null };
+}
 
 export default async function PlayerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ season?: string }>;
 }) {
   const { id } = await params;
-  const leaderboard = await getLeaderboard();
-  const player = leaderboard.find((p) => p.id === id);
+  const { season: seasonParam } = await searchParams;
+
+  const allTournaments = await getPlayerTournaments(id);
+  if (allTournaments.length === 0) notFound();
+
+  const eventsBySeason: Record<Season, number> = { year2: 0, year1: 0, year0: 0, allTime: allTournaments.length };
+  for (const t of allTournaments) eventsBySeason[seasonOf(t.date)]++;
+
+  const defaultSeason: Season = eventsBySeason.year2 > 0 ? "year2" : "allTime";
+  const season: Season = isSeason(seasonParam) && eventsBySeason[seasonParam] > 0 ? seasonParam : defaultSeason;
+  const range = SEASON_RANGES[season];
+
+  const [player, rivalries, leaders, tournaments, bestFinish, titleTiers, ratingHistory] = await Promise.all([
+    getSeasonStats(id, season),
+    getPlayerRivalries(id, range),
+    getPlayerLeaders(id, range),
+    getPlayerTournaments(id, range),
+    getPlayerBestFinish(id, range),
+    getPlayerTitleTiers(id, range),
+    getPlayerRatingHistory(id, range),
+  ]);
   if (!player) notFound();
 
   const totalGames = player.wins + player.losses + player.draws;
@@ -24,11 +61,9 @@ export default async function PlayerPage({
     totalGames > 0
       ? Math.round((player.wins / totalGames) * 1000) / 10
       : 0;
-  const rivalries = await getPlayerRivalries(id);
-  const leaders = await getPlayerLeaders(id);
-  const tournaments = await getPlayerTournaments(id);
-  const bestFinish = await getPlayerBestFinish(id);
-  const titleTiers = await getPlayerTitleTiers(id);
+  // Peak from the event-by-event history, so it matches the chart (the stored
+  // peakRating is tracked before placement bonuses and runs low)
+  const peakRating = Math.max(player.rating, ...ratingHistory.map((p) => p.rating));
   const topCutRate = player.tournamentCount > 0
     ? Math.round((player.top8s / player.tournamentCount) * 100)
     : 0;
@@ -37,6 +72,34 @@ export default async function PlayerPage({
     <main className="flex-1">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <BackButton />
+
+        <div className="mb-4 flex gap-1 rounded-lg border border-border bg-surface p-1">
+          {SEASON_TABS.map((tab) => {
+            const events = eventsBySeason[tab.key];
+            const className = `flex-1 rounded-md px-3 py-2 text-center transition-colors ${
+              season === tab.key
+                ? "bg-gold/10 border border-gold/30 text-gold"
+                : events > 0
+                  ? "border border-transparent text-muted hover:text-foreground"
+                  : "border border-transparent text-muted opacity-40 cursor-not-allowed"
+            }`;
+            const content = (
+              <>
+                <p className="text-sm font-medium">{tab.label}</p>
+                <p className="text-[10px] text-muted">
+                  {events > 0 ? `${events} event${events === 1 ? "" : "s"}` : "No events"}
+                </p>
+              </>
+            );
+            return events > 0 ? (
+              <Link key={tab.key} href={`/player/${id}?season=${tab.key}`} scroll={false} className={className}>
+                {content}
+              </Link>
+            ) : (
+              <div key={tab.key} className={className}>{content}</div>
+            );
+          })}
+        </div>
 
         <div className="rounded-xl border border-border bg-surface overflow-hidden">
           <div className="h-2 bg-gradient-to-r from-gold to-gold/40" />
@@ -50,7 +113,7 @@ export default async function PlayerPage({
                 <p className="mt-0.5 text-sm text-muted">{player.name}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <span className="text-sm text-muted">
-                    Rank #{player.rank}
+                    {player.rank ? `Rank #${player.rank}` : `Unranked (min ${RANKED_MIN_EVENTS[season]} events)`}
                   </span>
                   <span className="text-muted">·</span>
                   <span className="text-sm text-muted">
@@ -66,9 +129,9 @@ export default async function PlayerPage({
                 <p className="text-4xl font-bold text-gold tabular-nums">
                   {player.rating.toLocaleString()}
                 </p>
-                {player.peakRating > player.rating && (
+                {peakRating > player.rating && (
                   <p className="text-xs text-muted">
-                    Peak: {player.peakRating.toLocaleString()}
+                    Peak: {peakRating.toLocaleString()}
                   </p>
                 )}
               </div>
@@ -105,6 +168,8 @@ export default async function PlayerPage({
                 )}
               </div>
             </div>
+
+            <RatingChart history={ratingHistory} />
 
             <PlayerEvents tournaments={tournaments} />
 
