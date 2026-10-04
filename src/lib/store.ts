@@ -1855,8 +1855,11 @@ interface MembershipWindow {
 function getTeamOnDate(playerId: string, date: string, membershipMap: Map<string, MembershipWindow[]>): MembershipWindow | null {
   const windows = membershipMap.get(playerId);
   if (!windows) return null;
+  // Results count for a team from any time until the player leaves it — joined_at is ignored,
+  // so pre-formation results still count. Windows are ordered by joined_at, so a past team
+  // (left_at set) claims results up to its left_at before the current team does.
   for (const w of windows) {
-    if (date >= w.joinedAt && (w.leftAt === null || date < w.leftAt)) return w;
+    if (w.leftAt === null || date < w.leftAt) return w;
   }
   return null;
 }
