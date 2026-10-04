@@ -274,7 +274,10 @@ export function computePureElo(matches: MatchResult[]): Map<string, PlayerRating
   return ratings;
 }
 
-export function computeEloTrial(matches: MatchResult[]): Map<string, PlayerRating> {
+export function computeEloTrial(
+  matches: MatchResult[],
+  onMatch?: (match: MatchResult, ratings: Map<string, PlayerRating>) => void,
+): Map<string, PlayerRating> {
   const ratings = new Map<string, PlayerRating>();
 
   function getOrCreate(id: string): PlayerRating {
@@ -306,6 +309,7 @@ export function computeEloTrial(matches: MatchResult[]): Map<string, PlayerRatin
       byeWinner.wins++;
       byeWinner.streak = Math.max(0, byeWinner.streak) + 1;
       byeWinner.lastActive = match.date;
+      onMatch?.(match, ratings);
       continue;
     }
 
@@ -347,9 +351,16 @@ export function computeEloTrial(matches: MatchResult[]): Map<string, PlayerRatin
 
     if (match.date > p1.lastActive) p1.lastActive = match.date;
     if (match.date > p2.lastActive) p2.lastActive = match.date;
+    onMatch?.(match, ratings);
   }
 
   return ratings;
+}
+
+function placementBonus(placement: PlacementResult, scale: number): number {
+  const hasTopCut = !placement.playerCount || placement.playerCount >= 9;
+  if (!hasTopCut) return 0;
+  return Math.round((PLACEMENT_BONUSES[placement.eventTier][placement.placement] ?? 0) * scale);
 }
 
 function applyPlacementBonuses(ratings: Map<string, PlayerRating>, placements: PlacementResult[], scale = 1): void {
@@ -358,8 +369,7 @@ function applyPlacementBonuses(ratings: Map<string, PlayerRating>, placements: P
     if (!player) continue;
     const hasTopCut = !placement.playerCount || placement.playerCount >= 9;
     if (hasTopCut) {
-      const tierBonuses = PLACEMENT_BONUSES[placement.eventTier];
-      const bonus = Math.round((tierBonuses[placement.placement] ?? 0) * scale);
+      const bonus = placementBonus(placement, scale);
       if (bonus > 0) {
         player.rating += bonus;
         player.peakRating = Math.max(player.peakRating, player.rating);
@@ -386,6 +396,59 @@ export function computeEloTrialScaledPlacements(matches: MatchResult[], placemen
   const ratings = computeEloTrial(matches);
   applyPlacementBonuses(ratings, placements, 0.5);
   return ratings;
+}
+
+export interface RatingHistoryPoint {
+  tournamentId: number;
+  tournamentName: string;
+  date: string;
+  eventTier: EventTier;
+  placement: number | null;
+  rating: number;
+  delta: number;
+}
+
+// Rating after each event a player attended, under computeEloTrialScaledPlacements.
+// Placement bonuses never feed back into ELO there, so the rating after event N is
+// the ELO after N's matches plus the bonuses earned up to and including N.
+export function computeRatingHistory(
+  matches: MatchResult[],
+  placements: PlacementResult[],
+  playerId: string,
+): RatingHistoryPoint[] {
+  const events = new Map<number, Omit<RatingHistoryPoint, "rating" | "delta"> & { elo: number }>();
+  computeEloTrial(matches, (match, ratings) => {
+    if (match.player1Id !== playerId && match.player2Id !== playerId) return;
+    const elo = ratings.get(playerId)?.rating ?? DEFAULT_RATING;
+    const existing = events.get(match.tournamentId);
+    if (existing) existing.elo = elo;
+    else events.set(match.tournamentId, {
+      tournamentId: match.tournamentId,
+      tournamentName: match.tournamentName,
+      date: match.date,
+      eventTier: match.eventTier,
+      placement: null,
+      elo,
+    });
+  });
+
+  const bonusByTournament = new Map<number, number>();
+  for (const p of placements) {
+    if (p.playerId !== playerId) continue;
+    const event = events.get(p.tournamentId);
+    if (event) event.placement = p.placement;
+    bonusByTournament.set(p.tournamentId, (bonusByTournament.get(p.tournamentId) ?? 0) + placementBonus(p, 0.5));
+  }
+
+  let bonusSoFar = 0;
+  let previous = DEFAULT_RATING;
+  return Array.from(events.values()).map(({ elo, ...event }) => {
+    bonusSoFar += bonusByTournament.get(event.tournamentId) ?? 0;
+    const rating = elo + bonusSoFar;
+    const point = { ...event, rating, delta: rating - previous };
+    previous = rating;
+    return point;
+  });
 }
 
 function sizeMultiplier(playerCount?: number): number {
