@@ -18,7 +18,7 @@ Competitive ranking website for Star Wars: Unlimited (SWU) TCG players in Argent
 - **Seasons:** Year 0 (pre-Jul 28 2025), Year 1 (Jul 28 2025 - Jul 26 2026), All-Time. Clean 1500 reset per season, 3-event minimum. No seeding, provisional systems, or carry-over.
 - **Meta Report:** Score = Kyber 30% + TC 27% + WR 25% + Meta 18%. Period filters. Matchup matrix + picker. 5+ matches to appear.
 - **Nacional:** Points-based qualification for TopToys national tournament with cascade logic
-- **Admin:** PIN-protected, step-by-step recalculation (ELO -> Nacional -> Meta -> Stamp), rank snapshots only on tournament ingestion
+- **Admin:** PIN-protected. A single **Recalculate** button runs all steps (ELO -> Nacional -> Meta -> Stamp); there are no per-step buttons, but `POST /api/admin/recalculate?step=<elo|nacional|meta|stamp>` runs one. Rank snapshots only on tournament ingestion
 - **Teams:** Auto-detected from username prefix (NT, OTC, CS, PORG, 3MQP)
 - **Player aliases:** DB table mapping old usernames, admin UI for management
 
@@ -35,11 +35,18 @@ Use community terms, not game aspect names:
 - Two-phase approach: Phase 1 clicks round buttons to discover round IDs, Phase 2 uses `page.evaluate(fetch)` with `length=1000` to get all matches
 - Safety check: abort if any swiss round has <70% expected matches
 - Standings use melee.gg `Rank` from `scraped_data`, not raw win-diff
-- Usage: `node scrape.mjs <melee-url-or-id> <tier>` — needs sandbox disabled (Neon WebSocket + Playwright). Re-running replaces the tournament's matches/placements/decklists and recalculates ratings; Nacional → Meta → Stamp still run from Admin
+- Usage: `node scrape.mjs <melee-url-or-id> <tier>` — needs sandbox disabled (Neon WebSocket + Playwright). Re-running replaces the tournament's matches/placements/decklists and recalculates ratings; still click Recalculate in Admin afterwards for Nacional/Meta
 - **Missing Finals standings:** melee sometimes publishes no standings for the last round. The scraper falls back to the last non-empty standings tab (e.g. Semifinals) and applies later rounds' match results (winner takes the better rank, records + 3 pts/win updated). Before this fix it was done by hand in the DB (LUDUS 466082, LAW 469777)
 - Tournament date comes from the page header (`MM/DD/YYYY h:mm AM -03`), falling back to standings `DateCreated` — not ingestion time
 - Some events have no decklists submitted on melee (e.g. 469777) — "0 with decklists" is not necessarily a scrape bug
 - To verify a scraper change, snapshot the tournament's DB rows (tournament, matches, placements, decklists, `scraped_data` standings), re-scrape, and diff
+
+## Decks & colors
+
+- **Base display:** always render `normalizeBase(base).display` (`src/lib/base-normalization.ts`, e.g. Mos Eisley → Yellow 30HP, Coaxium Mine → Splash Blue 27HP; rare bases keep their name). Tournament data exposes it as `baseDisplay` — use `baseDisplay ?? base` in UI
+- **Deck colors = leader aspects + base aspect.** Leader aspects come from `LEADER_ASPECTS` in `src/lib/card-images.ts` (generated from card data); base aspect from `base-normalization.ts`
+- `aspect_cache` (JSON array string, key `leader||base`) is only a fallback for leaders missing from card data. Some entries from melee are incomplete (e.g. Darth Vader VSL, Thrawn ...How Unfortunate) — harmless since card data wins. Always `JSON.parse` it, never split on commas
+- **Manual decklists** (when players didn't submit lists on melee): insert into `decklists` with `decklist_guid = NULL` (UI handles missing link) **and** set `Decklists: [{DecklistName: "Leader - Base", DecklistId: null}]` on each player in `scraped_data.raw_json.standings`, so Admin re-ingest keeps them. A fresh re-scrape wipes them. Leader/base names must match existing DB spelling exactly (case-sensitive) or they split in the Meta Report — check against `SELECT DISTINCT leader/base FROM decklists` first. Done for 469777 on 2026-10-02
 
 ## Git & deploy workflow
 
@@ -62,7 +69,7 @@ Use community terms, not game aspect names:
 - **CSS animations:** Dynamic color animations must be client components with `useId()` keyframes — SSR/Turbopack break all other approaches
 - **CSS gradients in TW4:** Use `<span>` with pure inline styles (not `<p>`, not Tailwind classes) for `background-clip: text` inside cards
 - **Kill dev server:** Always `kill -9` — graceful kill gets swallowed by sandbox
-- **DB queries from CLI:** Use inline Node.js script reading `.env.local` manually (no `source`, no `dotenv`)
+- **DB queries from CLI:** Use inline Node.js script reading `.env.local` manually (no `source`, no `dotenv`). Put the temp script in the repo root (so `@neondatabase/serverless` resolves) and delete it after; it needs the sandbox disabled (Neon uses WebSockets, blocked even with the host allowlisted). Wrap writes in a transaction
 
 ## References
 
