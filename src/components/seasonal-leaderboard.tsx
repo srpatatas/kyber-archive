@@ -92,6 +92,42 @@ export function SeasonalLeaderboard({
                 : "No tournaments ingested yet"
             )}
           </div>
+          {siteStats?.latestTournament && (
+            <div className="mb-3">
+              <Link
+                href={`/tournament/${siteStats.latestTournament.id}`}
+                className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium text-gold transition-colors hover:border-gold/50 hover:bg-gold/10"
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: getTierConfig(siteStats.latestTournament.eventTier).crystalColor }}
+                />
+                <span className="text-muted">LATEST EVENT</span>
+                <span className="font-bold">{siteStats.latestTournament.name}</span>
+                {!siteStats.latestTournament.name
+                  .toLowerCase()
+                  .includes(getTierConfig(siteStats.latestTournament.eventTier).label.toLowerCase()) && (
+                  <>
+                    <span className="text-muted">·</span>
+                    <span style={{ color: getTierConfig(siteStats.latestTournament.eventTier).crystalColor }}>
+                      {getTierConfig(siteStats.latestTournament.eventTier).label}
+                    </span>
+                  </>
+                )}
+                <span className="text-muted">·</span>
+                <span>
+                  {new Date(siteStats.latestTournament.date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "America/Argentina/Buenos_Aires",
+                  })}
+                </span>
+                <span className="text-muted">·</span>
+                <span>{siteStats.latestTournament.playerCount} players</span>
+                <span className="text-muted" aria-hidden>→</span>
+              </Link>
+            </div>
+          )}
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Competitive Rankings
           </h2>
