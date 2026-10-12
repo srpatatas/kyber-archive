@@ -438,20 +438,38 @@ export interface SiteStats {
   playerCount: number;
   matchCount: number;
   lastSync: string | null;
+  latestTournament: {
+    id: number;
+    name: string;
+    eventTier: EventTier;
+    date: string;
+    playerCount: number;
+  } | null;
 }
 
 export async function getSiteStats(): Promise<SiteStats> {
-  const [tournaments, players, matches, lastSync] = await Promise.all([
+  const [tournaments, players, matches, lastSync, latest] = await Promise.all([
     query("SELECT COUNT(*) as count FROM tournaments"),
     query("SELECT COUNT(*) as count FROM players"),
     query("SELECT COUNT(*) as count FROM matches"),
     getLastRecalculated(),
+    query("SELECT id, name, event_tier, date, player_count FROM tournaments ORDER BY date DESC LIMIT 1"),
   ]);
+  const lt = latest.rows[0];
   return {
     tournamentCount: Number(tournaments.rows[0].count),
     playerCount: Number(players.rows[0].count),
     matchCount: Number(matches.rows[0].count),
     lastSync,
+    latestTournament: lt
+      ? {
+          id: lt.id as number,
+          name: lt.name as string,
+          eventTier: lt.event_tier as EventTier,
+          date: new Date(lt.date as string).toISOString(),
+          playerCount: lt.player_count as number,
+        }
+      : null,
   };
 }
 
