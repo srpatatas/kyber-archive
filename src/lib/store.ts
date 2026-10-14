@@ -255,8 +255,31 @@ export async function updateTournamentTier(id: number, eventTier: EventTier): Pr
 
 export async function removeTournament(id: number): Promise<boolean> {
   return await withTransaction(async (client) => {
+    // Collect participants before the cascade removes their matches/placements
+    const { rows: participants } = await client.query(
+      `SELECT player1_id AS id FROM matches WHERE tournament_id = $1
+       UNION SELECT player2_id FROM matches WHERE tournament_id = $1
+       UNION SELECT player_id FROM placements WHERE tournament_id = $1`,
+      [id]
+    );
     const result = await client.query("DELETE FROM tournaments WHERE id = $1", [id]);
+    await client.query("DELETE FROM pending_aliases WHERE tournament_id = $1", [id]);
+    await client.query("DELETE FROM scraped_data WHERE tournament_id = $1", [id]);
     if (result.rowCount! > 0) {
+      // Drop players who only appeared in this tournament
+      const { rows: orphans } = await client.query(
+        `SELECT p.id FROM players p WHERE p.id = ANY($1)
+           AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.player1_id = p.id OR m.player2_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM placements pl WHERE pl.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM team_members tm WHERE tm.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM player_aliases pa WHERE pa.canonical_id = p.id)`,
+        [participants.map((r) => r.id)]
+      );
+      const orphanIds = orphans.map((r) => r.id);
+      if (orphanIds.length > 0) {
+        await client.query("DELETE FROM rank_snapshots WHERE player_id = ANY($1)", [orphanIds]);
+        await client.query("DELETE FROM players WHERE id = ANY($1)", [orphanIds]);
+      }
       await recomputeRatings(client);
       return true;
     }
