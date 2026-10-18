@@ -67,6 +67,23 @@ function buildLeaderKey(card) {
   return subtitle ? `${title}, ${subtitle}` : title;
 }
 
+function readExistingMaps() {
+  const maps = { LEADER_IMAGES: {}, LEADER_THUMBNAILS: {}, LEADER_SETS: {}, LEADER_ASPECTS: {} };
+  if (!fs.existsSync(OUTPUT_PATH)) return { ...maps, tail: "" };
+  const content = fs.readFileSync(OUTPUT_PATH, "utf8");
+  const aspectsStart = content.indexOf("export const LEADER_ASPECTS");
+  const tail = aspectsStart === -1 ? "" : content.slice(content.indexOf("\n};", aspectsStart) + 3);
+  let current = null;
+  for (const line of content.split("\n")) {
+    const header = line.match(/^export const (\w+):/);
+    if (header) { current = maps[header[1]] ?? null; continue; }
+    if (line.startsWith("}")) { current = null; continue; }
+    const entry = current && line.match(/^  ("(?:[^"\\]|\\.)*"): (.+),$/);
+    if (entry) current[JSON.parse(entry[1])] = JSON.parse(entry[2]);
+  }
+  return { ...maps, tail };
+}
+
 async function main() {
   console.log("Fetching leader cards from SWU API...");
   const cards = await fetchLeaders();
@@ -88,6 +105,16 @@ async function main() {
     if (setCode) sets[key] = setCode;
     if (cardAspects.length > 0) aspects[key] = cardAspects;
   }
+
+  // Keep leaders the API no longer returns (e.g. rotated sets) so older tournaments keep their images/colors
+  const existing = readExistingMaps();
+  let kept = 0;
+  for (const [target, prev] of [[cards_map, existing.LEADER_IMAGES], [thumbs, existing.LEADER_THUMBNAILS], [sets, existing.LEADER_SETS], [aspects, existing.LEADER_ASPECTS]]) {
+    for (const [name, value] of Object.entries(prev)) {
+      if (!(name in target)) { target[name] = value; kept++; }
+    }
+  }
+  if (kept > 0) console.log(`Kept ${kept} existing entries missing from the API`);
 
   const allKeys = [...new Set([...Object.keys(cards_map), ...Object.keys(thumbs)])].sort();
 
@@ -123,23 +150,8 @@ async function main() {
   }
   lines.push(`};`);
 
-  lines.push(``);
-  lines.push(`export function getLeaderImageUrl(leaderName: string): string | null {`);
-  lines.push(`  return LEADER_IMAGES[leaderName] ?? null;`);
-  lines.push(`}`);
-  lines.push(``);
-  lines.push(`export function getLeaderThumbnailUrl(leaderName: string): string | null {`);
-  lines.push(`  return LEADER_THUMBNAILS[leaderName] ?? null;`);
-  lines.push(`}`);
-  lines.push(``);
-  lines.push(`export function getLeaderSetCode(leaderName: string): string | null {`);
-  lines.push(`  return LEADER_SETS[leaderName] ?? null;`);
-  lines.push(`}`);
-  lines.push(``);
-  lines.push(`export function getLeaderAspects(leaderName: string): string[] {`);
-  lines.push(`  return LEADER_ASPECTS[leaderName] ?? [];`);
-  lines.push(`}`);
-  lines.push(``);
+  // Everything after the generated maps (lookup helpers, manual additions) is preserved as-is
+  lines.push(existing.tail);
 
   fs.writeFileSync(OUTPUT_PATH, lines.join("\n"));
   console.log(`Wrote ${allKeys.length} leaders to ${OUTPUT_PATH}`);
