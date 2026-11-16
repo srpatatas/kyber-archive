@@ -17,7 +17,7 @@ interface BracketRound {
   matches: BracketMatch[];
 }
 
-function detectBracketRounds(rounds: BracketRound[]): BracketRound[] {
+export function detectBracketRounds(rounds: BracketRound[]): BracketRound[] {
   const named = rounds.filter((r) => {
     const name = r.name.toLowerCase();
     return name.includes("quarter") || name.includes("semi") || name.includes("final");
