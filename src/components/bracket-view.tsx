@@ -46,8 +46,32 @@ function detectBracketRounds(rounds: BracketRound[]): BracketRound[] {
   return [];
 }
 
+/**
+ * Reorder each round so that matches 2i and 2i+1 feed match i of the next round.
+ * Works backwards from the finals: for every later match, its player1's previous
+ * match goes first, then its player2's. Unmatched matches (e.g. byes or bad data)
+ * keep their original relative order at the end.
+ */
+function alignBracketRounds(rounds: BracketRound[]): BracketRound[] {
+  const aligned = rounds.map((r) => ({ ...r, matches: [...r.matches] }));
+  for (let ri = aligned.length - 2; ri >= 0; ri--) {
+    const remaining = [...aligned[ri].matches];
+    const ordered: BracketMatch[] = [];
+    const takeFeeder = (playerId: string) => {
+      const idx = remaining.findIndex((m) => m.player1Id === playerId || m.player2Id === playerId);
+      if (idx !== -1) ordered.push(remaining.splice(idx, 1)[0]);
+    };
+    for (const next of aligned[ri + 1].matches) {
+      takeFeeder(next.player1Id);
+      takeFeeder(next.player2Id);
+    }
+    aligned[ri].matches = [...ordered, ...remaining];
+  }
+  return aligned;
+}
+
 export function BracketView({ rounds, tierColor = "#d4a017" }: { rounds: BracketRound[]; tierColor?: string }) {
-  const bracketRounds = detectBracketRounds(rounds);
+  const bracketRounds = alignBracketRounds(detectBracketRounds(rounds));
 
   if (bracketRounds.length === 0) return null;
 
