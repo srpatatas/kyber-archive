@@ -9,7 +9,7 @@ const headers = {
   Referer: "https://starwarsunlimited.com/",
 };
 
-async function fetchLeaders() {
+async function fetchCards(type) {
   const allCards = [];
   let page = 1;
 
@@ -19,7 +19,7 @@ async function fetchLeaders() {
       "pagination[page]": String(page),
       "pagination[pageSize]": "100",
       populate: "*",
-      "filters[type][name][$eq]": "Leader",
+      "filters[type][name][$eq]": type,
       "filters[variantOf][id][$null]": "true",
     });
 
@@ -68,7 +68,7 @@ function buildLeaderKey(card) {
 }
 
 function readExistingMaps() {
-  const maps = { LEADER_IMAGES: {}, LEADER_THUMBNAILS: {}, LEADER_SETS: {}, LEADER_ASPECTS: {} };
+  const maps = { LEADER_IMAGES: {}, LEADER_THUMBNAILS: {}, LEADER_SETS: {}, BASE_THUMBNAILS: {}, LEADER_ASPECTS: {} };
   if (!fs.existsSync(OUTPUT_PATH)) return { ...maps, tail: "" };
   const content = fs.readFileSync(OUTPUT_PATH, "utf8");
   const aspectsStart = content.indexOf("export const LEADER_ASPECTS");
@@ -86,7 +86,7 @@ function readExistingMaps() {
 
 async function main() {
   console.log("Fetching leader cards from SWU API...");
-  const cards = await fetchLeaders();
+  const cards = await fetchCards("Leader");
   console.log(`Found ${cards.length} leader cards`);
 
   const cards_map = {};
@@ -114,6 +114,19 @@ async function main() {
       if (!(name in target)) { target[name] = value; kept++; }
     }
   }
+  console.log("Fetching base cards from SWU API...");
+  const baseCards = await fetchCards("Base");
+  const baseThumbs = {};
+  for (const card of baseCards) {
+    const title = card.attributes?.title;
+    const thumb = extractThumbnailUrl(card);
+    if (title && thumb && !baseThumbs[title]) baseThumbs[title] = thumb;
+  }
+  for (const [name, value] of Object.entries(existing.BASE_THUMBNAILS)) {
+    if (!(name in baseThumbs)) { baseThumbs[name] = value; kept++; }
+  }
+  console.log(`Found ${Object.keys(baseThumbs).length} bases`);
+
   if (kept > 0) console.log(`Kept ${kept} existing entries missing from the API`);
 
   const allKeys = [...new Set([...Object.keys(cards_map), ...Object.keys(thumbs)])].sort();
@@ -140,6 +153,13 @@ async function main() {
   lines.push(`export const LEADER_SETS: Record<string, string> = {`);
   for (const name of allKeys) {
     if (sets[name]) lines.push(`  ${JSON.stringify(name)}: ${JSON.stringify(sets[name])},`);
+  }
+  lines.push(`};`);
+
+  lines.push(``);
+  lines.push(`export const BASE_THUMBNAILS: Record<string, string> = {`);
+  for (const name of Object.keys(baseThumbs).sort()) {
+    lines.push(`  ${JSON.stringify(name)}: ${JSON.stringify(baseThumbs[name])},`);
   }
   lines.push(`};`);
 
